@@ -1,0 +1,28 @@
+{
+    "features": [
+        "depth_tvd",
+        "rop",
+        "wob",
+        "rpm",
+        "torque",
+        "mud_weight",
+        "ecd",
+        "mse",
+        "d_xc",
+        "rop_roll_mean_5",
+        "torque_roll_std_5"
+    ],
+    "default_baselines": {
+        "depth_tvd": 2860.0,
+        "rop": 21.312741449593148,
+        "wob": 15.589551377387641,
+        "rpm": 82.00756562795127,
+        "torque": 22.76479852192734,
+        "mud_weight": 1.1773137913985865,
+        "ecd": 1.210706786895173,
+        "mse": 565.5418564015939,
+        "d_xc": 10.633218028462261,
+        "rop_roll_mean_5": 22.1,
+        "torque_roll_std_5": 0.4000000000000008
+    }
+}

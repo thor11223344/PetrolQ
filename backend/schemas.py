@@ -71,3 +71,22 @@ class WellResponse(BaseModel):
         return v
 
     model_config = ConfigDict(from_attributes=True)
+
+class TelemetryInput(BaseModel):
+    depth_tvd: float
+    rop: float
+    wob: float
+    rpm: float
+    torque: float
+    mud_weight: float
+    ecd: Optional[float] = None
+
+class SHAPFactor(BaseModel):
+    feature: str
+    impact: float
+    direction: str
+
+class RiskPredictionResponse(BaseModel):
+    risk_probability: float
+    risk_level: str
+    top_factors: List[SHAPFactor]

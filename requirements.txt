@@ -11,3 +11,13 @@ sqlalchemy
 psycopg2-binary
 geoalchemy2
 pgvector
+pymupdf
+pdfplumber
+langchain
+langchain-core
+langchain-openai
+sentence-transformers
+lightgbm
+scikit-learn
+shap
+joblib
