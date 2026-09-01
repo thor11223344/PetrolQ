@@ -1,0 +1,73 @@
+from pydantic import BaseModel, ConfigDict, field_validator
+from typing import Optional, List, Any
+from datetime import datetime
+from geoalchemy2.elements import WKBElement
+
+class DrillingParamResponse(BaseModel):
+    id: int
+    well_id: str
+    timestamp: Optional[datetime] = None
+    depth_md: Optional[float] = None
+    depth_tvd: Optional[float] = None
+    rop: Optional[float] = None
+    wob: Optional[float] = None
+    rpm: Optional[float] = None
+    torque: Optional[float] = None
+    mud_weight: Optional[float] = None
+    ecd: Optional[float] = None
+    mse: Optional[float] = None
+    d_xc: Optional[float] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class EventResponse(BaseModel):
+    id: int
+    well_id: str
+    depth_start_tvd: Optional[float] = None
+    depth_end_tvd: Optional[float] = None
+    formation: Optional[str] = None
+    event_type: Optional[str] = None
+    severity: Optional[str] = None
+    root_cause: Optional[str] = None
+    mitigation_applied: Optional[str] = None
+    npt_hours: Optional[float] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class WellLogResponse(BaseModel):
+    id: int
+    well_id: str
+    depth_tvd: Optional[float] = None
+    gamma_ray: Optional[float] = None
+    resistivity: Optional[float] = None
+    sonic: Optional[float] = None
+    density: Optional[float] = None
+    formation_top: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class WellResponse(BaseModel):
+    id: int
+    well_id: str
+    field_name: Optional[str] = None
+    kb_elevation: Optional[float] = None
+    total_depth_tvd: Optional[float] = None
+    spud_date: Optional[str] = None
+    
+    # We will output this as a dictionary {"lat": y, "lon": x}
+    surface_location: Any = None
+
+    @field_validator('surface_location', mode='before')
+    @classmethod
+    def extract_lat_lon(cls, v):
+        if isinstance(v, WKBElement) or hasattr(v, 'data'):
+            try:
+                from geoalchemy2.shape import to_shape
+                shape = to_shape(v)
+                return {"lat": shape.y, "lon": shape.x}
+            except Exception:
+                # If shapely is missing or parse fails, return string rep
+                return str(v)
+        return v
+
+    model_config = ConfigDict(from_attributes=True)

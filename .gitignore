@@ -1,0 +1,5 @@
+dataset/
+demo_data/
+data/processed/
+__pycache__/
+.env

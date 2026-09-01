@@ -1,0 +1,13 @@
+pandas
+numpy
+lasio
+scipy
+pydantic
+tqdm
+pyarrow
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+geoalchemy2
+pgvector
