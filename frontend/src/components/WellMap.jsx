@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Target, AlertTriangle } from 'lucide-react';
+import { Target, AlertTriangle, Box } from 'lucide-react';
 import Map, { Marker, NavigationControl, Source, Layer } from 'react-map-gl/maplibre';
 import axios from 'axios';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import Trajectory3DViewer from './Trajectory3DViewer';
 
 // Note: Mapbox requires an access token.
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
@@ -37,22 +38,23 @@ function createGeoJSONCircle(center, radiusInKm, points = 64) {
 
 export default function WellMap({ activeWellId, onSelectWell }) {
     const [viewState, setViewState] = useState({
-        longitude: 94.91,
-        latitude: 27.47,
+        longitude: 95.185,
+        latitude: 27.415,
         zoom: 11,
         pitch: 30
     });
 
-    const [radius, setRadius] = useState(5.0);
+    const [radius, setRadius] = useState(50.0);
     const [wells, setWells] = useState([]);
     
     // Draggable state for the search box
     const [position, setPosition] = useState({ x: 24, y: 150 }); // Start a bit lower to avoid App.jsx status cards
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+    const [is3DViewerOpen, setIs3DViewerOpen] = useState(false);
 
     // The coordinates the radius search is centered around
-    const [searchCoords, setSearchCoords] = useState({ lat: 27.47, lon: 94.91 });
+    const [searchCoords, setSearchCoords] = useState({ lat: 27.415, lon: 95.185 });
 
     useEffect(() => {
         // Fetch nearby wells based on searchCoords and radius
@@ -211,9 +213,9 @@ export default function WellMap({ activeWellId, onSelectWell }) {
                         </div>
                         <input 
                             type="range" 
-                            min="1.0" 
-                            max="15.0" 
-                            step="0.5" 
+                            min="5.0" 
+                            max="200.0" 
+                            step="5.0" 
                             value={radius}
                             onChange={(e) => setRadius(parseFloat(e.target.value))}
                             className="w-full accent-status-fluid bg-slate-800 rounded-lg appearance-none cursor-pointer h-1.5"
@@ -226,8 +228,23 @@ export default function WellMap({ activeWellId, onSelectWell }) {
                     >
                         Set Selected as Active Rig Location
                     </button>
+                    
+                    <button 
+                        onClick={() => setIs3DViewerOpen(true)}
+                        className="w-full bg-status-fluid/20 hover:bg-status-fluid/30 text-status-fluid text-sm font-medium py-2 rounded transition-colors border border-status-fluid/30 flex items-center justify-center mt-2"
+                    >
+                        <Box size={16} className="mr-2" />
+                        View 3D Subsurface
+                    </button>
                 </div>
             </div>
+
+            <Trajectory3DViewer 
+                isOpen={is3DViewerOpen} 
+                onClose={() => setIs3DViewerOpen(false)} 
+                activeWellId={activeWellId} 
+                offsetWells={wells} 
+            />
         </div>
     );
 }

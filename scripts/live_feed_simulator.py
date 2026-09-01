@@ -36,50 +36,52 @@ async def simulate_live_feed():
         async with websockets.connect(uri) as websocket:
             print("Connected successfully. Starting telemetry feed...\n")
             
-            for _, row in df.iterrows():
-                depth = float(row.get('depth_tvd', 2000.0))
-                rop = float(row.get('rop', 15.0))
-                wob = float(row.get('wob', 10.0))
-                rpm = float(row.get('rpm', 120.0))
-                torque = float(row.get('torque', 15000.0))
-                mud_weight = float(row.get('mud_weight', 10.5))
-                
-                # Inject hazard anomaly
-                if depth >= anomaly_depth:
-                    torque = 28500.0  # Spike torque massively to guarantee alert
-                    rop *= 0.5      # Drop ROP by half
-                    depth = 2450.0  # Match the exact depth trained for anomaly
-                    mud_weight = 11.8 # Match the exact mud weight trained for anomaly
-                    print(f"[ANOMALY INJECTED] Triggering exact condition: Depth={depth}m, Torque={torque}")
+            while True:
+                for _, row in df.iterrows():
+                    depth = float(row.get('depth_tvd', 2000.0))
+                    rop = float(row.get('rop', 15.0))
+                    wob = float(row.get('wob', 10.0))
+                    rpm = float(row.get('rpm', 120.0))
+                    torque = float(row.get('torque', 15000.0))
+                    mud_weight = float(row.get('mud_weight', 10.5))
+                    
+                    # Inject hazard anomaly
+                    if depth >= anomaly_depth:
+                        torque = 28500.0  # Spike torque massively to guarantee alert
+                        rop *= 0.5      # Drop ROP by half
+                        depth = 2450.0  # Match the exact depth trained for anomaly
+                        mud_weight = 11.8 # Match the exact mud weight trained for anomaly
+                        print(f"[ANOMALY INJECTED] Triggering exact condition: Depth={depth}m, Torque={torque}")
 
-                payload = {
-                    "depth_tvd": depth,
-                    "rop": rop,
-                    "wob": wob,
-                    "rpm": rpm,
-                    "torque": torque,
-                    "mud_weight": mud_weight
-                }
-                
-                print(f"Sending : {payload}")
-                await websocket.send(json.dumps(payload))
-                
-                # Receive response (prediction alert)
-                try:
-                    response = await asyncio.wait_for(websocket.recv(), timeout=2.0)
-                    res_data = json.loads(response)
-                    prediction = res_data.get("prediction", {})
-                    risk = prediction.get("risk_level", "UNKNOWN")
-                    prob = prediction.get("risk_probability", 0.0)
+                    payload = {
+                        "depth_tvd": depth,
+                        "rop": rop,
+                        "wob": wob,
+                        "rpm": rpm,
+                        "torque": torque,
+                        "mud_weight": mud_weight
+                    }
                     
-                    status_indicator = "OK" if risk == "LOW" else "WARN" if risk == "MEDIUM" else "CRITICAL"
-                    print(f"Response: [{status_indicator}] Risk Level: {risk} (Probability: {prob:.2f})\n")
-                except asyncio.TimeoutError:
-                    print("Response: Timeout waiting for server response.\n")
-                except Exception as e:
-                    print(f"Response: Error - {e}\n")
+                    print(f"Sending : {payload}")
+                    await websocket.send(json.dumps(payload))
                     
-                await asyncio.sleep(1.0)
+                    # Receive response (prediction alert)
+                    try:
+                        response = await asyncio.wait_for(websocket.recv(), timeout=2.0)
+                        res_data = json.loads(response)
+                        prediction = res_data.get("prediction", {})
+                        risk = prediction.get("risk_level", "UNKNOWN")
+                        prob = prediction.get("risk_probability", 0.0)
+                        
+                        status_indicator = "OK" if risk == "LOW" else "WARN" if risk == "MEDIUM" else "CRITICAL"
+                        print(f"Response: [{status_indicator}] Risk Level: {risk} (Probability: {prob:.2f})\n")
+                    except asyncio.TimeoutError:
+                        print("Response: Timeout waiting for server response.\n")
+                    except Exception as e:
+                        print(f"Response: Error - {e}\n")
+                        
+                    await asyncio.sleep(1.0)
+
                 
     except ConnectionRefusedError:
         print(f"Connection refused to {uri}. Ensure the FastAPI server is running.")

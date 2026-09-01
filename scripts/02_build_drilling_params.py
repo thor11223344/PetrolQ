@@ -42,18 +42,29 @@ def build_drilling_params():
 
     if not all_data:
         logger.info("No raw drilling data found. Generating synthetic data for pipeline validation...")
-        df = pd.DataFrame({
-            'well_id': ["OIL-VOLVE-15-9-F-14"] * 5,
-            'timestamp': pd.date_range("2024-01-01", periods=5, freq="min"),
-            'depth_md': [2870, 2880, 2890, 2900, 2910],
-            'depth_tvd': [2850, 2860, 2870, 2880, 2890],
-            'rop': [22.9, 22.1, 21.3, 19.8, 18.2],
-            'wob': [15.4, 15.5, 15.6, 15.8, 15.9],
-            'rpm': [84, 83, 82, 81, 80],
-            'torque': [21.3, 21.7, 22.1, 23.0, 24.0],
-            'mud_weight': [1.17, 1.17, 1.17, 1.17, 1.17],
-            'ecd': [1.2, 1.2, 1.21, 1.22, 1.23]
-        })
+        wells_master_path = PROCESSED_DATA_DIR / "wells_master.csv"
+        if wells_master_path.exists():
+            df_wells = pd.read_csv(wells_master_path)
+            well_ids = df_wells['well_id'].unique().tolist()
+        else:
+            well_ids = ["OIL-BAGHJAN-1"]
+            
+        synthetic_rows = []
+        for wid in well_ids:
+            for i in range(5):
+                synthetic_rows.append({
+                    'well_id': wid,
+                    'timestamp': pd.Timestamp("2024-01-01") + pd.Timedelta(minutes=i),
+                    'depth_md': 2870 + i*10,
+                    'depth_tvd': 2850 + i*10,
+                    'rop': 22.9 - i*0.8,
+                    'wob': 15.4 + i*0.1,
+                    'rpm': 84 - i,
+                    'torque': 21.3 + i*0.5,
+                    'mud_weight': 1.17,
+                    'ecd': 1.2 + i*0.01
+                })
+        df = pd.DataFrame(synthetic_rows)
     else:
         df = pd.concat(all_data, ignore_index=True)
 

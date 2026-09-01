@@ -67,14 +67,25 @@ def build_well_logs():
 
     if not all_data:
         logger.info("No raw well logs found. Generating synthetic well log data...")
-        df = pd.DataFrame({
-            'well_id': ["OIL-VOLVE-15-9-F-14"] * 5,
-            'depth_tvd': [1400, 1450, 1550, 2600, 2700],
-            'gamma_ray': [77.4, 78.2, 79.0, 86.1, 74.5],
-            'resistivity': [0.66, 0.65, 0.64, 0.63, 0.62],
-            'sonic': [110.2, 111.5, 112.0, 105.4, 104.1],
-            'density': [2.4, 2.45, 2.5, 2.6, 2.65]
-        })
+        wells_master_path = PROCESSED_DATA_DIR / "wells_master.csv"
+        if wells_master_path.exists():
+            df_wells = pd.read_csv(wells_master_path)
+            well_ids = df_wells['well_id'].unique().tolist()
+        else:
+            well_ids = ["OIL-BAGHJAN-1"]
+            
+        synthetic_rows = []
+        for wid in well_ids:
+            for i in range(5):
+                synthetic_rows.append({
+                    'well_id': wid,
+                    'depth_tvd': 1400 + i*300,
+                    'gamma_ray': 77.4 + i*2.2,
+                    'resistivity': 0.66 - i*0.01,
+                    'sonic': 110.2 - i*1.5,
+                    'density': 2.4 + i*0.06
+                })
+        df = pd.DataFrame(synthetic_rows)
     else:
         df = pd.concat(all_data, ignore_index=True)
 

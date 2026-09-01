@@ -62,10 +62,16 @@ def build_wells_master():
     
     # Fallback to synthetic if no raw data processed (for foundational setup)
     if df_out.empty:
-        logger.info("No well data found in raw/. Supplying synthetic Volve defaults...")
+        logger.info("No well data found in raw/. Supplying synthetic OIL defaults...")
         synthetic_data = [
-            {"well_id": "OIL-VOLVE-15-9-F-14", "field_name": "Assam-Arakan", "surface_lat": 27.412, "surface_lon": 95.182, "kb_elevation": 35.0, "total_depth_tvd": 3520, "spud_date": "2024-01-10"},
-            {"well_id": "OIL-VOLVE-15-9-F-15", "field_name": "Assam-Arakan", "surface_lat": 27.417, "surface_lon": 95.188, "kb_elevation": 34.5, "total_depth_tvd": 3490, "spud_date": "2024-02-15"}
+            {"well_id": "OIL-BAGHJAN-1", "field_name": "Upper Assam", "surface_lat": 27.58, "surface_lon": 95.37, "kb_elevation": 35.0, "total_depth_tvd": 3520, "spud_date": "2024-01-10"},
+            {"well_id": "OIL-NAHARKATIYA-1", "field_name": "Upper Assam", "surface_lat": 27.28, "surface_lon": 95.33, "kb_elevation": 40.5, "total_depth_tvd": 3490, "spud_date": "2024-02-15"},
+            {"well_id": "OIL-MORAN-1", "field_name": "Upper Assam", "surface_lat": 27.18, "surface_lon": 94.93, "kb_elevation": 30.0, "total_depth_tvd": 3600, "spud_date": "2024-03-05"},
+            {"well_id": "OIL-DIKOM-1", "field_name": "Upper Assam", "surface_lat": 27.43, "surface_lon": 95.07, "kb_elevation": 38.0, "total_depth_tvd": 3550, "spud_date": "2024-04-12"},
+            {"well_id": "OIL-TENGAKHAT-1", "field_name": "Upper Assam", "surface_lat": 27.30, "surface_lon": 95.25, "kb_elevation": 42.0, "total_depth_tvd": 3650, "spud_date": "2024-05-20"},
+            {"well_id": "OIL-KOTHALONI-1", "field_name": "Upper Assam", "surface_lat": 27.35, "surface_lon": 95.35, "kb_elevation": 37.5, "total_depth_tvd": 3700, "spud_date": "2024-06-18"},
+            {"well_id": "OIL-HAPJAN-1", "field_name": "Upper Assam", "surface_lat": 27.45, "surface_lon": 95.40, "kb_elevation": 36.0, "total_depth_tvd": 3450, "spud_date": "2024-07-22"},
+            {"well_id": "OIL-SHALMARI-1", "field_name": "Upper Assam", "surface_lat": 27.38, "surface_lon": 95.12, "kb_elevation": 39.0, "total_depth_tvd": 3800, "spud_date": "2024-08-11"}
         ]
         df_out = pd.DataFrame(synthetic_data)
     else:

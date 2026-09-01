@@ -8,12 +8,18 @@ import {
   Database,
   AlertTriangle,
   XCircle,
-  TrendingDown
+  TrendingDown,
+  FileUp,
+  Search,
+  Download
 } from 'lucide-react';
 import axios from 'axios';
 import Plot from 'react-plotly.js';
 
 import WellMap from './components/WellMap';
+import DocumentUploadModal from './components/DocumentUploadModal';
+import KnowledgeSearch from './components/KnowledgeSearch';
+import CorrelationPanel from './components/CorrelationPanel';
 
 function App() {
   const [selectedWell, setSelectedWell] = useState('OIL-BAGHJAN-1');
@@ -21,7 +27,57 @@ function App() {
   const [trajectoryData, setTrajectoryData] = useState({ depth: [], torque: [], rop: [] });
   const [alertState, setAlertState] = useState({ active: false, prediction: null });
   const [ragContext, setRagContext] = useState(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isKnowledgeSearchOpen, setIsKnowledgeSearchOpen] = useState(false);
+  const [isCorrelationOpen, setIsCorrelationOpen] = useState(false);
+  const [role, setRole] = useState('Field Engineer');
   const wsRef = useRef(null);
+
+  const showAlerts = role === 'Field Engineer';
+
+  const handleRoleChange = (e) => {
+    const newRole = e.target.value;
+    setRole(newRole);
+    if (newRole === 'Office Reviewer') {
+      setIsKnowledgeSearchOpen(true);
+      setIsCorrelationOpen(true);
+    }
+  };
+
+  const exportWellData = async () => {
+    try {
+        const res = await axios.get(`http://localhost:8000/api/wells/${selectedWell}`);
+        const well = res.data;
+        
+        let csvContent = "data:text/csv;charset=utf-8,";
+        
+        csvContent += "Type,Timestamp,Depth(TVD),ROP,WOB,Torque,MudWeight\n";
+        if (well.drilling_params) {
+            well.drilling_params.forEach(p => {
+                csvContent += `Param,${p.timestamp || ''},${p.depth_tvd || ''},${p.rop || ''},${p.wob || ''},${p.torque || ''},${p.mud_weight || ''}\n`;
+            });
+        }
+        
+        csvContent += "\nType,Depth(TVD),Event,RootCause,Mitigation\n";
+        if (well.synthetic_events) {
+            well.synthetic_events.forEach(e => {
+                csvContent += `Event,${e.depth_tvd || ''},"${e.event_type || ''}","${e.root_cause || ''}","${e.mitigation_applied || ''}"\n`;
+            });
+        }
+        
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `${selectedWell}_data_export.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } catch (err) {
+        console.error("Export failed", err);
+        alert("Failed to export well data");
+    }
+  };
 
   useEffect(() => {
     // Connect to WebSocket
@@ -108,7 +164,7 @@ function App() {
     <div className="h-screen w-screen flex flex-col bg-slate-950 text-slate-200 overflow-hidden font-sans">
       
       {/* Top Navigation Bar */}
-      <header className="h-14 border-b border-slate-800 bg-slate-900 flex items-center justify-between px-6 z-20 shrink-0 shadow-md">
+      <header className="h-14 border-b border-slate-800 bg-slate-900 flex items-center justify-between px-6 z-50 shrink-0 shadow-md relative">
         <div className="flex items-center space-x-4">
           <div className="flex items-center justify-center w-8 h-8 rounded bg-status-active/20 text-status-active">
             <Activity size={18} />
@@ -128,20 +184,100 @@ function App() {
             <span className="text-xs font-medium text-slate-300">eRTMAC Feed: Connected</span>
           </div>
 
+          {/* Role Toggle */}
+          <div className="flex items-center space-x-3 border-l border-slate-800 pl-6">
+            <span className="text-sm text-slate-400">View As:</span>
+            <select 
+                value={role} 
+                onChange={handleRoleChange}
+                className="bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded px-2 py-1 outline-none focus:border-status-fluid"
+            >
+                <option value="Field Engineer">Field Engineer</option>
+                <option value="Office Reviewer">Office Reviewer</option>
+            </select>
+          </div>
+
           {/* Active Well Selector */}
           <div className="flex items-center space-x-3 border-l border-slate-800 pl-6">
             <span className="text-sm text-slate-400">Active Target:</span>
-            <button className="flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded transition-colors text-sm font-medium border border-slate-700">
+            <div className="flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded transition-colors border border-slate-700">
               <Database size={14} className="text-status-fluid" />
-              <span>{selectedWell}</span>
-              <ChevronDown size={14} className="text-slate-400" />
-            </button>
+              <select 
+                  value={selectedWell} 
+                  onChange={(e) => setSelectedWell(e.target.value)}
+                  className="bg-transparent text-slate-200 text-sm font-medium outline-none cursor-pointer"
+              >
+                  <option value="OIL-BAGHJAN-1">OIL-BAGHJAN-1</option>
+                  <option value="OIL-NAHARKATIYA-1">OIL-NAHARKATIYA-1</option>
+                  <option value="OIL-MORAN-1">OIL-MORAN-1</option>
+                  <option value="OIL-DIKOM-1">OIL-DIKOM-1</option>
+                  <option value="OIL-TENGAKHAT-1">OIL-TENGAKHAT-1</option>
+                  <option value="OIL-KOTHALONI-1">OIL-KOTHALONI-1</option>
+                  <option value="OIL-HAPJAN-1">OIL-HAPJAN-1</option>
+                  <option value="OIL-SHALMARI-1">OIL-SHALMARI-1</option>
+              </select>
+            </div>
           </div>
 
           {/* Tools */}
-          <div className="flex items-center space-x-3 text-slate-400 border-l border-slate-800 pl-6">
+          <div className="flex items-center space-x-3 text-slate-400 border-l border-slate-800 pl-6 relative">
+            <button 
+                onClick={() => setIsUploadModalOpen(true)}
+                className="hover:text-white transition-colors flex items-center space-x-2 text-sm bg-slate-800 px-3 py-1 rounded"
+                title="Upload Document"
+            >
+                <FileUp size={16} />
+                <span>Upload</span>
+            </button>
+            <div className="w-px h-4 bg-slate-700 mx-2"></div>
+            <button 
+                onClick={() => setIsKnowledgeSearchOpen(!isKnowledgeSearchOpen)}
+                className={`transition-colors ${isKnowledgeSearchOpen ? 'text-white' : 'hover:text-white'}`}
+                title="Search Knowledge Base"
+            >
+                <Search size={18} />
+            </button>
             <button className="hover:text-white transition-colors"><Bell size={18} /></button>
-            <button className="hover:text-white transition-colors"><Settings size={18} /></button>
+            <button 
+                onClick={() => setIsSettingsOpen(!isSettingsOpen)} 
+                className={`transition-colors ${isSettingsOpen ? 'text-white' : 'hover:text-white'}`}
+            >
+                <Settings size={18} />
+            </button>
+            
+            {/* Settings Dropdown */}
+            {isSettingsOpen && (
+                <div className="absolute top-10 right-0 w-64 bg-slate-900 border border-slate-700 shadow-2xl rounded-lg p-4 z-50 animate-in fade-in zoom-in-95">
+                    <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-2">
+                        <h3 className="font-semibold text-slate-200">System Settings</h3>
+                        <button onClick={() => setIsSettingsOpen(false)} className="text-slate-500 hover:text-slate-300">
+                            <XCircle size={16} />
+                        </button>
+                    </div>
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm text-slate-400">Dark Mode</span>
+                            <div className="w-8 h-4 bg-status-active rounded-full relative cursor-pointer">
+                                <div className="absolute right-1 top-0.5 w-3 h-3 bg-white rounded-full"></div>
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm text-slate-400">Audio Alerts</span>
+                            <div className="w-8 h-4 bg-slate-700 rounded-full relative cursor-pointer">
+                                <div className="absolute left-1 top-0.5 w-3 h-3 bg-slate-400 rounded-full"></div>
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm text-slate-400">Telemetry Rate</span>
+                            <select className="bg-slate-800 text-xs border border-slate-700 rounded p-1 text-slate-300">
+                                <option>1.0 Hz</option>
+                                <option>0.5 Hz</option>
+                                <option>2.0 Hz</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            )}
           </div>
         </div>
       </header>
@@ -168,9 +304,9 @@ function App() {
               </div>
             </div>
 
-            <div className={`bg-slate-900/90 backdrop-blur border ${alertState.active ? 'border-status-danger bg-status-danger/10' : 'border-slate-700'} p-4 rounded-lg shadow-xl min-w-[150px] transition-colors duration-500`}>
+            <div className={`bg-slate-900/90 backdrop-blur border ${showAlerts && alertState.active ? 'border-status-danger bg-status-danger/10' : 'border-slate-700'} p-4 rounded-lg shadow-xl min-w-[150px] transition-colors duration-500`}>
               <h3 className="text-xs uppercase text-slate-400 font-bold mb-2">Torque</h3>
-              <div className={`text-2xl font-light ${alertState.active ? 'text-status-danger animate-pulse' : 'text-status-warning'}`}>
+              <div className={`text-2xl font-light ${showAlerts && alertState.active ? 'text-status-danger animate-pulse' : 'text-status-warning'}`}>
                 {telemetryData ? telemetryData.torque.toFixed(0) : "---"} <span className="text-sm text-slate-500">lbf-ft</span>
               </div>
             </div>
@@ -186,7 +322,7 @@ function App() {
         <aside className="w-[450px] border-l border-slate-800 bg-slate-950 flex flex-col shadow-2xl z-20 shrink-0 relative">
           
           {/* Hazard Alert Banner */}
-          {alertState.active && (
+          {showAlerts && alertState.active && (
             <div className="bg-status-danger text-white p-4 border-b-4 border-red-900 shadow-lg animate-in slide-in-from-top-4 relative">
               <button 
                 onClick={dismissAlert}
@@ -247,8 +383,8 @@ function App() {
                       y: trajectoryData.depth,
                       type: 'scatter',
                       mode: 'lines+markers',
-                      line: { color: alertState.active ? '#ef4444' : '#3b82f6', width: 2 },
-                      marker: { size: 4, color: alertState.active ? '#ef4444' : '#60a5fa' }
+                      line: { color: showAlerts && alertState.active ? '#ef4444' : '#3b82f6', width: 2 },
+                      marker: { size: 4, color: showAlerts && alertState.active ? '#ef4444' : '#60a5fa' }
                     }
                   ]}
                   layout={{
@@ -294,10 +430,44 @@ function App() {
                   </div>
                 ))}
               </div>
+              <button 
+                onClick={() => setIsCorrelationOpen(true)}
+                className="w-full mt-4 bg-status-active/20 hover:bg-status-active/30 text-status-active text-sm font-medium py-2 rounded transition-colors border border-status-active/30 flex items-center justify-center"
+              >
+                Correlate with Offset Well
+              </button>
+              <button 
+                onClick={exportWellData}
+                className="w-full mt-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium py-2 rounded transition-colors border border-slate-700 flex items-center justify-center"
+              >
+                <Download size={16} className="mr-2" />
+                Export Well Data (CSV)
+              </button>
             </div>
           </div>
         </aside>
       </main>
+
+      {/* Document Upload Modal */}
+      <DocumentUploadModal 
+          isOpen={isUploadModalOpen} 
+          onClose={() => setIsUploadModalOpen(false)} 
+          activeWellId={selectedWell} 
+      />
+
+      {/* Manual Knowledge Search Drawer */}
+      <KnowledgeSearch 
+          isOpen={isKnowledgeSearchOpen}
+          onClose={() => setIsKnowledgeSearchOpen(false)}
+      />
+
+      {/* Cross-Well Correlation Panel */}
+      <CorrelationPanel 
+          isOpen={isCorrelationOpen}
+          onClose={() => setIsCorrelationOpen(false)}
+          activeWell={selectedWell}
+          offsetWell={selectedWell === 'OIL-BAGHJAN-1' ? 'OIL-NAHARKATIYA-1' : 'OIL-BAGHJAN-1'}
+      />
     </div>
   );
 }

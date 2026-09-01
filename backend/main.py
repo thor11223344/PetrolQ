@@ -15,6 +15,8 @@ from .models import WellMaster, SyntheticEvent, WellLog
 from .schemas import WellResponse, EventResponse, WellLogResponse, TelemetryInput, RiskPredictionResponse
 from .nlp.config import get_embedding
 from .ml.service import HazardPredictionService
+from .api.upload import router as upload_router
+from .api.correlate import router as correlate_router
 
 class RAGSearchResponse(BaseModel):
     similarity_score: float
@@ -52,6 +54,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(upload_router)
+app.include_router(correlate_router)
 
 @app.get("/api/wells/nearby", response_model=List[WellResponse])
 def get_nearby_wells(
@@ -101,6 +106,31 @@ def get_well_history(
     return {
         "events": [EventResponse.model_validate(e) for e in events],
         "logs": [WellLogResponse.model_validate(l) for l in logs]
+    }
+
+@app.get("/api/wells/{well_id}/trajectory")
+def get_well_trajectory(well_id: str, db: Session = Depends(get_db)):
+    well = db.query(WellMaster).filter(WellMaster.well_id == well_id).first()
+    if not well:
+        raise HTTPException(status_code=404, detail="Well not found")
+    
+    # Mock a 3D trajectory based on total depth
+    tvd_max = well.total_depth_md or 3000.0
+    depths = np.linspace(0, tvd_max, 100)
+    
+    # Slight deviation curve
+    x = np.sin(depths / 500.0) * (depths / 10.0)
+    y = np.cos(depths / 500.0) * (depths / 10.0)
+    z = depths  # TVD
+    
+    return {
+        "well_id": well_id,
+        "trajectory": {
+            "x": x.tolist(),
+            "y": y.tolist(),
+            "z": z.tolist(),
+            "md": depths.tolist()
+        }
     }
 
 @app.get("/api/events/search", response_model=List[RAGSearchResponse])

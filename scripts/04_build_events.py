@@ -14,7 +14,7 @@ def build_events():
         well_ids = df_wells['well_id'].unique().tolist()
     else:
         logger.warning(f"{wells_master_path} not found. Using default mock wells.")
-        well_ids = ["OIL-VOLVE-15-9-F-14", "OIL-VOLVE-15-9-F-15"]
+        well_ids = ["OIL-BAGHJAN-1", "OIL-NAHARKATIYA-1"]
 
     events = []
     
