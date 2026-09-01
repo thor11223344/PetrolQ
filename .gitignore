@@ -3,3 +3,6 @@ demo_data/
 data/processed/
 __pycache__/
 .env
+
+# Ignore PDF reports
+*.pdf
