@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import Map, { Marker, Source, Layer, NavigationControl } from 'react-map-gl/maplibre';
-import axios from 'axios';
 import { Target, AlertTriangle } from 'lucide-react';
+import Map, { Marker, NavigationControl, Source, Layer } from 'react-map-gl/maplibre';
+import axios from 'axios';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 // Note: Mapbox requires an access token.
@@ -46,6 +46,11 @@ export default function WellMap({ activeWellId, onSelectWell }) {
     const [radius, setRadius] = useState(5.0);
     const [wells, setWells] = useState([]);
     
+    // Draggable state for the search box
+    const [position, setPosition] = useState({ x: 24, y: 150 }); // Start a bit lower to avoid App.jsx status cards
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
     // The coordinates the radius search is centered around
     const [searchCoords, setSearchCoords] = useState({ lat: 27.47, lon: 94.91 });
 
@@ -87,12 +92,34 @@ export default function WellMap({ activeWellId, onSelectWell }) {
         }
     };
 
+    const handlePointerDown = (e) => {
+        // Prevent dragging if interacting with inputs or buttons
+        if (e.target.tagName.toLowerCase() === 'input' || e.target.tagName.toLowerCase() === 'button') {
+            return;
+        }
+        setIsDragging(true);
+        setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+        e.target.setPointerCapture(e.pointerId);
+    };
+
+    const handlePointerMove = (e) => {
+        if (!isDragging) return;
+        setPosition({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+    };
+
+    const handlePointerUp = (e) => {
+        setIsDragging(false);
+        if (e.target.hasPointerCapture(e.pointerId)) {
+            e.target.releasePointerCapture(e.pointerId);
+        }
+    };
+
     return (
-        <div className="relative w-full h-full">
+        <div className="relative w-full h-full flex-1">
             <Map
                 {...viewState}
                 onMove={evt => setViewState(evt.viewState)}
-                mapStyle="https://tiles.openfreemap.org/styles/dark"
+                mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
                 style={{ width: '100%', height: '100%' }}
             >
                 <NavigationControl position="bottom-right" />
@@ -157,9 +184,16 @@ export default function WellMap({ activeWellId, onSelectWell }) {
                 })}
             </Map>
 
-            {/* Floating Control Card (Top Left) */}
-            <div className="absolute top-6 left-6 w-80 bg-slate-900/90 backdrop-blur-md border border-slate-700 shadow-2xl rounded-lg p-4 z-10">
-                <div className="flex items-center justify-between mb-4">
+            {/* Floating Control Card (Draggable) */}
+            <div 
+                className={`absolute w-80 bg-slate-900/90 backdrop-blur-md border border-slate-700 shadow-2xl rounded-lg p-4 z-10 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                style={{ top: position.y, left: position.x, touchAction: 'none' }}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerUp}
+            >
+                <div className="flex items-center justify-between mb-4 pointer-events-none">
                     <h3 className="font-semibold text-slate-200 flex items-center">
                         <Target size={16} className="mr-2 text-status-fluid" />
                         Offset Search
