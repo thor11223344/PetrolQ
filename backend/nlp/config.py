@@ -4,7 +4,7 @@ from sentence_transformers import SentenceTransformer
 # LLM Configuration
 # Placeholder for Gemini API key, OpenAI API key, or a local Ollama endpoint.
 LLM_API_KEY = os.getenv("LLM_API_KEY", "your-api-key-here")
-LLM_ENDPOINT = os.getenv("LLM_ENDPOINT", "http://localhost:11434/api/generate") # Default fallback for local Ollama
+LLM_ENDPOINT = os.getenv("LLM_ENDPOINT", "http://localhost:11434/v1") # Default fallback for local Ollama (OpenAI compatible)
 LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME", "llama3")
 
 # Initialize Local Embedding Model

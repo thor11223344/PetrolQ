@@ -27,6 +27,7 @@ function App() {
   const [trajectoryData, setTrajectoryData] = useState({ depth: [], torque: [], rop: [] });
   const [alertState, setAlertState] = useState({ active: false, prediction: null });
   const [ragContext, setRagContext] = useState(null);
+  const [recentEvents, setRecentEvents] = useState([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isKnowledgeSearchOpen, setIsKnowledgeSearchOpen] = useState(false);
@@ -47,21 +48,21 @@ function App() {
 
   const exportWellData = async () => {
     try {
-        const res = await axios.get(`http://localhost:8000/api/wells/${selectedWell}`);
+        const res = await axios.get(`http://localhost:8000/api/wells/${selectedWell}/history`);
         const well = res.data;
         
         let csvContent = "data:text/csv;charset=utf-8,";
         
         csvContent += "Type,Timestamp,Depth(TVD),ROP,WOB,Torque,MudWeight\n";
-        if (well.drilling_params) {
-            well.drilling_params.forEach(p => {
+        if (well.logs) {
+            well.logs.forEach(p => {
                 csvContent += `Param,${p.timestamp || ''},${p.depth_tvd || ''},${p.rop || ''},${p.wob || ''},${p.torque || ''},${p.mud_weight || ''}\n`;
             });
         }
         
         csvContent += "\nType,Depth(TVD),Event,RootCause,Mitigation\n";
-        if (well.synthetic_events) {
-            well.synthetic_events.forEach(e => {
+        if (well.events) {
+            well.events.forEach(e => {
                 csvContent += `Event,${e.depth_tvd || ''},"${e.event_type || ''}","${e.root_cause || ''}","${e.mitigation_applied || ''}"\n`;
             });
         }
@@ -78,6 +79,23 @@ function App() {
         alert("Failed to export well data");
     }
   };
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+        try {
+            const res = await axios.get(`http://localhost:8000/api/wells/${selectedWell}/history`);
+            if (res.data && res.data.events) {
+                // sort by depth descending, take top 5
+                const sortedEvents = res.data.events.sort((a, b) => b.depth_tvd - a.depth_tvd).slice(0, 5);
+                setRecentEvents(sortedEvents);
+            }
+        } catch (err) {
+            console.error("Failed to fetch well history", err);
+            setRecentEvents([]);
+        }
+    };
+    fetchHistory();
+  }, [selectedWell]);
 
   useEffect(() => {
     // Connect to WebSocket
@@ -416,19 +434,17 @@ function App() {
             <div className="bg-slate-900 border border-slate-800 rounded p-4">
               <h3 className="text-xs uppercase font-bold text-slate-500 mb-3">Recent Offset Events</h3>
               <div className="space-y-3">
-                {[
-                    { id: 1, type: "Severe Lost Circulation", depth: "2,450m" },
-                    { id: 2, type: "Pack-off / Stuck Pipe", depth: "2,870m" },
-                    { id: 3, type: "Kick Detected", depth: "3,100m" }
-                ].map((event, i) => (
+                {recentEvents.length > 0 ? recentEvents.map((event, i) => (
                   <div key={event.id} className="flex items-start space-x-3 p-3 bg-slate-950/50 rounded border border-slate-800/50 hover:border-slate-600 transition-colors cursor-pointer">
                     <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${i === 0 ? 'bg-status-danger' : 'bg-status-warning'}`}></div>
                     <div>
-                      <p className="text-sm font-medium text-slate-300">{event.type}</p>
-                      <p className="text-xs text-slate-500 mt-1">Depth: {event.depth} TVD</p>
+                      <p className="text-sm font-medium text-slate-300">{event.event_type}</p>
+                      <p className="text-xs text-slate-500 mt-1">Depth: {event.depth_tvd}m TVD</p>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <div className="text-sm text-slate-500 p-3">No recent events found.</div>
+                )}
               </div>
               <button 
                 onClick={() => setIsCorrelationOpen(true)}

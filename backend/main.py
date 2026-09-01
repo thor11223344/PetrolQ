@@ -115,7 +115,7 @@ def get_well_trajectory(well_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Well not found")
     
     # Mock a 3D trajectory based on total depth
-    tvd_max = well.total_depth_md or 3000.0
+    tvd_max = well.total_depth_tvd or 3000.0
     depths = np.linspace(0, tvd_max, 100)
     
     # Slight deviation curve
@@ -227,7 +227,8 @@ async def websocket_telemetry(websocket: WebSocket):
                 
                 # Run prediction
                 if ml_service:
-                    prediction = ml_service.predict_risk(params)
+                    from fastapi.concurrency import run_in_threadpool
+                    prediction = await run_in_threadpool(ml_service.predict_risk, params)
                     
                     # Send back the prediction result
                     await websocket.send_json({
