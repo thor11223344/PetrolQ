@@ -22,6 +22,7 @@ class DrillingReportParser:
 
         extracted_content = []
 
+        ocr_triggered = False
         try:
             # 1. Extract tables using pdfplumber and convert to Markdown
             table_content_by_page = {}
@@ -37,15 +38,39 @@ class DrillingReportParser:
                         if page_tables_md:
                             table_content_by_page[page_num] = "\n\n".join(page_tables_md)
 
-            # 2. Extract text using PyMuPDF (fitz)
+            # 2. Extract text using PyMuPDF (fitz) with OCR fallback
             with fitz.open(pdf_path) as doc:
                 if doc.needs_pass:
                     logger.error(f"PDF is encrypted/password-protected: {pdf_path}")
-                    return ""
+                    return "", False
                 
                 for page_num in range(len(doc)):
                     page = doc[page_num]
                     text = page.get_text("text")
+                    
+                    # Correction #6: If extracted text is under ~50 chars, rasterize page and run OCR fallback
+                    if len(text.strip()) < 50:
+                        try:
+                            import pytesseract
+                            from PIL import Image
+                            import io
+                            pix = page.get_pixmap(dpi=150)
+                            img = Image.open(io.BytesIO(pix.tobytes("png")))
+                            ocr_result = pytesseract.image_to_string(img)
+                            if ocr_result and len(ocr_result.strip()) > 10:
+                                text = f"[OCR Fallback Active - Scanned Page]:\n{ocr_result.strip()}"
+                                ocr_triggered = True
+                        except Exception as ocr_err:
+                            logger.info(f"Pytesseract fallback attempt: {ocr_err}")
+                            # Secondary fallback: PyMuPDF OCR textpage
+                            try:
+                                tp = page.get_textpage_ocr()
+                                ocr_result = page.get_text("text", textpage=tp)
+                                if ocr_result and len(ocr_result.strip()) > 10:
+                                    text = f"[PyMuPDF OCR Fallback]:\n{ocr_result.strip()}"
+                                    ocr_triggered = True
+                            except Exception:
+                                pass
                     
                     if text.strip():
                         extracted_content.append(f"--- Page {page_num + 1} Text ---\n{text.strip()}")
@@ -54,11 +79,11 @@ class DrillingReportParser:
                     if page_num in table_content_by_page:
                         extracted_content.append(f"--- Page {page_num + 1} Tables ---\n{table_content_by_page[page_num]}")
 
-            return "\n\n".join(extracted_content)
+            return "\n\n".join(extracted_content), ocr_triggered
 
         except Exception as e:
             logger.error(f"Failed to parse PDF {pdf_path}: {e}")
-            return ""
+            return "", False
 
     def _format_table_to_markdown(self, table: list[list[str]]) -> str:
         """

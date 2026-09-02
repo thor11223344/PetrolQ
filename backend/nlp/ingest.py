@@ -19,11 +19,17 @@ def ingest_report(pdf_path: str, well_id: str, db_session: Session):
     
     # 1. Parse the PDF
     parser = DrillingReportParser()
-    raw_text = parser.extract_text_and_tables(pdf_path)
+    raw_text, ocr_triggered = parser.extract_text_and_tables(pdf_path)
     
     if not raw_text:
         logger.error(f"Failed to extract any text from {pdf_path}. Exiting ingestion.")
-        return
+        return {
+            "status": "error",
+            "message": "No readable text could be extracted from PDF",
+            "ocr_triggered": ocr_triggered,
+            "extracted_count": 0,
+            "events": []
+        }
         
     # 2. Chunk the text
     chunks = parser.create_operational_chunks(raw_text)
@@ -35,6 +41,7 @@ def ingest_report(pdf_path: str, well_id: str, db_session: Session):
     
     # 4. Process each incident
     events_to_insert = []
+    extracted_summary = []
     for event in incidents:
         # Construct dense context string for optimal semantic search
         context_str = f"{event.event_type} in {event.formation} at {event.depth_tvd}m TVD. Root cause: {event.root_cause}. Mitigation: {event.mitigation_applied}"
@@ -61,6 +68,15 @@ def ingest_report(pdf_path: str, well_id: str, db_session: Session):
             embedding=embedding
         )
         events_to_insert.append(db_event)
+        extracted_summary.append({
+            "event_type": event.event_type,
+            "formation": event.formation,
+            "depth_tvd": event.depth_tvd,
+            "severity": event.severity,
+            "root_cause": event.root_cause,
+            "mitigation_applied": event.mitigation_applied,
+            "npt_hours": event.npt_hours
+        })
         
     # 5. Insert and commit to PostgreSQL
     if events_to_insert:
@@ -71,8 +87,16 @@ def ingest_report(pdf_path: str, well_id: str, db_session: Session):
         except Exception as e:
             db_session.rollback()
             logger.error(f"Database insertion failed. Rollback triggered: {e}")
+            raise e
     else:
         logger.info("No valid events found to ingest.")
+
+    return {
+        "status": "success",
+        "ocr_triggered": ocr_triggered,
+        "extracted_count": len(events_to_insert),
+        "events": extracted_summary
+    }
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Ingest drilling report PDF and extract structured NLP incidents.")

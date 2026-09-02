@@ -11,7 +11,11 @@ import {
   TrendingDown,
   FileUp,
   Search,
-  Download
+  Download,
+  Radar,
+  Gauge,
+  FileText,
+  Brain
 } from 'lucide-react';
 import axios from 'axios';
 import Plot from 'react-plotly.js';
@@ -20,6 +24,10 @@ import WellMap from './components/WellMap';
 import DocumentUploadModal from './components/DocumentUploadModal';
 import KnowledgeSearch from './components/KnowledgeSearch';
 import CorrelationPanel from './components/CorrelationPanel';
+import LookAheadRadar from './components/LookAheadRadar';
+import PPFGWindowModal from './components/PPFGWindowModal';
+import PreSpudDossierModal from './components/PreSpudDossierModal';
+import ContributeLessonModal from './components/ContributeLessonModal';
 
 function App() {
   const [selectedWell, setSelectedWell] = useState('OIL-BAGHJAN-1');
@@ -32,6 +40,10 @@ function App() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isKnowledgeSearchOpen, setIsKnowledgeSearchOpen] = useState(false);
   const [isCorrelationOpen, setIsCorrelationOpen] = useState(false);
+  const [isRadarOpen, setIsRadarOpen] = useState(false);
+  const [isPPFGOpen, setIsPPFGOpen] = useState(false);
+  const [isDossierOpen, setIsDossierOpen] = useState(false);
+  const [isContributeOpen, setIsContributeOpen] = useState(false);
   const [role, setRole] = useState('Field Engineer');
   const wsRef = useRef(null);
 
@@ -237,6 +249,45 @@ function App() {
             </div>
           </div>
 
+          {/* Core Decision Support Modules (SIH 2026 Mandate) */}
+          <div className="flex items-center space-x-2 border-l border-slate-800 pl-4">
+            <button 
+                onClick={() => setIsRadarOpen(true)}
+                className="flex items-center space-x-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition shadow-sm"
+                title="Ahead-of-the-Bit Hazard Radar"
+            >
+                <Radar size={14} className="text-amber-400" />
+                <span>Hazard Radar</span>
+            </button>
+
+            <button 
+                onClick={() => setIsPPFGOpen(true)}
+                className="flex items-center space-x-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition shadow-sm"
+                title="Pore Pressure & Fracture Gradient Safe Mud Window"
+            >
+                <Gauge size={14} className="text-emerald-400" />
+                <span>Safe Mud Weight Window</span>
+            </button>
+
+            <button 
+                onClick={() => setIsDossierOpen(true)}
+                className="flex items-center space-x-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 transition shadow-sm"
+                title="1-Click Pre-Spud Offset Hazard Dossier"
+            >
+                <FileText size={14} className="text-cyan-400" />
+                <span>Pre-Spud Report</span>
+            </button>
+
+            <button 
+                onClick={() => setIsContributeOpen(true)}
+                className="flex items-center space-x-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 transition shadow-sm"
+                title="Add Field Lesson Learned to Institutional Memory"
+            >
+                <Brain size={14} className="text-purple-400" />
+                <span>Add Lesson Learned</span>
+            </button>
+          </div>
+
           {/* Tools */}
           <div className="flex items-center space-x-3 text-slate-400 border-l border-slate-800 pl-6 relative">
             <button 
@@ -328,6 +379,27 @@ function App() {
                 {telemetryData ? telemetryData.torque.toFixed(0) : "---"} <span className="text-sm text-slate-500">lbf-ft</span>
               </div>
             </div>
+
+            {/* Ahead-of-the-Bit Hazard Radar Overlay Card */}
+            <button 
+              onClick={() => setIsRadarOpen(true)}
+              className="bg-slate-900/90 backdrop-blur border border-amber-500/40 hover:border-amber-500 p-3.5 rounded-lg shadow-xl min-w-[210px] text-left transition group cursor-pointer"
+            >
+              <div className="flex items-center justify-between text-xs uppercase text-amber-400 font-bold mb-1.5">
+                <span className="flex items-center space-x-1.5">
+                  <Radar size={14} className="animate-spin-slow" />
+                  <span>Hazard Radar</span>
+                </span>
+                <span className="text-[10px] bg-amber-500/20 px-1.5 py-0.5 rounded font-mono text-amber-300">+250m Scan</span>
+              </div>
+              <div className="text-sm font-bold text-white group-hover:text-amber-300 transition">
+                Barail Kick Horizon
+              </div>
+              <div className="text-[11px] text-slate-400 mt-1 flex items-center justify-between">
+                <span>Next Top: ~2,400m</span>
+                <span className="text-cyan-400 font-bold">Open Radar →</span>
+              </div>
+            </button>
           </div>
 
           <WellMap 
@@ -452,6 +524,26 @@ function App() {
               >
                 Correlate with Offset Well
               </button>
+              
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <button 
+                  onClick={() => setIsPPFGOpen(true)}
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium py-2 px-2 rounded border border-slate-700 flex items-center justify-center space-x-1 transition"
+                  title="Safe Mud Weight Operating Window"
+                >
+                  <Gauge size={14} className="text-emerald-400" />
+                  <span>Safe Mud Window</span>
+                </button>
+                <button 
+                  onClick={() => setIsDossierOpen(true)}
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium py-2 px-2 rounded border border-slate-700 flex items-center justify-center space-x-1 transition"
+                  title="1-Click Pre-Spud Risk Dossier"
+                >
+                  <FileText size={14} className="text-cyan-400" />
+                  <span>Pre-Spud Report</span>
+                </button>
+              </div>
+
               <button 
                 onClick={exportWellData}
                 className="w-full mt-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium py-2 rounded transition-colors border border-slate-700 flex items-center justify-center"
@@ -463,6 +555,38 @@ function App() {
           </div>
         </aside>
       </main>
+
+      {/* Ahead-of-the-Bit Hazard Radar Modal */}
+      <LookAheadRadar 
+          isOpen={isRadarOpen}
+          onClose={() => setIsRadarOpen(false)}
+          activeWellId={selectedWell}
+          currentDepth={telemetryData ? telemetryData.depth_tvd : 2240.0}
+      />
+
+      {/* Safe Operating Mud Weight Window (PPFG) Modal */}
+      <PPFGWindowModal 
+          isOpen={isPPFGOpen}
+          onClose={() => setIsPPFGOpen(false)}
+          activeWellId={selectedWell}
+      />
+
+      {/* 1-Click Pre-Spud Offset Hazard Dossier Modal */}
+      <PreSpudDossierModal 
+          isOpen={isDossierOpen}
+          onClose={() => setIsDossierOpen(false)}
+          activeWellId={selectedWell}
+      />
+
+      {/* Institutional Memory Contribution Modal (Two-Way Feedback) */}
+      <ContributeLessonModal 
+          isOpen={isContributeOpen}
+          onClose={() => setIsContributeOpen(false)}
+          activeWellId={selectedWell}
+          onLessonContributed={() => {
+            // Refetch history or update state
+          }}
+      />
 
       {/* Document Upload Modal */}
       <DocumentUploadModal 

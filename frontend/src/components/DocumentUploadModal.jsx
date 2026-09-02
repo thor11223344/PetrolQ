@@ -1,11 +1,23 @@
 import React, { useState, useRef } from 'react';
 import axios from 'axios';
-import { UploadCloud, File, X, CheckCircle, Loader2 } from 'lucide-react';
+import { 
+  UploadCloud, 
+  File, 
+  X, 
+  CheckCircle, 
+  Loader2, 
+  Layers, 
+  Eye, 
+  Sparkles, 
+  FileSpreadsheet,
+  AlertTriangle
+} from 'lucide-react';
 
-const DocumentUploadModal = ({ isOpen, onClose, activeWellId }) => {
+const DocumentUploadModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1' }) => {
     const [file, setFile] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
-    const [uploadStatus, setUploadStatus] = useState(null);
+    const [uploadResult, setUploadResult] = useState(null);
+    const [errorMsg, setErrorMsg] = useState(null);
     const fileInputRef = useRef(null);
 
     if (!isOpen) return null;
@@ -20,122 +32,254 @@ const DocumentUploadModal = ({ isOpen, onClose, activeWellId }) => {
         e.stopPropagation();
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
             setFile(e.dataTransfer.files[0]);
+            setUploadResult(null);
+            setErrorMsg(null);
         }
     };
 
     const handleUpload = async () => {
         if (!file) return;
         setIsUploading(true);
-        setUploadStatus(null);
+        setErrorMsg(null);
         
         const formData = new FormData();
         formData.append('file', file);
         formData.append('well_id', activeWellId || 'OIL-BAGHJAN-1');
 
         try {
-            await axios.post('http://localhost:8000/api/upload-report', formData, {
+            const res = await axios.post('http://localhost:8000/api/upload-report', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
-            setUploadStatus('success');
-            setTimeout(() => {
-                onClose();
-                setFile(null);
-                setUploadStatus(null);
-            }, 2000);
+            setUploadResult(res.data);
         } catch (error) {
             console.error('Upload failed:', error);
-            setUploadStatus('error');
+            setErrorMsg(error.response?.data?.detail || 'Failed to upload and parse file.');
         } finally {
             setIsUploading(false);
         }
     };
 
+    const handleReset = () => {
+        setFile(null);
+        setUploadResult(null);
+        setErrorMsg(null);
+    };
+
+    const isLas = file?.name?.toLowerCase().endsWith('.las');
+
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-slate-900 border border-slate-700 w-[500px] rounded-lg shadow-2xl overflow-hidden animate-in zoom-in-95">
-                <div className="flex justify-between items-center p-4 border-b border-slate-800 bg-slate-900/50">
-                    <h2 className="text-lg font-semibold text-slate-200">Upload Drilling Report (PDF)</h2>
-                    <button onClick={onClose} className="text-slate-500 hover:text-slate-300 transition-colors">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in">
+            <div className="bg-slate-900 border border-slate-700 w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 flex flex-col max-h-[90vh]">
+                
+                {/* Header */}
+                <div className="flex justify-between items-center px-6 py-4 border-b border-slate-800 bg-slate-950">
+                    <div className="flex items-center space-x-2.5">
+                        <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+                            <UploadCloud size={20} />
+                        </div>
+                        <div>
+                            <h2 className="text-base font-bold text-white">
+                                Ingest Drilling Report or LAS Well Log
+                            </h2>
+                            <p className="text-xs text-slate-400">
+                                AI OCR entity extraction for WCRs/DDRs and Log ASCII Standard (.las) curves
+                            </p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="text-slate-400 hover:text-white transition">
                         <X size={20} />
                     </button>
                 </div>
                 
-                <div className="p-6">
-                    {!file ? (
-                        <div 
-                            className="border-2 border-dashed border-slate-700 rounded-lg h-48 flex flex-col items-center justify-center cursor-pointer hover:border-status-fluid/50 hover:bg-slate-800/50 transition-colors"
-                            onDragOver={handleDragOver}
-                            onDrop={handleDrop}
-                            onClick={() => fileInputRef.current?.click()}
-                        >
-                            <input 
-                                type="file" 
-                                ref={fileInputRef} 
-                                className="hidden" 
-                                accept=".pdf"
-                                onChange={(e) => {
-                                    if (e.target.files && e.target.files.length > 0) {
-                                        setFile(e.target.files[0]);
-                                    }
-                                }} 
-                            />
-                            <UploadCloud size={40} className="text-slate-500 mb-3" />
-                            <p className="text-slate-300 font-medium mb-1">Drag and drop a PDF file here</p>
-                            <p className="text-slate-500 text-sm">or click to browse from your computer</p>
-                        </div>
-                    ) : (
-                        <div className="flex flex-col items-center justify-center h-48 bg-slate-800/50 rounded-lg border border-slate-700">
-                            <File size={40} className="text-status-fluid mb-3" />
-                            <p className="text-slate-200 font-medium mb-2">{file.name}</p>
-                            <p className="text-slate-500 text-sm mb-4">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                            <button 
-                                onClick={() => setFile(null)}
-                                className="text-sm text-red-400 hover:text-red-300 transition-colors"
-                            >
-                                Remove file
-                            </button>
-                        </div>
-                    )}
-
-                    {uploadStatus === 'success' && (
-                        <div className="mt-4 p-3 bg-status-active/10 border border-status-active/30 rounded flex items-center text-status-active">
-                            <CheckCircle size={18} className="mr-2" />
-                            <span className="text-sm">File parsed and FAISS index updated successfully.</span>
-                        </div>
-                    )}
+                {/* Body */}
+                <div className="p-6 overflow-y-auto flex-1 space-y-4">
                     
-                    {uploadStatus === 'error' && (
-                        <div className="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded flex items-center text-red-400">
-                            <X size={18} className="mr-2" />
-                            <span className="text-sm">Failed to upload and parse the report. Please try again.</span>
+                    {!uploadResult ? (
+                        <>
+                            {!file ? (
+                                <div 
+                                    className="border-2 border-dashed border-slate-700 rounded-xl h-48 flex flex-col items-center justify-center cursor-pointer hover:border-cyan-500/60 hover:bg-slate-800/40 transition-all text-center px-4"
+                                    onDragOver={handleDragOver}
+                                    onDrop={handleDrop}
+                                    onClick={() => fileInputRef.current?.click()}
+                                >
+                                    <input 
+                                        type="file" 
+                                        ref={fileInputRef} 
+                                        className="hidden" 
+                                        accept=".pdf,.las"
+                                        onChange={(e) => {
+                                            if (e.target.files && e.target.files.length > 0) {
+                                                setFile(e.target.files[0]);
+                                                setErrorMsg(null);
+                                            }
+                                        }} 
+                                    />
+                                    <UploadCloud size={44} className="text-cyan-400 mb-3" />
+                                    <p className="text-slate-200 font-semibold text-sm mb-1">
+                                        Drag and drop PDF report or LAS well log file
+                                    </p>
+                                    <p className="text-slate-400 text-xs">
+                                        Supports Daily Drilling Reports (PDF), Well Completion Reports (PDF with OCR), and Log ASCII Standard (.las)
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800">
+                                    <div className="flex items-center space-x-3">
+                                        <div className="p-2.5 rounded-lg bg-slate-800 text-cyan-400">
+                                            {isLas ? <FileSpreadsheet size={24} /> : <File size={24} />}
+                                        </div>
+                                        <div>
+                                            <p className="text-white font-bold text-sm">{file.name}</p>
+                                            <p className="text-slate-400 text-xs font-mono">
+                                                {(file.size / 1024 / 1024).toFixed(2)} MB • {isLas ? 'Log ASCII Standard' : 'PDF Document'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button 
+                                        onClick={() => setFile(null)}
+                                        className="text-xs px-3 py-1.5 rounded-md border border-slate-700 hover:bg-slate-800 text-slate-300 hover:text-white transition"
+                                    >
+                                        Change File
+                                    </button>
+                                </div>
+                            )}
+
+                            {errorMsg && (
+                                <div className="p-3 bg-red-950/40 border border-red-800/60 rounded-lg text-red-300 text-xs flex items-center space-x-2">
+                                    <AlertTriangle size={16} className="text-red-400 flex-shrink-0" />
+                                    <span>{errorMsg}</span>
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        /* Live Extracted Entities Review Table */
+                        <div className="space-y-4">
+                            
+                            {/* Extraction Banner */}
+                            <div className="p-4 bg-emerald-950/20 border border-emerald-800/40 rounded-xl flex items-start justify-between">
+                                <div className="flex items-start space-x-3">
+                                    <CheckCircle size={22} className="text-emerald-400 flex-shrink-0 mt-0.5" />
+                                    <div>
+                                        <h4 className="text-sm font-bold text-white">{uploadResult.message}</h4>
+                                        <div className="flex flex-wrap items-center gap-2 mt-1.5 font-mono text-xs">
+                                            <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                                                File: {uploadResult.filename}
+                                            </span>
+
+                                            {/* OCR Triggered Badge (Correction #6) */}
+                                            {uploadResult.file_type === 'pdf' && (
+                                                <span className={`px-2.5 py-0.5 rounded font-bold uppercase text-[11px] border ${
+                                                    uploadResult.ocr_triggered 
+                                                        ? 'bg-amber-950 border-amber-800 text-amber-300' 
+                                                        : 'bg-cyan-950 border-cyan-800 text-cyan-300'
+                                                }`}>
+                                                    {uploadResult.ocr_triggered 
+                                                        ? '⚡ OCR Fallback Triggered (Scanned Document)' 
+                                                        : '📄 Native Digital Text Parsed'}
+                                                </span>
+                                            )}
+
+                                            {uploadResult.file_type === 'las' && (
+                                                <span className="px-2.5 py-0.5 rounded bg-purple-950 border border-purple-800 text-purple-300 text-[11px] font-bold">
+                                                    Curves: {uploadResult.curves_identified?.join(', ') || 'GR, RES, DT'}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Extracted Incidents Table for PDF */}
+                            {uploadResult.events && uploadResult.events.length > 0 && (
+                                <div>
+                                    <div className="flex items-center space-x-2 mb-2">
+                                        <Eye size={16} className="text-cyan-400" />
+                                        <h5 className="text-xs font-bold uppercase text-slate-300 tracking-wider">
+                                            AI-Extracted Operational Incidents ({uploadResult.events.length})
+                                        </h5>
+                                    </div>
+
+                                    <div className="overflow-x-auto border border-slate-800 rounded-lg max-h-60 overflow-y-auto">
+                                        <table className="w-full text-left text-xs border-collapse">
+                                            <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 sticky top-0 font-mono">
+                                                <tr>
+                                                    <th className="py-2 px-3">Event Type</th>
+                                                    <th className="py-2 px-3">Formation</th>
+                                                    <th className="py-2 px-3">Depth (TVD)</th>
+                                                    <th className="py-2 px-3">Severity</th>
+                                                    <th className="py-2 px-3">Mitigation Applied</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-800/60 font-mono">
+                                                {uploadResult.events.map((ev, idx) => (
+                                                    <tr key={idx} className="hover:bg-slate-800/40">
+                                                        <td className="py-2 px-3 font-bold text-white">{ev.event_type}</td>
+                                                        <td className="py-2 px-3 text-cyan-300">{ev.formation}</td>
+                                                        <td className="py-2 px-3 text-slate-300">{ev.depth_tvd}m</td>
+                                                        <td className="py-2 px-3">
+                                                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-800 text-amber-300">
+                                                                {ev.severity}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-2 px-3 text-slate-300 max-w-xs truncate">{ev.mitigation_applied}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+
                         </div>
                     )}
+
                 </div>
 
-                <div className="p-4 border-t border-slate-800 bg-slate-900/50 flex justify-end space-x-3">
-                    <button 
-                        onClick={onClose}
-                        className="px-4 py-2 rounded text-slate-300 hover:bg-slate-800 transition-colors text-sm font-medium"
-                    >
-                        Cancel
-                    </button>
-                    <button 
-                        onClick={handleUpload}
-                        disabled={!file || isUploading}
-                        className={`px-4 py-2 rounded text-white flex items-center text-sm font-medium transition-colors ${
-                            !file || isUploading 
-                            ? 'bg-slate-700 cursor-not-allowed opacity-70' 
-                            : 'bg-status-fluid hover:bg-blue-500'
-                        }`}
-                    >
-                        {isUploading ? (
-                            <>
-                                <Loader2 size={16} className="animate-spin mr-2" />
-                                Parsing PDF & Updating FAISS...
-                            </>
-                        ) : 'Upload Report'}
-                    </button>
+                {/* Footer */}
+                <div className="px-6 py-4 border-t border-slate-800 bg-slate-950 flex justify-between items-center text-xs">
+                    <span className="text-slate-400">Target well: <strong className="text-white font-mono">{activeWellId}</strong></span>
+                    
+                    <div className="flex items-center space-x-3">
+                        <button 
+                            onClick={uploadResult ? handleReset : onClose}
+                            className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-800 transition font-medium"
+                        >
+                            {uploadResult ? 'Upload Another' : 'Cancel'}
+                        </button>
+
+                        {!uploadResult && (
+                            <button 
+                                onClick={handleUpload}
+                                disabled={!file || isUploading}
+                                className={`px-5 py-2 rounded-lg font-bold text-slate-950 flex items-center space-x-2 transition ${
+                                    !file || isUploading 
+                                    ? 'bg-slate-700 cursor-not-allowed opacity-70 text-slate-400' 
+                                    : 'bg-cyan-500 hover:bg-cyan-400 shadow-lg shadow-cyan-500/20'
+                                }`}
+                            >
+                                {isUploading ? (
+                                    <>
+                                        <Loader2 size={16} className="animate-spin" />
+                                        <span>Parsing & Extracting...</span>
+                                    </>
+                                ) : (
+                                    <span>Ingest Document</span>
+                                )}
+                            </button>
+                        )}
+
+                        {uploadResult && (
+                            <button 
+                                onClick={onClose}
+                                className="px-5 py-2 rounded-lg font-bold bg-cyan-500 hover:bg-cyan-400 text-slate-950 transition shadow-lg shadow-cyan-500/20"
+                            >
+                                Done
+                            </button>
+                        )}
+                    </div>
                 </div>
+
             </div>
         </div>
     );

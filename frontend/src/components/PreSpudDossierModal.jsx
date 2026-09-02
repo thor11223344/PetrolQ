@@ -1,0 +1,333 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { 
+  FileText, 
+  Printer, 
+  Download, 
+  X, 
+  ShieldAlert, 
+  Compass, 
+  Layers, 
+  CheckCircle2, 
+  AlertTriangle,
+  Building2,
+  Calendar,
+  MapPin,
+  RefreshCw
+} from 'lucide-react';
+
+const PreSpudDossierModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1' }) => {
+  const [dossier, setDossier] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const fetchDossier = async () => {
+    if (!isOpen) return;
+    setLoading(true);
+    try {
+      const res = await axios.get(`http://localhost:8000/api/wells/${activeWellId}/pre-spud-dossier`);
+      setDossier(res.data);
+    } catch (err) {
+      console.error('Failed to fetch pre-spud dossier:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDossier();
+  }, [isOpen, activeWellId]);
+
+  if (!isOpen) return null;
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const meta = dossier?.report_metadata || {};
+  const target = dossier?.target_well || {};
+  const exec = dossier?.executive_summary || {};
+  const antiCollision = dossier?.anti_collision_clearance || [];
+  const casingProg = dossier?.casing_and_mud_program || [];
+  const formBreakdown = dossier?.formation_hazard_breakdown || {};
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200 print:p-0 print:bg-white print:static">
+      <div className="bg-slate-900 border border-slate-700 w-full max-w-5xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[94vh] print:max-h-none print:border-none print:shadow-none print:bg-white print:text-black">
+        
+        {/* Header - Screen only */}
+        <div className="px-6 py-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center print:hidden">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 text-cyan-400">
+              <FileText size={22} />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <h2 className="text-lg font-bold text-white tracking-wide">
+                  Pre-Spud Offset Well Risk Dossier
+                </h2>
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-950 border border-cyan-800 text-cyan-300 font-mono">
+                  {activeWellId}
+                </span>
+                <span className="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  OFFICIAL ENGINEERING REPORT
+                </span>
+              </div>
+              <p className="text-xs text-slate-400">
+                Automated multi-source historical offset intelligence compiled for drilling superintendents
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <button 
+              onClick={handlePrint}
+              className="px-3.5 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs flex items-center space-x-1.5 transition shadow-lg shadow-cyan-500/20"
+            >
+              <Printer size={15} />
+              <span>Print / Save PDF</span>
+            </button>
+            <button 
+              onClick={fetchDossier}
+              className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition"
+              title="Reload Dossier"
+            >
+              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            </button>
+            <button 
+              onClick={onClose}
+              className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* Printable Document Scroll Area */}
+        <div className="flex-1 overflow-y-auto p-8 space-y-6 print:overflow-visible print:p-0">
+          
+          {/* Institutional Document Header */}
+          <div className="border-b-2 border-slate-700 pb-5 print:border-black">
+            <div className="flex justify-between items-start">
+              <div>
+                <span className="text-xs font-mono font-bold tracking-widest text-cyan-400 uppercase block print:text-slate-600">
+                  OIL INDIA LIMITED (OIL) • eRTMAC-NWIS PLATFORM
+                </span>
+                <h1 className="text-2xl font-black text-white mt-1 print:text-black tracking-tight">
+                  PRE-SPUD OFFSET WELL HAZARD & DRILLING INTELLIGENCE DOSSIER
+                </h1>
+                <p className="text-xs text-slate-400 print:text-slate-600 mt-1">
+                  Document ID: <strong className="font-mono text-slate-200 print:text-black">{meta.document_id || 'OIL-NWIS-DOSSIER-2026'}</strong> • Classification: RESTRICTED
+                </p>
+              </div>
+
+              <div className="text-right text-xs font-mono text-slate-400 print:text-slate-600">
+                <div>Generated: {meta.generated_at}</div>
+                <div>Operational Radius: {target.search_radius_km || 25} km</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 1: Target Well Operational Summary */}
+          <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 print:bg-slate-50 print:border-slate-300">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-cyan-400 print:text-cyan-800 mb-3 flex items-center space-x-1.5">
+              <MapPin size={14} />
+              <span>Section 1: Target Well Specifications</span>
+            </h3>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono">
+              <div>
+                <span className="text-slate-400 print:text-slate-600 block">Well Identifier:</span>
+                <strong className="text-white print:text-black text-sm">{target.well_id}</strong>
+              </div>
+              <div>
+                <span className="text-slate-400 print:text-slate-600 block">Field / Basin:</span>
+                <strong className="text-white print:text-black text-sm">{target.field_name} (Assam)</strong>
+              </div>
+              <div>
+                <span className="text-slate-400 print:text-slate-600 block">Planned Target Depth:</span>
+                <strong className="text-cyan-400 print:text-black text-sm">{target.planned_td_tvd_m}m TVD ({Math.round(target.planned_td_md_m || 3700)}m MD)</strong>
+              </div>
+              <div>
+                <span className="text-slate-400 print:text-slate-600 block">Kelly Bushing (KB):</span>
+                <strong className="text-white print:text-black text-sm">+{target.kb_elevation_m}m MSL</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Executive Risk Summary Callout */}
+          <div className="p-4 rounded-xl bg-amber-950/20 border border-amber-900/40 text-xs print:bg-amber-50 print:border-amber-300">
+            <div className="flex items-start space-x-3">
+              <ShieldAlert size={20} className="text-amber-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <strong className="text-amber-300 print:text-amber-900 font-bold block mb-1 uppercase tracking-wide">
+                  Executive Pre-Spud Risk Warning:
+                </strong>
+                <p className="text-slate-200 print:text-black leading-relaxed">
+                  {exec.key_primary_threat || 'Primary threat: Overpressured Barail Formation between 2,200m and 2,650m TVD with potential gas kicks and loss zones.'}
+                </p>
+                <div className="flex flex-wrap gap-4 mt-3 font-mono text-[11px] text-slate-300 print:text-slate-700">
+                  <span>Offset Wells Evaluated: <strong>{exec.offset_wells_analyzed || 0}</strong></span>
+                  <span>Historical NPT Events: <strong>{exec.historical_incidents_recorded || 0}</strong></span>
+                  <span>Total Offset NPT: <strong className="text-amber-400 print:text-black">{exec.total_offset_npt_hours || 0} hrs</strong></span>
+                  <span>Closest Subsurface Approach: <strong className="text-emerald-400 print:text-black">{exec.closest_approach_distance_m}m ({exec.closest_approach_offset_well})</strong></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Recommended Casing and Mud Program */}
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 print:text-black mb-3 flex items-center space-x-1.5">
+              <Layers size={14} className="text-amber-400" />
+              <span>Section 2: Offset-Derived Casing & Mud Weight Program</span>
+            </h3>
+
+            <div className="overflow-x-auto border border-slate-800 rounded-lg print:border-slate-300">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-slate-950 text-slate-400 print:bg-slate-100 print:text-black border-b border-slate-800 print:border-slate-300 font-mono">
+                  <tr>
+                    <th className="py-2.5 px-3">Casing String</th>
+                    <th className="py-2.5 px-3">Planned Shoe TVD</th>
+                    <th className="py-2.5 px-3">Formation Seat</th>
+                    <th className="py-2.5 px-3">Recommended Mud Weight</th>
+                    <th className="py-2.5 px-3">Operational Objective</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60 print:divide-slate-200">
+                  {casingProg.map((c, i) => (
+                    <tr key={i} className="hover:bg-slate-800/30 print:hover:bg-transparent">
+                      <td className="py-2.5 px-3 font-bold text-white print:text-black">{c.string}</td>
+                      <td className="py-2.5 px-3 font-mono text-cyan-300 print:text-black">{c.planned_depth_tvd}</td>
+                      <td className="py-2.5 px-3 text-slate-300 print:text-black">{c.formation}</td>
+                      <td className="py-2.5 px-3 font-mono text-amber-300 print:text-black">{c.mud_weight}</td>
+                      <td className="py-2.5 px-3 text-slate-400 print:text-slate-700">{c.objective}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Section 4: 3D Directional Anti-Collision Clearance */}
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 print:text-black mb-3 flex items-center space-x-1.5">
+              <Compass size={14} className="text-cyan-400" />
+              <span>Section 3: Directional Borehole Anti-Collision Clearance</span>
+            </h3>
+
+            <div className="overflow-x-auto border border-slate-800 rounded-lg print:border-slate-300">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-slate-950 text-slate-400 print:bg-slate-100 print:text-black border-b border-slate-800 print:border-slate-300 font-mono">
+                  <tr>
+                    <th className="py-2.5 px-3">Offset Well</th>
+                    <th className="py-2.5 px-3">Minimum Distance</th>
+                    <th className="py-2.5 px-3">Separation Factor (SF)</th>
+                    <th className="py-2.5 px-3">Status</th>
+                    <th className="py-2.5 px-3">Active Bit MD</th>
+                    <th className="py-2.5 px-3">Offset Well MD</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60 print:divide-slate-200 font-mono">
+                  {antiCollision.map((ac, i) => (
+                    <tr key={i} className="hover:bg-slate-800/30 print:hover:bg-transparent">
+                      <td className="py-2 px-3 font-bold text-white print:text-black">{ac.offset_well_id}</td>
+                      <td className="py-2 px-3 font-bold text-cyan-400 print:text-black">{ac.min_distance_m} m</td>
+                      <td className="py-2 px-3 text-slate-300 print:text-black">{ac.separation_factor}</td>
+                      <td className="py-2 px-3">
+                        <span 
+                          className="px-2 py-0.5 rounded text-[10px] font-bold uppercase border print:border-none"
+                          style={{
+                            backgroundColor: `${ac.color}20`,
+                            color: ac.color,
+                            borderColor: `${ac.color}50`
+                          }}
+                        >
+                          {ac.status}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3 text-slate-400 print:text-black">{Math.round(ac.active_depth_md || 0)} m</td>
+                      <td className="py-2 px-3 text-slate-400 print:text-black">{Math.round(ac.offset_depth_md || 0)} m</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Section 5: Historical NPT Events Breakdown by Stratigraphic Horizon */}
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 print:text-black mb-3 flex items-center space-x-1.5">
+              <AlertTriangle size={14} className="text-red-400" />
+              <span>Section 4: Historical Offset Incidents by Stratigraphic Horizon</span>
+            </h3>
+
+            <div className="space-y-4">
+              {Object.entries(formBreakdown).map(([formName, evList]) => {
+                if (!evList || evList.length === 0) return null;
+                return (
+                  <div key={formName} className="border border-slate-800 rounded-lg p-3.5 bg-slate-950/40 print:bg-slate-50 print:border-slate-300">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-bold text-sm text-cyan-300 print:text-cyan-900">{formName}</span>
+                      <span className="text-xs text-slate-400 font-mono">
+                        {evList.length} incident(s) cataloged
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {evList.map((ev, idx) => (
+                        <div key={idx} className="p-2.5 rounded bg-slate-900/90 border border-slate-800 text-xs print:bg-white print:border-slate-200">
+                          <div className="flex items-center justify-between font-mono text-[11px] mb-1">
+                            <span className="font-bold text-white print:text-black">{ev.well_id} • {ev.event_type}</span>
+                            <span className="text-amber-400 print:text-black">{ev.depth_tvd}m TVD ({ev.npt_hours}h NPT)</span>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-slate-300 print:text-slate-700 text-[11px] mt-1">
+                            <div><strong>Cause:</strong> {ev.root_cause}</div>
+                            <div><strong>Mitigation:</strong> {ev.mitigation_applied}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Sign-off Box */}
+          <div className="pt-6 border-t-2 border-slate-700 print:border-black grid grid-cols-3 gap-6 text-xs text-slate-400 print:text-slate-600">
+            <div>
+              <span className="block mb-6">Prepared By:</span>
+              <div className="border-b border-slate-600 pb-1 font-mono text-slate-300 print:text-black">eRTMAC-NWIS Autonomous AI</div>
+              <span className="text-[10px]">Lead Drilling Engineer (Operations)</span>
+            </div>
+            <div>
+              <span className="block mb-6">Geological Review:</span>
+              <div className="border-b border-slate-600 pb-1 font-mono text-slate-300 print:text-black">Assam Shelf Subsurface Group</div>
+              <span className="text-[10px]">Senior Geologist / Petrophysicist</span>
+            </div>
+            <div>
+              <span className="block mb-6">Operations Approval:</span>
+              <div className="border-b border-slate-600 pb-1 font-mono text-slate-300 print:text-black">Pending Rig Mobilization</div>
+              <span className="text-[10px]">Drilling Superintendent, OIL</span>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Footer - Screen only */}
+        <div className="px-6 py-3 bg-slate-950 border-t border-slate-800 flex justify-between items-center text-xs text-slate-400 print:hidden">
+          <span>Official Oil India Limited (OIL) eRTMAC-NWIS Decision Support Document.</span>
+          <button
+            onClick={onClose}
+            className="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-medium transition"
+          >
+            Close Dossier
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
+export default PreSpudDossierModal;
