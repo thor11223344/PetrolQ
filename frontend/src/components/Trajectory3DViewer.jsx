@@ -23,6 +23,55 @@ const GEO_LAYERS = [
   { from: 3200, to: 5000, color: '#5C4A3D', label: 'Basement / Deep Shale' },
 ];
 
+// Helper to construct a flattened, irregular geological reservoir pool lens
+const createReservoirLensMesh = (cx, cy, cz, rx, ry, rz, color, opacity, name) => {
+    const Nu = 10;
+    const Nv = 16;
+    const x = [];
+    const y = [];
+    const z = [];
+    const i = [];
+    const j = [];
+    const k = [];
+
+    for (let uIdx = 0; uIdx <= Nu; uIdx++) {
+        const u = (uIdx / Nu) * Math.PI;
+        for (let vIdx = 0; vIdx < Nv; vIdx++) {
+            const v = (vIdx / Nv) * 2 * Math.PI;
+            // Realistic geological hydrocarbon pool lens: wider in X/Y, tapered at edges with subtle asymmetry
+            const lensShape = 1.0 + 0.06 * Math.sin(3 * v) * Math.cos(2 * u);
+            x.push(cx + rx * Math.sin(u) * Math.cos(v) * lensShape);
+            y.push(cy + ry * Math.sin(u) * Math.sin(v) * lensShape);
+            z.push(cz + rz * Math.cos(u));
+        }
+    }
+
+    for (let uIdx = 0; uIdx < Nu; uIdx++) {
+        for (let vIdx = 0; vIdx < Nv; vIdx++) {
+            const nextV = (vIdx + 1) % Nv;
+            const p0 = uIdx * Nv + vIdx;
+            const p1 = uIdx * Nv + nextV;
+            const p2 = (uIdx + 1) * Nv + vIdx;
+            const p3 = (uIdx + 1) * Nv + nextV;
+
+            i.push(p0, p1);
+            j.push(p2, p3);
+            k.push(p1, p2);
+        }
+    }
+
+    return {
+        type: 'mesh3d',
+        name: name,
+        x, y, z,
+        i, j, k,
+        color: color,
+        opacity: opacity,
+        showlegend: false,
+        hoverinfo: 'skip'
+    };
+};
+
 const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [] }) => {
     const [plotData, setPlotData] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -44,6 +93,44 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [] })
         offsets: [],
         antiCollision: null
     });
+
+    const isGeo = theme === 'geo';
+
+    // Compute explicit bounding box for geo theme with padding
+    const geoBounds = React.useMemo(() => {
+        if (!isGeo) return null;
+        const { activeWell, offsets } = rawDataRef.current;
+        const allXs = [];
+        const allYs = [];
+        if (activeWell?.trajectory?.x) {
+            allXs.push(...activeWell.trajectory.x);
+            allYs.push(...activeWell.trajectory.y);
+        }
+        offsets?.forEach(off => {
+            if (off?.trajectory?.x) {
+                allXs.push(...off.trajectory.x);
+                allYs.push(...off.trajectory.y);
+            }
+        });
+        if (allXs.length === 0 || allYs.length === 0) {
+            return { minX: -1000, maxX: 1000, minY: -1000, maxY: 1000 };
+        }
+        const pad = 500;
+        const minX = Math.min(...allXs) - pad;
+        const maxX = Math.max(...allXs) + pad;
+        const minY = Math.min(...allYs) - pad;
+        const maxY = Math.max(...allYs) + pad;
+        const maxSpan = Math.max(maxX - minX, maxY - minY, 1600);
+        const midX = (minX + maxX) / 2;
+        const midY = (minY + maxY) / 2;
+        const halfSpan = maxSpan / 2;
+        return {
+            minX: Math.round(midX - halfSpan),
+            maxX: Math.round(midX + halfSpan),
+            minY: Math.round(midY - halfSpan),
+            maxY: Math.round(midY + halfSpan)
+        };
+    }, [isGeo, plotData]);
 
     useEffect(() => {
         if (!isOpen || !activeWellId) return;
@@ -400,7 +487,6 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [] })
         // 7. REALISTIC GEOLOGY LAYER SLABS (Realistic Geology Theme)
         // ----------------------------------------------------
         if (theme === 'geo') {
-            let minX = -1000, maxX = 1000, minY = -1000, maxY = 1000;
             const allXs = [];
             const allYs = [];
             if (activeWell?.trajectory?.x) {
@@ -413,11 +499,22 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [] })
                     allYs.push(...off.trajectory.y);
                 }
             });
+
+            let minX = -1000, maxX = 1000, minY = -1000, maxY = 1000;
             if (allXs.length > 0 && allYs.length > 0) {
-                minX = Math.min(...allXs) - 500;
-                maxX = Math.max(...allXs) + 500;
-                minY = Math.min(...allYs) - 500;
-                maxY = Math.max(...allYs) + 500;
+                const pad = 500;
+                const rMinX = Math.min(...allXs) - pad;
+                const rMaxX = Math.max(...allXs) + pad;
+                const rMinY = Math.min(...allYs) - pad;
+                const rMaxY = Math.max(...allYs) + pad;
+                const maxSpan = Math.max(rMaxX - rMinX, rMaxY - rMinY, 1600);
+                const midX = (rMinX + rMaxX) / 2;
+                const midY = (rMinY + rMaxY) / 2;
+                const halfSpan = maxSpan / 2;
+                minX = Math.round(midX - halfSpan);
+                maxX = Math.round(midX + halfSpan);
+                minY = Math.round(midY - halfSpan);
+                maxY = Math.round(midY + halfSpan);
             }
 
             const maxWellTVD = activeWell?.tvd_max || 3500;
@@ -428,6 +525,7 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [] })
                 return l;
             });
 
+            // 1. Mesh3d Slabs
             layers.forEach(layer => {
                 const z0 = layer.from;
                 const z1 = layer.to;
@@ -446,6 +544,115 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [] })
                     hoverinfo: 'skip'
                 });
             });
+
+            // 2. Staggered Geological Stratum Annotations along the slab perimeter
+            // Staggered Z-offset and repositioned along the outer boundary so they don't stack on each other or wellhead/borehole
+            const labelX = [];
+            const labelY = [];
+            const labelZ = [];
+            const labelTexts = [];
+            layers.forEach((layer, idx) => {
+                const midDepth = (layer.from + layer.to) / 2;
+                const staggerX = (idx % 2 === 0 ? 0 : 70);
+                labelX.push(minX + 90 + staggerX);
+                labelY.push(maxY - 90 - staggerX);
+                labelZ.push(midDepth);
+                labelTexts.push(`Stratum: ${layer.label} (${layer.from}–${layer.to}m)`);
+            });
+
+            traces.push({
+                type: 'scatter3d',
+                mode: 'text',
+                name: 'Geology Layer Annotations',
+                x: labelX,
+                y: labelY,
+                z: labelZ,
+                text: labelTexts,
+                textposition: 'middle right',
+                textfont: {
+                    color: '#1E293B',
+                    size: 11,
+                    family: 'Inter, sans-serif'
+                },
+                showlegend: false,
+                hoverinfo: 'skip'
+            });
+
+            // 3. Oil Reservoir Visualization at the Terminal Depth of Each Well (only in geo theme)
+            if (activeWell?.trajectory?.x?.length > 0) {
+                const actLen = activeWell.trajectory.x.length;
+                const actX = activeWell.trajectory.x[actLen - 1];
+                const actY = activeWell.trajectory.y[actLen - 1];
+                const actZ = activeWell.trajectory.z[actLen - 1];
+
+                // Prominent reservoir lens for active well: amber glow halo + dark oil pool
+                traces.push(createReservoirLensMesh(actX, actY, actZ, 95, 80, 22, '#D97706', 0.28, 'Active Reservoir Halo'));
+                traces.push(createReservoirLensMesh(actX, actY, actZ, 80, 68, 18, '#1a1a1a', 0.76, 'Active Reservoir Pool'));
+
+                // Staggered non-overlapping text label for active reservoir target
+                traces.push({
+                    type: 'scatter3d',
+                    mode: 'text',
+                    name: 'Active Reservoir Target',
+                    x: [actX],
+                    y: [actY],
+                    z: [actZ + 36],
+                    text: ['🛢 Reservoir Target'],
+                    textposition: 'bottom center',
+                    textfont: {
+                        color: '#78350F',
+                        size: 11,
+                        family: 'Inter, sans-serif'
+                    },
+                    showlegend: false,
+                    hoverinfo: 'skip'
+                });
+            }
+
+            // Field-wide reservoirs for offset wells (when "Offset Wells" checkbox is on)
+            if (showOffsets && offsets && offsets.length > 0) {
+                const offResX = [];
+                const offResY = [];
+                const offResZ = [];
+                const offResTexts = [];
+
+                offsets.forEach(off => {
+                    if (!off?.trajectory?.x || off.trajectory.x.length === 0) return;
+                    const oLen = off.trajectory.x.length;
+                    const oX = off.trajectory.x[oLen - 1];
+                    const oY = off.trajectory.y[oLen - 1];
+                    const oZ = off.trajectory.z[oLen - 1];
+
+                    // Smaller reservoir lens for offset wells
+                    traces.push(createReservoirLensMesh(oX, oY, oZ, 60, 52, 16, '#D97706', 0.22, `${off.well_id} Reservoir Halo`));
+                    traces.push(createReservoirLensMesh(oX, oY, oZ, 50, 44, 13, '#1a1a1a', 0.74, `${off.well_id} Reservoir Pool`));
+
+                    offResX.push(oX);
+                    offResY.push(oY);
+                    offResZ.push(oZ + 28);
+                    offResTexts.push('🛢 Pay Zone');
+                });
+
+                if (offResX.length > 0) {
+                    traces.push({
+                        type: 'scatter3d',
+                        mode: 'text',
+                        name: 'Offset Reservoir Annotations',
+                        x: offResX,
+                        y: offResY,
+                        z: offResZ,
+                        text: offResTexts,
+                        textposition: 'bottom center',
+                        textfont: {
+                            color: '#92400E',
+                            size: 9,
+                            family: 'Inter, sans-serif'
+                        },
+                        showlegend: false,
+                        hoverinfo: 'skip'
+                    });
+                }
+            }
         }
 
         setPlotData(traces);
@@ -633,31 +840,36 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [] })
                                 scene: {
                                     xaxis: { 
                                         title: 'East (m)', 
-                                        gridcolor: theme === 'geo' ? '#475569' : '#334155', 
-                                        zerolinecolor: theme === 'geo' ? '#334155' : '#475569', 
-                                        color: theme === 'geo' ? '#0F172A' : '#94a3b8',
-                                        backgroundcolor: theme === 'geo' ? '#DDEBF7' : 'transparent',
-                                        showbackground: theme === 'geo'
+                                        gridcolor: isGeo ? '#475569' : '#334155', 
+                                        zerolinecolor: isGeo ? '#334155' : '#475569', 
+                                        color: isGeo ? '#0F172A' : '#94a3b8',
+                                        backgroundcolor: isGeo ? '#DDEBF7' : 'transparent',
+                                        showbackground: isGeo,
+                                        range: isGeo && geoBounds ? [geoBounds.minX, geoBounds.maxX] : undefined
                                     },
                                     yaxis: { 
                                         title: 'North (m)', 
-                                        gridcolor: theme === 'geo' ? '#475569' : '#334155', 
-                                        zerolinecolor: theme === 'geo' ? '#334155' : '#475569', 
-                                        color: theme === 'geo' ? '#0F172A' : '#94a3b8',
-                                        backgroundcolor: theme === 'geo' ? '#DDEBF7' : 'transparent',
-                                        showbackground: theme === 'geo'
+                                        gridcolor: isGeo ? '#475569' : '#334155', 
+                                        zerolinecolor: isGeo ? '#334155' : '#475569', 
+                                        color: isGeo ? '#0F172A' : '#94a3b8',
+                                        backgroundcolor: isGeo ? '#DDEBF7' : 'transparent',
+                                        showbackground: isGeo,
+                                        range: isGeo && geoBounds ? [geoBounds.minY, geoBounds.maxY] : undefined
                                     },
                                     zaxis: { 
                                         title: 'TVD Depth (m)', 
                                         autorange: 'reversed', 
-                                        gridcolor: theme === 'geo' ? '#475569' : '#334155', 
-                                        zerolinecolor: theme === 'geo' ? '#334155' : '#475569', 
-                                        color: theme === 'geo' ? '#0F172A' : '#94a3b8',
-                                        backgroundcolor: theme === 'geo' ? '#DDEBF7' : 'transparent',
-                                        showbackground: theme === 'geo'
+                                        gridcolor: isGeo ? '#475569' : '#334155', 
+                                        zerolinecolor: isGeo ? '#334155' : '#475569', 
+                                        color: isGeo ? '#0F172A' : '#94a3b8',
+                                        backgroundcolor: isGeo ? '#DDEBF7' : 'transparent',
+                                        showbackground: isGeo
                                     },
-                                    camera: currentCamera,
-                                    aspectratio: { x: 1, y: 1, z: 1.6 }
+                                    aspectmode: isGeo ? 'manual' : undefined,
+                                    aspectratio: isGeo ? { x: 1.6, y: 1.6, z: 1.2 } : { x: 1, y: 1, z: 1.6 },
+                                    camera: isGeo
+                                      ? { eye: { x: 1.9, y: 1.9, z: 0.9 }, center: { x: 0, y: 0, z: 0 } }
+                                      : currentCamera
                                 },
                                 showlegend: true,
                                 legend: { 
