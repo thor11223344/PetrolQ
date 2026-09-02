@@ -8,16 +8,24 @@
   }
 }
 
-/* Custom Scrollbar for Drawer */
+/* Custom Scrollbar for Drawer and Panels */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #475569 #020617;
+}
+
 .custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-  @apply bg-slate-950;
+  background: #020617;
+  border-radius: 4px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  @apply bg-slate-800 rounded-full;
+  background: #334155;
+  border-radius: 4px;
+  border: 1px solid #1e293b;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  @apply bg-slate-700;
+  background: #0ea5e9;
 }

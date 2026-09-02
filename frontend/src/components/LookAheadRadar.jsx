@@ -15,7 +15,20 @@ import {
   Info
 } from 'lucide-react';
 
+const WELL_DEFAULT_DEPTHS = {
+  'OIL-BAGHJAN-1': 2240,
+  'OIL-BAGHJAN-4': 2260,
+  'OIL-NAHARKATIYA-1': 1920,
+  'OIL-MORAN-1': 2460,
+  'OIL-DIKOM-1': 2120,
+  'OIL-TENGAKHAT-1': 1990,
+  'OIL-KOTHALONI-1': 2200,
+  'OIL-HAPJAN-1': 2230,
+  'OIL-SHALMARI-1': 2080,
+};
+
 const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', currentDepth = 2240.0 }) => {
+  const [targetWellId, setTargetWellId] = useState(activeWellId);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [windowMeters, setWindowMeters] = useState(250);
@@ -23,21 +36,31 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
   const [lastScanned, setLastScanned] = useState(null);
   const [scanNotice, setScanNotice] = useState(false);
 
-  // Sync to initial depth when modal opens
+  // Sync to initial well and depth when modal opens or activeWellId changes
   useEffect(() => {
     if (isOpen) {
-      setSimulatedDepth(currentDepth || 2240.0);
+      setTargetWellId(activeWellId);
+      const baseD = WELL_DEFAULT_DEPTHS[activeWellId] || currentDepth || 2240.0;
+      setSimulatedDepth(baseD);
     }
-  }, [isOpen]);
+  }, [isOpen, activeWellId]);
 
-  const fetchLookAhead = async (overrideDepth = null) => {
+  const handleWellChange = (newWellId) => {
+    setTargetWellId(newWellId);
+    const newBaseD = WELL_DEFAULT_DEPTHS[newWellId] || 2240.0;
+    setSimulatedDepth(newBaseD);
+    fetchLookAhead(newWellId, newBaseD);
+  };
+
+  const fetchLookAhead = async (overrideWell = null, overrideDepth = null) => {
     if (!isOpen) return;
     setLoading(true);
+    const wellToUse = overrideWell || targetWellId;
     const depthToUse = overrideDepth !== null ? overrideDepth : simulatedDepth;
     const startTime = Date.now();
 
     try {
-      const res = await axios.get(`http://localhost:8000/api/wells/${activeWellId}/lookahead`, {
+      const res = await axios.get(`http://localhost:8000/api/wells/${wellToUse}/lookahead`, {
         params: {
           current_depth: depthToUse,
           window_meters: windowMeters,
@@ -65,7 +88,7 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
     if (isOpen) {
       fetchLookAhead();
     }
-  }, [isOpen, activeWellId, simulatedDepth, windowMeters]);
+  }, [isOpen, targetWellId, simulatedDepth, windowMeters]);
 
   if (!isOpen) return null;
 
@@ -92,9 +115,25 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
                 <h2 className="text-lg font-bold text-white tracking-wide">
                   Ahead-of-the-Bit Hazard Radar
                 </h2>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-950 border border-cyan-800 text-cyan-300 font-mono">
-                  {activeWellId}
-                </span>
+                
+                {/* Active Well Selector */}
+                <select
+                  value={targetWellId}
+                  onChange={(e) => handleWellChange(e.target.value)}
+                  className="bg-slate-800 border border-slate-700 text-cyan-300 text-xs font-mono font-bold rounded-lg px-2.5 py-1 outline-none hover:border-cyan-500 focus:border-cyan-400 cursor-pointer transition"
+                  title="Switch Target Well for Offset Radar Analysis"
+                >
+                  <option value="OIL-BAGHJAN-1">OIL-BAGHJAN-1 (Baghjan Field)</option>
+                  <option value="OIL-BAGHJAN-4">OIL-BAGHJAN-4 (Baghjan Field)</option>
+                  <option value="OIL-NAHARKATIYA-1">OIL-NAHARKATIYA-1 (Naharkatiya Field)</option>
+                  <option value="OIL-MORAN-1">OIL-MORAN-1 (Moran Field)</option>
+                  <option value="OIL-DIKOM-1">OIL-DIKOM-1 (Dikom Field)</option>
+                  <option value="OIL-TENGAKHAT-1">OIL-TENGAKHAT-1 (Tengakhat Field)</option>
+                  <option value="OIL-KOTHALONI-1">OIL-KOTHALONI-1 (Kothaloni Field)</option>
+                  <option value="OIL-HAPJAN-1">OIL-HAPJAN-1 (Hapjan Field)</option>
+                  <option value="OIL-SHALMARI-1">OIL-SHALMARI-1 (Shalmari Field)</option>
+                </select>
+
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 font-mono">
                   Bit TVD: {Math.round(simulatedDepth)}m
                 </span>
@@ -365,6 +404,16 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
                         <span className="font-mono font-bold text-white text-sm">
                           {ev.well_id}
                         </span>
+                        {ev.offset_distance_km !== undefined && ev.offset_distance_km > 0 && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-800 text-cyan-300 font-mono font-semibold">
+                            {ev.offset_distance_km} km offset
+                          </span>
+                        )}
+                        {!ev.is_offset && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-400 font-mono">
+                            Target Well Run
+                          </span>
+                        )}
                         <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-cyan-300 font-mono">
                           {ev.formation} @ {ev.depth_tvd}m TVD
                         </span>

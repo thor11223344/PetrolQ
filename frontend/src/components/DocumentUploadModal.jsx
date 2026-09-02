@@ -13,14 +13,69 @@ import {
   AlertTriangle
 } from 'lucide-react';
 
-const DocumentUploadModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1' }) => {
+const DocumentUploadModal = ({ 
+    isOpen, 
+    onClose, 
+    activeWellId = 'OIL-BAGHJAN-1',
+    onUploadSuccess,
+    availableWells = [
+        'OIL-BAGHJAN-1',
+        'OIL-BAGHJAN-4',
+        'OIL-NAHARKATIYA-1',
+        'OIL-MORAN-1',
+        'OIL-DIKOM-1',
+        'OIL-TENGAKHAT-1',
+        'OIL-KOTHALONI-1',
+        'OIL-HAPJAN-1',
+        'OIL-SHALMARI-1'
+    ]
+}) => {
     const [file, setFile] = useState(null);
+    const [targetWell, setTargetWell] = useState(activeWellId);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadResult, setUploadResult] = useState(null);
     const [errorMsg, setErrorMsg] = useState(null);
     const fileInputRef = useRef(null);
 
+    React.useEffect(() => {
+        if (activeWellId) {
+            setTargetWell(activeWellId);
+        }
+    }, [activeWellId, isOpen]);
+
     if (!isOpen) return null;
+
+    const detectWellFromFile = (filename) => {
+        const lower = filename.toLowerCase();
+        if (lower.includes('well_04') || lower.includes('baghjan_4') || lower.includes('baghjan-4')) {
+            return 'OIL-BAGHJAN-4';
+        }
+        if (lower.includes('baghjan')) {
+            return 'OIL-BAGHJAN-1';
+        }
+        if (lower.includes('hapjan')) {
+            return 'OIL-HAPJAN-1';
+        }
+        if (lower.includes('naharkatiya') || lower.includes('nhk')) {
+            return 'OIL-NAHARKATIYA-1';
+        }
+        if (lower.includes('moran')) {
+            return 'OIL-MORAN-1';
+        }
+        if (lower.includes('dikom')) {
+            return 'OIL-DIKOM-1';
+        }
+        if (lower.includes('tengakhat')) {
+            return 'OIL-TENGAKHAT-1';
+        }
+        if (lower.includes('kothaloni')) {
+            return 'OIL-KOTHALONI-1';
+        }
+        if (lower.includes('shalmari')) {
+            return 'OIL-SHALMARI-1';
+        }
+        return activeWellId || 'OIL-BAGHJAN-1';
+    };
 
     const handleDragOver = (e) => {
         e.preventDefault();
@@ -31,7 +86,9 @@ const DocumentUploadModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1' }
         e.preventDefault();
         e.stopPropagation();
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            setFile(e.dataTransfer.files[0]);
+            const droppedFile = e.dataTransfer.files[0];
+            setFile(droppedFile);
+            setTargetWell(detectWellFromFile(droppedFile.name));
             setUploadResult(null);
             setErrorMsg(null);
         }
@@ -44,13 +101,16 @@ const DocumentUploadModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1' }
         
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('well_id', activeWellId || 'OIL-BAGHJAN-1');
+        formData.append('well_id', targetWell || activeWellId || 'OIL-BAGHJAN-1');
 
         try {
             const res = await axios.post('http://localhost:8000/api/upload-report', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             setUploadResult(res.data);
+            if (onUploadSuccess) {
+                onUploadSuccess(res.data, targetWell || activeWellId);
+            }
         } catch (error) {
             console.error('Upload failed:', error);
             setErrorMsg(error.response?.data?.detail || 'Failed to upload and parse file.');
@@ -110,7 +170,9 @@ const DocumentUploadModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1' }
                                         accept=".pdf,.las"
                                         onChange={(e) => {
                                             if (e.target.files && e.target.files.length > 0) {
-                                                setFile(e.target.files[0]);
+                                                const selected = e.target.files[0];
+                                                setFile(selected);
+                                                setTargetWell(detectWellFromFile(selected.name));
                                                 setErrorMsg(null);
                                             }
                                         }} 
@@ -124,24 +186,43 @@ const DocumentUploadModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1' }
                                     </p>
                                 </div>
                             ) : (
-                                <div className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800">
-                                    <div className="flex items-center space-x-3">
-                                        <div className="p-2.5 rounded-lg bg-slate-800 text-cyan-400">
-                                            {isLas ? <FileSpreadsheet size={24} /> : <File size={24} />}
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800">
+                                        <div className="flex items-center space-x-3">
+                                            <div className="p-2.5 rounded-lg bg-slate-800 text-cyan-400">
+                                                {isLas ? <FileSpreadsheet size={24} /> : <File size={24} />}
+                                            </div>
+                                            <div>
+                                                <p className="text-white font-bold text-sm">{file.name}</p>
+                                                <p className="text-slate-400 text-xs font-mono">
+                                                    {(file.size / 1024 / 1024).toFixed(2)} MB • {isLas ? 'Log ASCII Standard' : 'PDF Document'}
+                                                </p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="text-white font-bold text-sm">{file.name}</p>
-                                            <p className="text-slate-400 text-xs font-mono">
-                                                {(file.size / 1024 / 1024).toFixed(2)} MB • {isLas ? 'Log ASCII Standard' : 'PDF Document'}
-                                            </p>
-                                        </div>
+                                        <button 
+                                            onClick={() => setFile(null)}
+                                            className="text-xs px-3 py-1.5 rounded-md border border-slate-700 hover:bg-slate-800 text-slate-300 hover:text-white transition"
+                                        >
+                                            Change File
+                                        </button>
                                     </div>
-                                    <button 
-                                        onClick={() => setFile(null)}
-                                        className="text-xs px-3 py-1.5 rounded-md border border-slate-700 hover:bg-slate-800 text-slate-300 hover:text-white transition"
-                                    >
-                                        Change File
-                                    </button>
+
+                                    {/* Target Well Selector */}
+                                    <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
+                                        <div>
+                                            <p className="text-xs font-semibold text-slate-200">Associate Incidents with Well:</p>
+                                            <p className="text-[11px] text-slate-500">Target institutional offset well memory</p>
+                                        </div>
+                                        <select
+                                            value={targetWell}
+                                            onChange={(e) => setTargetWell(e.target.value)}
+                                            className="bg-slate-900 text-cyan-300 border border-slate-700 text-xs rounded-lg px-3 py-1.5 outline-none font-medium focus:border-cyan-500"
+                                        >
+                                            {availableWells.map(w => (
+                                                <option key={w} value={w}>{w}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
                             )}
 
@@ -271,10 +352,16 @@ const DocumentUploadModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1' }
 
                         {uploadResult && (
                             <button 
-                                onClick={onClose}
-                                className="px-5 py-2 rounded-lg font-bold bg-cyan-500 hover:bg-cyan-400 text-slate-950 transition shadow-lg shadow-cyan-500/20"
+                                onClick={() => {
+                                    if (onUploadSuccess) {
+                                        onUploadSuccess(uploadResult, targetWell);
+                                    }
+                                    onClose();
+                                }}
+                                className="px-5 py-2 rounded-lg font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition shadow-lg shadow-emerald-500/20 flex items-center space-x-2"
                             >
-                                Done
+                                <CheckCircle size={16} />
+                                <span>Apply & View on Dashboard</span>
                             </button>
                         )}
                     </div>

@@ -20,6 +20,8 @@ class DrillingParamResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+from pydantic import BaseModel, ConfigDict, computed_field
+
 class EventResponse(BaseModel):
     id: int
     well_id: str
@@ -31,6 +33,11 @@ class EventResponse(BaseModel):
     root_cause: Optional[str] = None
     mitigation_applied: Optional[str] = None
     npt_hours: Optional[float] = None
+
+    @computed_field
+    @property
+    def depth_tvd(self) -> Optional[float]:
+        return self.depth_start_tvd
 
     model_config = ConfigDict(from_attributes=True)
 

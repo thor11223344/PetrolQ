@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Activity, 
   Map as MapIcon, 
@@ -15,7 +15,12 @@ import {
   Radar,
   Gauge,
   FileText,
-  Brain
+  Brain,
+  CheckCircle2,
+  Sparkles,
+  X,
+  ChevronRight,
+  Layers
 } from 'lucide-react';
 import axios from 'axios';
 import Plot from 'react-plotly.js';
@@ -36,6 +41,9 @@ function App() {
   const [alertState, setAlertState] = useState({ active: false, prediction: null });
   const [ragContext, setRagContext] = useState(null);
   const [recentEvents, setRecentEvents] = useState([]);
+  const [newlyIngestedIds, setNewlyIngestedIds] = useState(new Set());
+  const [uploadToast, setUploadToast] = useState(null);
+  const [expandedEventId, setExpandedEventId] = useState(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isKnowledgeSearchOpen, setIsKnowledgeSearchOpen] = useState(false);
@@ -92,22 +100,60 @@ function App() {
     }
   };
 
-  useEffect(() => {
-    const fetchHistory = async () => {
-        try {
-            const res = await axios.get(`http://localhost:8000/api/wells/${selectedWell}/history`);
-            if (res.data && res.data.events) {
-                // sort by depth descending, take top 5
-                const sortedEvents = res.data.events.sort((a, b) => b.depth_tvd - a.depth_tvd).slice(0, 5);
-                setRecentEvents(sortedEvents);
-            }
-        } catch (err) {
-            console.error("Failed to fetch well history", err);
-            setRecentEvents([]);
-        }
-    };
-    fetchHistory();
+  const fetchHistory = useCallback(async (wellId = selectedWell) => {
+    try {
+      const res = await axios.get(`http://localhost:8000/api/wells/${wellId}/history`);
+      if (res.data && res.data.events) {
+        // Sort by ID descending so newly ingested events appear immediately at the top
+        const sortedEvents = [...res.data.events].sort((a, b) => (b.id || 0) - (a.id || 0));
+        setRecentEvents(sortedEvents.slice(0, 10));
+      }
+    } catch (err) {
+      console.error("Failed to fetch well history", err);
+      setRecentEvents([]);
+    }
   }, [selectedWell]);
+
+  useEffect(() => {
+    fetchHistory(selectedWell);
+  }, [selectedWell, fetchHistory]);
+
+  const handleDocumentUploaded = (result, targetWellId) => {
+    const wellToUse = targetWellId || selectedWell;
+    if (targetWellId && targetWellId !== selectedWell) {
+      setSelectedWell(targetWellId);
+    }
+    fetchHistory(wellToUse);
+
+    const eventCount = result?.extracted_count || result?.events?.length || 0;
+    if (result?.events && result.events.length > 0) {
+      const newIds = new Set(result.events.map(e => e.id).filter(Boolean));
+      setNewlyIngestedIds(newIds);
+    }
+
+    const isLas = result?.file_type === 'las' || result?.filename?.toLowerCase().endsWith('.las');
+    setUploadToast({
+      title: isLas ? `Ingested LAS Log: ${result?.filename || 'Well Log'}` : `Ingested ${eventCount > 0 ? `${eventCount} Incidents` : 'Report'} from ${result?.filename || 'Document'}`,
+      description: isLas 
+        ? `${result?.points_ingested || 'Log curve'} data points ingested for ${wellToUse}. Ready for cross-well correlation & PPFG analysis.` 
+        : `Institutional Memory for ${wellToUse} updated with AI OCR/NLP extraction.`,
+      count: eventCount,
+      wellId: wellToUse,
+      isLas: isLas,
+      ocrTriggered: result?.ocr_triggered,
+      time: new Date().toLocaleTimeString()
+    });
+  };
+
+  const handleLessonContributed = (lesson) => {
+    fetchHistory(selectedWell);
+    setUploadToast({
+      title: `Institutional Lesson Contributed!`,
+      description: `New mitigations and root causes synchronized for ${selectedWell}.`,
+      wellId: selectedWell,
+      time: new Date().toLocaleTimeString()
+    });
+  };
 
   useEffect(() => {
     // Connect to WebSocket
@@ -238,6 +284,7 @@ function App() {
                   className="bg-transparent text-slate-200 text-sm font-medium outline-none cursor-pointer"
               >
                   <option value="OIL-BAGHJAN-1">OIL-BAGHJAN-1</option>
+                  <option value="OIL-BAGHJAN-4">OIL-BAGHJAN-4</option>
                   <option value="OIL-NAHARKATIYA-1">OIL-NAHARKATIYA-1</option>
                   <option value="OIL-MORAN-1">OIL-MORAN-1</option>
                   <option value="OIL-DIKOM-1">OIL-DIKOM-1</option>
@@ -352,7 +399,7 @@ function App() {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 relative flex">
+      <main className="flex-1 relative flex min-h-0 overflow-hidden">
         
         {/* Map Container */}
         <div className="flex-1 bg-slate-900 relative overflow-hidden flex flex-col">
@@ -381,25 +428,41 @@ function App() {
             </div>
 
             {/* Ahead-of-the-Bit Hazard Radar Overlay Card */}
-            <button 
-              onClick={() => setIsRadarOpen(true)}
-              className="bg-slate-900/90 backdrop-blur border border-amber-500/40 hover:border-amber-500 p-3.5 rounded-lg shadow-xl min-w-[210px] text-left transition group cursor-pointer"
-            >
-              <div className="flex items-center justify-between text-xs uppercase text-amber-400 font-bold mb-1.5">
-                <span className="flex items-center space-x-1.5">
-                  <Radar size={14} className="animate-spin-slow" />
-                  <span>Hazard Radar</span>
-                </span>
-                <span className="text-[10px] bg-amber-500/20 px-1.5 py-0.5 rounded font-mono text-amber-300">+250m Scan</span>
-              </div>
-              <div className="text-sm font-bold text-white group-hover:text-amber-300 transition">
-                Barail Kick Horizon
-              </div>
-              <div className="text-[11px] text-slate-400 mt-1 flex items-center justify-between">
-                <span>Next Top: ~2,400m</span>
-                <span className="text-cyan-400 font-bold">Open Radar →</span>
-              </div>
-            </button>
+            {(() => {
+              const WELL_RADAR_PREVIEWS = {
+                'OIL-BAGHJAN-1': { horizon: 'Barail Kick Horizon', top: '2,400m' },
+                'OIL-BAGHJAN-4': { horizon: 'Barail Gas Sand', top: '2,420m' },
+                'OIL-NAHARKATIYA-1': { horizon: 'Barail Sand-Shale', top: '2,040m' },
+                'OIL-MORAN-1': { horizon: 'Deep Barail Interval', top: '2,580m' },
+                'OIL-DIKOM-1': { horizon: 'Barail Sandstone Top', top: '2,240m' },
+                'OIL-TENGAKHAT-1': { horizon: 'Barail Main Sand', top: '2,120m' },
+                'OIL-KOTHALONI-1': { horizon: 'Barail Argillaceous', top: '2,320m' },
+                'OIL-HAPJAN-1': { horizon: 'Barail Coal Sequence', top: '2,360m' },
+                'OIL-SHALMARI-1': { horizon: 'Barail Laminated Sand', top: '2,210m' },
+              };
+              const preview = WELL_RADAR_PREVIEWS[selectedWell] || { horizon: 'Barail Horizon', top: '2,400m' };
+              return (
+                <button 
+                  onClick={() => setIsRadarOpen(true)}
+                  className="bg-slate-900/90 backdrop-blur border border-amber-500/40 hover:border-amber-500 p-3.5 rounded-lg shadow-xl min-w-[220px] text-left transition group cursor-pointer"
+                >
+                  <div className="flex items-center justify-between text-xs uppercase text-amber-400 font-bold mb-1.5">
+                    <span className="flex items-center space-x-1.5">
+                      <Radar size={14} className="animate-spin-slow" />
+                      <span>Hazard Radar</span>
+                    </span>
+                    <span className="text-[10px] bg-amber-500/20 px-1.5 py-0.5 rounded font-mono text-amber-300">+250m Scan</span>
+                  </div>
+                  <div className="text-sm font-bold text-white group-hover:text-amber-300 transition truncate">
+                    {preview.horizon}
+                  </div>
+                  <div className="text-[11px] text-slate-400 mt-1 flex items-center justify-between">
+                    <span>Next Top: ~{preview.top}</span>
+                    <span className="text-cyan-400 font-bold">Open Radar →</span>
+                  </div>
+                </button>
+              );
+            })()}
           </div>
 
           <WellMap 
@@ -409,7 +472,7 @@ function App() {
         </div>
 
         {/* Right-Hand Drawer */}
-        <aside className="w-[450px] border-l border-slate-800 bg-slate-950 flex flex-col shadow-2xl z-20 shrink-0 relative">
+        <aside className="w-[450px] border-l border-slate-800 bg-slate-950 flex flex-col shadow-2xl z-20 shrink-0 relative h-full min-h-0 overflow-hidden">
           
           {/* Hazard Alert Banner */}
           {showAlerts && alertState.active && (
@@ -452,7 +515,7 @@ function App() {
             </div>
           )}
 
-          <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+          <div className="p-4 border-b border-slate-800 flex items-center justify-between shrink-0">
             <h2 className="font-medium text-slate-200">Real-Time Telemetry</h2>
             <div className="flex space-x-1">
               <div className="w-2 h-2 rounded-full bg-status-danger mt-1"></div>
@@ -460,7 +523,7 @@ function App() {
             </div>
           </div>
           
-          <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
+          <div className="flex-1 p-4 overflow-y-auto custom-scrollbar pb-10 space-y-4">
             
             {/* Real-time Trajectory Widget */}
             <div className="bg-slate-900 border border-slate-800 rounded p-4 mb-4">
@@ -503,19 +566,103 @@ function App() {
             </div>
 
             {/* Event Log */}
-            <div className="bg-slate-900 border border-slate-800 rounded p-4">
-              <h3 className="text-xs uppercase font-bold text-slate-500 mb-3">Recent Offset Events</h3>
-              <div className="space-y-3">
-                {recentEvents.length > 0 ? recentEvents.map((event, i) => (
-                  <div key={event.id} className="flex items-start space-x-3 p-3 bg-slate-950/50 rounded border border-slate-800/50 hover:border-slate-600 transition-colors cursor-pointer">
-                    <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${i === 0 ? 'bg-status-danger' : 'bg-status-warning'}`}></div>
-                    <div>
-                      <p className="text-sm font-medium text-slate-300">{event.event_type}</p>
-                      <p className="text-xs text-slate-500 mt-1">Depth: {event.depth_tvd}m TVD</p>
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center space-x-2">
+                  <h3 className="text-xs uppercase font-bold text-slate-400 tracking-wider">Offset Incidents & Memory</h3>
+                  <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-cyan-400 border border-slate-700">
+                    {recentEvents.length}
+                  </span>
+                </div>
+                <button 
+                  onClick={() => fetchHistory(selectedWell)}
+                  className="text-[11px] text-slate-500 hover:text-cyan-400 transition"
+                  title="Reload event log"
+                >
+                  Refresh
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {recentEvents.length > 0 ? recentEvents.map((event, i) => {
+                  const isNewlyAdded = newlyIngestedIds.has(event.id);
+                  const isExpanded = expandedEventId === event.id;
+                  const severity = (event.severity || 'HIGH').toUpperCase();
+                  const sevColor = severity === 'CRITICAL' ? 'bg-red-500/20 text-red-400 border-red-500/40' :
+                                   severity === 'HIGH' ? 'bg-amber-500/20 text-amber-400 border-amber-500/40' :
+                                   'bg-blue-500/20 text-blue-400 border-blue-500/40';
+
+                  return (
+                    <div 
+                      key={event.id || i} 
+                      onClick={() => setExpandedEventId(isExpanded ? null : event.id)}
+                      className={`p-3 rounded-lg border transition-all cursor-pointer ${
+                        isNewlyAdded 
+                          ? 'bg-emerald-950/30 border-emerald-500/60 shadow-md shadow-emerald-950/40' 
+                          : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center space-x-2">
+                          <div className={`w-2 h-2 rounded-full shrink-0 ${
+                            isNewlyAdded ? 'bg-emerald-400 animate-ping' :
+                            severity === 'CRITICAL' ? 'bg-status-danger' : 
+                            severity === 'HIGH' ? 'bg-status-warning' : 'bg-status-fluid'
+                          }`} />
+                          <span className="text-sm font-semibold text-slate-200">{event.event_type}</span>
+                        </div>
+                        <div className="flex items-center space-x-1.5 shrink-0">
+                          {isNewlyAdded && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 animate-pulse">
+                              INGESTED
+                            </span>
+                          )}
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${sevColor}`}>
+                            {severity}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between mt-2 text-xs text-slate-400">
+                        <span>Depth: <strong className="text-slate-300 font-mono">{event.depth_tvd}m</strong> TVD</span>
+                        {event.formation && (
+                          <span className="text-slate-400 truncate max-w-[140px] text-[11px]">{event.formation}</span>
+                        )}
+                      </div>
+
+                      {/* Expanded Details */}
+                      {isExpanded && (
+                        <div className="mt-3 pt-3 border-t border-slate-800/80 text-xs space-y-2 animate-in fade-in duration-150">
+                          {event.root_cause && (
+                            <div>
+                              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Root Cause</span>
+                              <p className="text-slate-300 mt-0.5 leading-relaxed bg-slate-900/80 p-2 rounded border border-slate-800">
+                                {event.root_cause}
+                              </p>
+                            </div>
+                          )}
+                          {event.mitigation_applied && (
+                            <div>
+                              <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider block">Mitigation Applied</span>
+                              <p className="text-emerald-300/90 mt-0.5 leading-relaxed bg-emerald-950/20 p-2 rounded border border-emerald-900/40">
+                                {event.mitigation_applied}
+                              </p>
+                            </div>
+                          )}
+                          {event.npt_hours > 0 && (
+                            <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+                              <span>Non-Productive Time (NPT):</span>
+                              <span className="font-bold text-amber-400 font-mono">{event.npt_hours} Hours</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
+                  );
+                }) : (
+                  <div className="text-sm text-slate-500 p-4 text-center bg-slate-950/40 rounded-lg border border-slate-800/50">
+                    No offset events recorded for this well yet. Upload a DDR or WCR PDF to ingest incidents.
                   </div>
-                )) : (
-                  <div className="text-sm text-slate-500 p-3">No recent events found.</div>
                 )}
               </div>
               <button 
@@ -561,7 +708,7 @@ function App() {
           isOpen={isRadarOpen}
           onClose={() => setIsRadarOpen(false)}
           activeWellId={selectedWell}
-          currentDepth={telemetryData ? telemetryData.depth_tvd : 2240.0}
+          currentDepth={telemetryData ? telemetryData.depth_tvd : undefined}
       />
 
       {/* Safe Operating Mud Weight Window (PPFG) Modal */}
@@ -578,14 +725,70 @@ function App() {
           activeWellId={selectedWell}
       />
 
+      {/* Floating Ingestion / Institutional Memory Toast Notification */}
+      {uploadToast && (
+        <div className="fixed top-16 right-6 z-50 max-w-md bg-slate-900/95 backdrop-blur-md border border-emerald-500/50 rounded-xl p-4 shadow-2xl shadow-emerald-950/60 animate-in slide-in-from-top-4 flex items-start space-x-3.5">
+          <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shrink-0 mt-0.5">
+            <Sparkles size={20} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-bold text-white truncate">{uploadToast.title}</h4>
+              <button 
+                onClick={() => setUploadToast(null)} 
+                className="text-slate-400 hover:text-white transition ml-2"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+              {uploadToast.description}
+            </p>
+            <div className="flex items-center space-x-2 mt-3">
+              {uploadToast.isLas ? (
+                <button
+                  onClick={() => {
+                    setIsCorrelationOpen(true);
+                    setUploadToast(null);
+                  }}
+                  className="text-xs font-semibold px-2.5 py-1 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/30 transition flex items-center space-x-1"
+                >
+                  <Layers size={12} />
+                  <span>View Log Correlation</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setIsRadarOpen(true);
+                    setUploadToast(null);
+                  }}
+                  className="text-xs font-semibold px-2.5 py-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition flex items-center space-x-1"
+                >
+                  <Radar size={12} />
+                  <span>Open Hazard Radar</span>
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setIsKnowledgeSearchOpen(true);
+                  setUploadToast(null);
+                }}
+                className="text-xs font-semibold px-2.5 py-1 rounded bg-slate-800 text-cyan-300 border border-slate-700 hover:bg-slate-700 transition flex items-center space-x-1"
+              >
+                <Search size={12} />
+                <span>Search Vector DB</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Institutional Memory Contribution Modal (Two-Way Feedback) */}
       <ContributeLessonModal 
           isOpen={isContributeOpen}
           onClose={() => setIsContributeOpen(false)}
           activeWellId={selectedWell}
-          onLessonContributed={() => {
-            // Refetch history or update state
-          }}
+          onLessonContributed={handleLessonContributed}
       />
 
       {/* Document Upload Modal */}
@@ -593,6 +796,7 @@ function App() {
           isOpen={isUploadModalOpen} 
           onClose={() => setIsUploadModalOpen(false)} 
           activeWellId={selectedWell} 
+          onUploadSuccess={handleDocumentUploaded}
       />
 
       {/* Manual Knowledge Search Drawer */}
