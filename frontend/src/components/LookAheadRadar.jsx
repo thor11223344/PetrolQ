@@ -20,31 +20,51 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
   const [loading, setLoading] = useState(false);
   const [windowMeters, setWindowMeters] = useState(250);
   const [simulatedDepth, setSimulatedDepth] = useState(currentDepth);
+  const [lastScanned, setLastScanned] = useState(null);
+  const [scanNotice, setScanNotice] = useState(false);
 
+  // Sync to initial depth when modal opens
   useEffect(() => {
-    setSimulatedDepth(currentDepth);
-  }, [currentDepth]);
+    if (isOpen) {
+      setSimulatedDepth(currentDepth || 2240.0);
+    }
+  }, [isOpen]);
 
-  const fetchLookAhead = async () => {
+  const fetchLookAhead = async (overrideDepth = null) => {
     if (!isOpen) return;
     setLoading(true);
+    const depthToUse = overrideDepth !== null ? overrideDepth : simulatedDepth;
+    const startTime = Date.now();
+
     try {
       const res = await axios.get(`http://localhost:8000/api/wells/${activeWellId}/lookahead`, {
         params: {
-          current_depth: simulatedDepth,
-          window_meters: windowMeters
+          current_depth: depthToUse,
+          window_meters: windowMeters,
+          _t: Date.now() // Cache-busting parameter
         }
       });
       setData(res.data);
+      const now = new Date();
+      setLastScanned(now.toLocaleTimeString());
+      setScanNotice(true);
+      setTimeout(() => setScanNotice(false), 2500);
     } catch (err) {
       console.error('Failed to fetch lookahead data:', err);
     } finally {
-      setLoading(false);
+      // Ensure the scan animation is visibly perceived (minimum 400ms)
+      const elapsed = Date.now() - startTime;
+      const delay = Math.max(0, 450 - elapsed);
+      setTimeout(() => {
+        setLoading(false);
+      }, delay);
     }
   };
 
   useEffect(() => {
-    fetchLookAhead();
+    if (isOpen) {
+      fetchLookAhead();
+    }
   }, [isOpen, activeWellId, simulatedDepth, windowMeters]);
 
   if (!isOpen) return null;
@@ -64,8 +84,8 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
         {/* Header */}
         <div className="px-6 py-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-amber-500/10 rounded-lg border border-amber-500/20 text-amber-400">
-              <Radar size={22} className="animate-spin-slow" />
+            <div className={`p-2 rounded-lg border transition-all ${loading ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300 ring-2 ring-cyan-500/30' : 'bg-amber-500/10 border-amber-500/20 text-amber-400'}`}>
+              <Radar size={22} className={loading ? 'animate-spin' : ''} />
             </div>
             <div>
               <div className="flex items-center space-x-2">
@@ -78,21 +98,31 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 font-mono">
                   Bit TVD: {Math.round(simulatedDepth)}m
                 </span>
+                {scanNotice && (
+                  <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-medium animate-in fade-in duration-200">
+                    ✓ Scan Updated
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-400">
                 Proactive offset well correlation scanning {windowMeters}m ahead of the current bit position
+                {lastScanned && <span className="ml-2 font-mono text-slate-500">• Last scan: {lastScanned}</span>}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-3">
+            {/* Prominent Refresh Button */}
             <button 
-              onClick={fetchLookAhead}
-              className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition"
-              title="Refresh Radar Scan"
+              onClick={() => fetchLookAhead()}
+              disabled={loading}
+              className="px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 hover:text-white font-medium text-xs flex items-center space-x-1.5 transition shadow-sm disabled:opacity-50"
+              title="Trigger active radar horizon sweep"
             >
-              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+              <RefreshCw size={14} className={loading ? 'animate-spin text-cyan-400' : ''} />
+              <span>{loading ? 'Scanning...' : 'Re-scan Radar'}</span>
             </button>
+
             <button 
               onClick={onClose}
               className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition"
@@ -136,7 +166,18 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
                 onChange={(e) => setSimulatedDepth(parseFloat(e.target.value))}
                 className="w-32 accent-cyan-500 cursor-pointer"
               />
-              <span className="font-mono text-cyan-400 font-bold w-16">{Math.round(simulatedDepth)}m</span>
+              <span className="font-mono text-cyan-400 font-bold w-14">{Math.round(simulatedDepth)}m</span>
+              <button
+                onClick={() => {
+                  const targetD = currentDepth || 2240.0;
+                  setSimulatedDepth(targetD);
+                  fetchLookAhead(targetD);
+                }}
+                className="text-[11px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition"
+                title="Reset to current live telemetry bit depth"
+              >
+                Sync Live
+              </button>
             </div>
           </div>
 
