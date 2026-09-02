@@ -15,9 +15,18 @@ import {
     Maximize2
 } from 'lucide-react';
 
+const GEO_LAYERS = [
+  { from: 0,    to: 400,  color: '#8B6F47', label: 'Topsoil / Alluvium' },
+  { from: 400,  to: 1200, color: '#C2A366', label: 'Tipam Sandstone' },
+  { from: 1200, to: 2200, color: '#7A8B5C', label: 'Girujan Clay' },
+  { from: 2200, to: 3200, color: '#A67C52', label: 'Barail Sandstone' },
+  { from: 3200, to: 5000, color: '#5C4A3D', label: 'Basement / Deep Shale' },
+];
+
 const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [] }) => {
     const [plotData, setPlotData] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [theme, setTheme] = useState('dark');
     const [antiCollisionData, setAntiCollisionData] = useState(null);
     const [showOffsets, setShowOffsets] = useState(true);
     const [showFormations, setShowFormations] = useState(true);
@@ -96,7 +105,7 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [] })
         if (rawDataRef.current.activeWell) {
             buildPlotTraces();
         }
-    }, [showOffsets, showFormations, showClosestApproach]);
+    }, [showOffsets, showFormations, showClosestApproach, theme]);
 
     const buildPlotTraces = () => {
         const { activeWell, offsets, antiCollision } = rawDataRef.current;
@@ -387,6 +396,58 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [] })
             });
         }
 
+        // ----------------------------------------------------
+        // 7. REALISTIC GEOLOGY LAYER SLABS (Realistic Geology Theme)
+        // ----------------------------------------------------
+        if (theme === 'geo') {
+            let minX = -1000, maxX = 1000, minY = -1000, maxY = 1000;
+            const allXs = [];
+            const allYs = [];
+            if (activeWell?.trajectory?.x) {
+                allXs.push(...activeWell.trajectory.x);
+                allYs.push(...activeWell.trajectory.y);
+            }
+            offsets.forEach(off => {
+                if (off?.trajectory?.x) {
+                    allXs.push(...off.trajectory.x);
+                    allYs.push(...off.trajectory.y);
+                }
+            });
+            if (allXs.length > 0 && allYs.length > 0) {
+                minX = Math.min(...allXs) - 500;
+                maxX = Math.max(...allXs) + 500;
+                minY = Math.min(...allYs) - 500;
+                maxY = Math.max(...allYs) + 500;
+            }
+
+            const maxWellTVD = activeWell?.tvd_max || 3500;
+            const layers = GEO_LAYERS.map(l => {
+                if (l.to === 5000 && maxWellTVD > 5000) {
+                    return { ...l, to: maxWellTVD + 500 };
+                }
+                return l;
+            });
+
+            layers.forEach(layer => {
+                const z0 = layer.from;
+                const z1 = layer.to;
+                traces.push({
+                    type: 'mesh3d',
+                    name: layer.label,
+                    x: [minX, maxX, maxX, minX, minX, maxX, maxX, minX],
+                    y: [minY, minY, maxY, maxY, minY, minY, maxY, maxY],
+                    z: [z0, z0, z0, z0, z1, z1, z1, z1],
+                    i: [0, 0, 4, 4, 0, 0, 3, 3, 0, 0, 1, 1],
+                    j: [1, 2, 5, 6, 1, 5, 2, 6, 3, 7, 2, 6],
+                    k: [2, 3, 6, 7, 5, 4, 6, 7, 7, 4, 6, 5],
+                    opacity: 0.35,
+                    color: layer.color,
+                    showlegend: false,
+                    hoverinfo: 'skip'
+                });
+            });
+        }
+
         setPlotData(traces);
     };
 
@@ -469,6 +530,12 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [] })
 
                     {/* Action & Close Controls */}
                     <div className="flex items-center space-x-2">
+                        <button
+                            onClick={() => setTheme(t => t === 'dark' ? 'geo' : 'dark')}
+                            className="text-xs px-3 py-1.5 rounded-md border border-slate-600 text-slate-300 hover:bg-slate-800 mr-3"
+                        >
+                            {theme === 'dark' ? '🌍 Realistic View' : '🌑 Dark View'}
+                        </button>
                         <button 
                             onClick={onClose} 
                             className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
@@ -547,9 +614,9 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [] })
                 </div>
 
                 {/* 3D Canvas Area */}
-                <div className="flex-1 relative bg-slate-950 overflow-hidden">
+                <div className={`flex-1 relative overflow-hidden ${theme === 'geo' ? 'bg-[#DDEBF7]' : 'bg-slate-950'}`}>
                     {isLoading ? (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 bg-slate-950/90 z-10">
+                        <div className={`absolute inset-0 flex flex-col items-center justify-center text-slate-400 z-10 ${theme === 'geo' ? 'bg-[#DDEBF7]/90' : 'bg-slate-950/90'}`}>
                             <Loader2 size={36} className="animate-spin mb-3 text-cyan-400" />
                             <p className="text-sm font-medium">Computing 3D Directional Trajectories & Anti-Collision Vectors...</p>
                             <p className="text-xs text-slate-400 mt-1">Calculating minimum 3D Euclidean distances across subsurface depths</p>
@@ -560,34 +627,34 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [] })
                             layout={{
                                 autosize: true,
                                 margin: { l: 0, r: 0, b: 0, t: 0 },
-                                paper_bgcolor: '#020617',
-                                plot_bgcolor: '#020617',
+                                paper_bgcolor: theme === 'geo' ? '#DDEBF7' : 'transparent',
+                                plot_bgcolor: theme === 'geo' ? '#DDEBF7' : 'transparent',
                                 uirevision: cameraRevision,
                                 scene: {
                                     xaxis: { 
                                         title: 'East (m)', 
-                                        gridcolor: '#1E293B', 
-                                        zerolinecolor: '#334155', 
-                                        color: '#94A3B8',
-                                        backgroundcolor: '#020617',
-                                        showbackground: true
+                                        gridcolor: theme === 'geo' ? '#475569' : '#334155', 
+                                        zerolinecolor: theme === 'geo' ? '#334155' : '#475569', 
+                                        color: theme === 'geo' ? '#0F172A' : '#94a3b8',
+                                        backgroundcolor: theme === 'geo' ? '#DDEBF7' : 'transparent',
+                                        showbackground: theme === 'geo'
                                     },
                                     yaxis: { 
                                         title: 'North (m)', 
-                                        gridcolor: '#1E293B', 
-                                        zerolinecolor: '#334155', 
-                                        color: '#94A3B8',
-                                        backgroundcolor: '#020617',
-                                        showbackground: true
+                                        gridcolor: theme === 'geo' ? '#475569' : '#334155', 
+                                        zerolinecolor: theme === 'geo' ? '#334155' : '#475569', 
+                                        color: theme === 'geo' ? '#0F172A' : '#94a3b8',
+                                        backgroundcolor: theme === 'geo' ? '#DDEBF7' : 'transparent',
+                                        showbackground: theme === 'geo'
                                     },
                                     zaxis: { 
                                         title: 'TVD Depth (m)', 
                                         autorange: 'reversed', 
-                                        gridcolor: '#1E293B', 
-                                        zerolinecolor: '#334155', 
-                                        color: '#94A3B8',
-                                        backgroundcolor: '#020617',
-                                        showbackground: true
+                                        gridcolor: theme === 'geo' ? '#475569' : '#334155', 
+                                        zerolinecolor: theme === 'geo' ? '#334155' : '#475569', 
+                                        color: theme === 'geo' ? '#0F172A' : '#94a3b8',
+                                        backgroundcolor: theme === 'geo' ? '#DDEBF7' : 'transparent',
+                                        showbackground: theme === 'geo'
                                     },
                                     camera: currentCamera,
                                     aspectratio: { x: 1, y: 1, z: 1.6 }
