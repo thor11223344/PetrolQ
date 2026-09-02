@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, Float, DateTime, Date, ForeignKe
 from sqlalchemy.orm import relationship
 from geoalchemy2 import Geometry
 from sqlalchemy.dialects.postgresql import ARRAY
-from .database import Base
+from database import Base
 
 class WellMaster(Base):
     __tablename__ = 'well_master'

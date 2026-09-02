@@ -1,11 +1,11 @@
 import argparse
 import logging
 from sqlalchemy.orm import Session
-from backend.database import SessionLocal
-from backend.models import SyntheticEvent
-from backend.nlp.parser import DrillingReportParser
-from backend.nlp.extractor import extract_incidents_from_chunks
-from backend.nlp.config import get_embedding
+from database import SessionLocal
+from models import SyntheticEvent
+from nlp.parser import DrillingReportParser
+from nlp.extractor import extract_incidents_from_chunks
+from nlp.config import get_embedding
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)

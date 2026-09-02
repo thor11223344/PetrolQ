@@ -2,9 +2,9 @@ from fastapi import APIRouter, File, UploadFile, Form, Depends, HTTPException
 import os
 import shutil
 import uuid
-from backend.database import get_db
+from database import get_db
 from sqlalchemy.orm import Session
-from backend.nlp.ingest import ingest_report
+from nlp.ingest import ingest_report
 
 router = APIRouter()
 

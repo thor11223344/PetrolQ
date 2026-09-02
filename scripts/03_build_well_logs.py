@@ -72,18 +72,28 @@ def build_well_logs():
             df_wells = pd.read_csv(wells_master_path)
             well_ids = df_wells['well_id'].unique().tolist()
         else:
-            well_ids = ["OIL-BAGHJAN-1"]
+            well_ids = ["OIL-BAGHJAN-1", "OIL-NAHARKATIYA-1", "OIL-MORAN-1"]
             
         synthetic_rows = []
-        for wid in well_ids:
-            for i in range(5):
+        for w_idx, wid in enumerate(well_ids):
+            # Create a geological shift for each well (0 for first well, varying for others)
+            structural_shift = w_idx * 150 + (np.random.randint(-50, 50) if w_idx > 0 else 0)
+            
+            # Generate 150 depth points for each well to make the log viewer look realistic
+            for i in range(150):
+                base_depth = 1400 + i * 10
+                actual_depth = base_depth + structural_shift
+                
+                # Synthetic geological signature using sine waves
+                gr_base = 75 + 25 * np.sin(i / 15.0) + 15 * np.sin(i / 4.0)
+                
                 synthetic_rows.append({
                     'well_id': wid,
-                    'depth_tvd': 1400 + i*300,
-                    'gamma_ray': 77.4 + i*2.2,
-                    'resistivity': 0.66 - i*0.01,
-                    'sonic': 110.2 - i*1.5,
-                    'density': 2.4 + i*0.06
+                    'depth_tvd': actual_depth,
+                    'gamma_ray': gr_base + np.random.normal(0, 2), # Add small noise
+                    'resistivity': 0.66 - i*0.002,
+                    'sonic': 110.2 - i*0.2,
+                    'density': 2.4 + i*0.002
                 })
         df = pd.DataFrame(synthetic_rows)
     else:

@@ -5,7 +5,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
 # Import the configuration we created earlier
-from backend.nlp.config import LLM_API_KEY, LLM_ENDPOINT, LLM_MODEL_NAME
+from nlp.config import LLM_API_KEY, LLM_ENDPOINT, LLM_MODEL_NAME
 
 logger = logging.getLogger(__name__)
 

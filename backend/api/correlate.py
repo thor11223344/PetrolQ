@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from backend.database import get_db
-from backend.models import WellLog
+from database import get_db
+from models import WellLog
 from scipy.spatial.distance import euclidean
 from fastdtw import fastdtw
 import numpy as np
