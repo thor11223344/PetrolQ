@@ -238,6 +238,9 @@ def predict_risk(telemetry: TelemetryInput):
     """
     global ml_service
     
+    if ml_service is None:
+        ml_service = HazardPredictionService()
+        
     if not ml_service:
         raise HTTPException(status_code=503, detail="ML Service is not initialized.")
         
@@ -258,11 +261,87 @@ def predict_risk(telemetry: TelemetryInput):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction failed: {e}")
 
+from simulator import ws_manager, telemetry_simulator
+
+class ScenarioRequest(BaseModel):
+    scenario: str  # "gas_kick", "lost_circulation", "stuck_pipe", "normal"
+
+class ControlRequest(BaseModel):
+    action: str  # "play", "pause", "reset", "step"
+    well_id: Optional[str] = None
+    depth: Optional[float] = None
+
+@app.post("/api/simulator/scenario")
+async def trigger_scenario(req: ScenarioRequest):
+    """
+    CORRECTION 4 REQUIREMENT:
+    Modifies underlying simulated telemetry values realistically for that scenario type.
+    Computes resulting risk scores from those simulated values and broadcasts to all WebSocket clients.
+    """
+    res = telemetry_simulator.set_scenario(req.scenario)
+    await ws_manager.broadcast({
+        "status": "success",
+        "data": res["data"],
+        "prediction": res["prediction"],
+        "scenario": res["scenario"],
+        "is_running": telemetry_simulator.is_running
+    })
+    return {
+        "status": "success",
+        "scenario": res["scenario"],
+        "data": res["data"],
+        "prediction": res["prediction"]
+    }
+
+@app.post("/api/simulator/control")
+async def control_simulator(req: ControlRequest):
+    """
+    Controls in-app telemetry playback: play, pause, reset, or step.
+    """
+    if req.action == "play":
+        telemetry_simulator.start()
+    elif req.action == "pause":
+        telemetry_simulator.pause()
+    elif req.action == "reset":
+        telemetry_simulator.reset(well_id=req.well_id or "OIL-BAGHJAN-1", depth_tvd=req.depth)
+        await telemetry_simulator.step_and_broadcast()
+    elif req.action == "set_well":
+        telemetry_simulator.reset(well_id=req.well_id or "OIL-BAGHJAN-1", depth_tvd=req.depth)
+        await telemetry_simulator.step_and_broadcast()
+    elif req.action == "step":
+        await telemetry_simulator.step_and_broadcast()
+    return telemetry_simulator.get_status()
+
+@app.get("/api/simulator/status")
+def get_simulator_status():
+    """Returns current telemetry simulator state."""
+    return telemetry_simulator.get_status()
+
 @app.websocket("/api/ws/telemetry")
 async def websocket_telemetry(websocket: WebSocket):
-    await websocket.accept()
+    """
+    Centralized multi-client WebSocket telemetry endpoint.
+    All connected browser clients receive synchronized live streaming updates.
+    """
+    await ws_manager.connect(websocket)
     global ml_service
-    print("Client connected to telemetry WebSocket.")
+    
+    # Send current state immediately on connect
+    current_status = telemetry_simulator.get_status()
+    current_params = current_status["current_params"]
+    prediction = ml_service.predict_risk(current_params) if ml_service else {}
+    
+    try:
+        await websocket.send_json({
+            "status": "success",
+            "data": current_params,
+            "prediction": prediction,
+            "scenario": current_status["active_scenario"],
+            "is_running": current_status["is_running"]
+        })
+    except Exception as e:
+        print(f"Error sending initial state to websocket: {e}")
+        
     try:
         import json
         while True:
@@ -275,11 +354,13 @@ async def websocket_telemetry(websocket: WebSocket):
                     from fastapi.concurrency import run_in_threadpool
                     prediction = await run_in_threadpool(ml_service.predict_risk, params)
                     
-                    # Send back the prediction result
-                    await websocket.send_json({
+                    # Centralized broadcast to ALL connected client tabs
+                    await ws_manager.broadcast({
                         "status": "success",
                         "data": params,
-                        "prediction": prediction
+                        "prediction": prediction,
+                        "scenario": telemetry_simulator.active_scenario,
+                        "is_running": telemetry_simulator.is_running
                     })
                 else:
                     await websocket.send_json({"status": "error", "message": "ML service unavailable"})
@@ -288,4 +369,5 @@ async def websocket_telemetry(websocket: WebSocket):
             except Exception as e:
                 await websocket.send_json({"status": "error", "message": str(e)})
     except WebSocketDisconnect:
-        print("Client disconnected from telemetry WebSocket.")
+        ws_manager.disconnect(websocket)
+

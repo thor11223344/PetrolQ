@@ -20,7 +20,14 @@ import {
   Sparkles,
   X,
   ChevronRight,
-  Layers
+  Layers,
+  Play,
+  Pause,
+  RotateCcw,
+  Flame,
+  Droplets,
+  Anchor,
+  BarChart2
 } from 'lucide-react';
 import axios from 'axios';
 import Plot from 'react-plotly.js';
@@ -37,6 +44,9 @@ import ContributeLessonModal from './components/ContributeLessonModal';
 function App() {
   const [selectedWell, setSelectedWell] = useState('OIL-BAGHJAN-1');
   const [telemetryData, setTelemetryData] = useState(null);
+  const [predictionData, setPredictionData] = useState(null);
+  const [simStatus, setSimStatus] = useState({ is_running: false, active_scenario: 'normal' });
+  const [proximityWarning, setProximityWarning] = useState(null);
   const [trajectoryData, setTrajectoryData] = useState({ depth: [], torque: [], rop: [] });
   const [alertState, setAlertState] = useState({ active: false, prediction: null });
   const [ragContext, setRagContext] = useState(null);
@@ -156,59 +166,167 @@ function App() {
   };
 
   useEffect(() => {
-    // Connect to WebSocket
-    wsRef.current = new WebSocket('ws://localhost:8000/api/ws/telemetry');
+    let isCleanedUp = false;
+    let ws = null;
 
-    wsRef.current.onopen = () => {
-      console.log("WebSocket Connected");
-    };
+    const connectWebSocket = () => {
+      ws = new WebSocket('ws://localhost:8000/api/ws/telemetry');
+      wsRef.current = ws;
 
-    wsRef.current.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.status === 'success') {
-          const currentTelemetry = data.data;
-          const prediction = data.prediction;
-          
-          setTelemetryData(currentTelemetry);
-          
-          // Update Trajectory Data for plotting (keep last 50 points to prevent lag)
-          setTrajectoryData(prev => {
-            const newDepth = [...prev.depth, currentTelemetry.depth_tvd].slice(-50);
-            const newTorque = [...prev.torque, currentTelemetry.torque].slice(-50);
-            const newRop = [...prev.rop, currentTelemetry.rop].slice(-50);
-            return { depth: newDepth, torque: newTorque, rop: newRop };
-          });
+      ws.onopen = () => {
+        if (isCleanedUp) {
+          ws.close();
+          return;
+        }
+        console.log("WebSocket Connected");
+      };
 
-          // Check for High Risk
-          if (prediction?.risk_level === 'HIGH' || prediction?.risk_level === 'CRITICAL') {
-            if (!alertState.active) {
-                // We use functional state update here to ensure we don't spam API
-                setAlertState(prev => {
-                    if (!prev.active) {
-                        fetchRagContext(prediction);
-                        return { active: true, prediction };
-                    }
-                    return prev;
-                });
+      ws.onmessage = (event) => {
+        if (isCleanedUp) return;
+        try {
+          const data = JSON.parse(event.data);
+          if (data.status === 'success') {
+            const currentTelemetry = data.data;
+            const prediction = data.prediction;
+            
+            setTelemetryData(currentTelemetry);
+            if (prediction) {
+              setPredictionData(prediction);
+            }
+            if (data.scenario) {
+              setSimStatus(prev => ({
+                is_running: data.is_running !== undefined ? data.is_running : prev.is_running,
+                active_scenario: data.scenario
+              }));
+            }
+            
+            // Update Trajectory Data for plotting (keep last 50 points to prevent lag)
+            if (currentTelemetry && currentTelemetry.depth_tvd !== undefined) {
+              setTrajectoryData(prev => {
+                const newDepth = [...prev.depth, currentTelemetry.depth_tvd].slice(-50);
+                const newTorque = [...prev.torque, currentTelemetry.torque].slice(-50);
+                const newRop = [...prev.rop, currentTelemetry.rop].slice(-50);
+                return { depth: newDepth, torque: newTorque, rop: newRop };
+              });
+            }
+
+            // Check for High Risk Alert
+            if (prediction?.risk_level === 'HIGH' || prediction?.risk_level === 'CRITICAL') {
+              setAlertState({ active: true, prediction });
+              fetchRagContext(prediction);
+            } else if (data.scenario === 'normal' && prediction?.risk_level === 'LOW') {
+              setAlertState({ active: false, prediction: null });
             }
           }
+        } catch (err) {
+          console.error("Error parsing websocket message", err);
         }
-      } catch (err) {
-        console.error("Error parsing websocket message", err);
-      }
+      };
+
+      ws.onclose = () => {
+        if (!isCleanedUp) {
+          console.log("WebSocket Disconnected");
+        }
+      };
+
+      ws.onerror = (err) => {
+        if (!isCleanedUp) {
+          console.warn("WebSocket status note:", err);
+        }
+      };
     };
 
-    wsRef.current.onclose = () => {
-      console.log("WebSocket Disconnected");
-    };
+    connectWebSocket();
 
     return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
+      isCleanedUp = true;
+      if (ws) {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.close();
+        } else if (ws.readyState === WebSocket.CONNECTING) {
+          // Defer close until handshake finishes to avoid closing before connection established
+          ws.onopen = () => {
+            ws.close();
+          };
+        }
       }
     };
-  }, [alertState.active]);
+  }, []);
+
+  // Proactive Depth-Proximity Lookahead Warning Engine (CORRECTION 3: Reuses /api/wells/{id}/lookahead)
+  useEffect(() => {
+    const checkDepthProximity = async () => {
+      const currentDepth = telemetryData?.depth_tvd || 2240.0;
+      try {
+        const res = await axios.get(`http://localhost:8000/api/wells/${selectedWell}/lookahead`, {
+          params: { current_depth: currentDepth, window_meters: 250.0 }
+        });
+        const lookahead = res.data;
+        const dist = lookahead?.distance_to_next_formation_m;
+        const nextForm = lookahead?.next_formation;
+        
+        // Trigger amber proactive warning when within 50m of impending formation or hazard corridor
+        if (dist !== null && dist !== undefined && dist <= 50.0 && dist > 0) {
+          const upcoming = lookahead?.upcoming_formations?.[0] || {};
+          const kickCount = lookahead?.kick_events_count || 0;
+          const nearestEvent = lookahead?.events?.[0];
+          
+          setProximityWarning({
+            active: true,
+            formation: nextForm || 'Target Formation',
+            distance_m: dist,
+            tvd_top: upcoming.tvd_top || Math.round(currentDepth + dist),
+            primary_risk: upcoming.primary_risk || (kickCount > 0 ? 'Abnormal Gas Kick & Well Control Risk' : 'Stratigraphic Transition'),
+            offset_precedent: nearestEvent ? `${nearestEvent.event_type} at ${nearestEvent.depth_tvd}m in ${nearestEvent.well_id}` : null
+          });
+        } else {
+          setProximityWarning(null);
+        }
+      } catch (err) {
+        console.error("Proactive lookahead proximity check failed", err);
+      }
+    };
+
+    checkDepthProximity();
+  }, [selectedWell, telemetryData?.depth_tvd]);
+
+  // Simulator Control Handlers (CORRECTION 4: Scenario Injector drives realistic physical parameters)
+  const handleSimControl = async (action) => {
+    try {
+      const res = await axios.post('http://localhost:8000/api/simulator/control', {
+        action,
+        well_id: selectedWell,
+        depth: telemetryData?.depth_tvd || 2240.0
+      });
+      setSimStatus(prev => ({ ...prev, is_running: res.data.is_running }));
+    } catch (err) {
+      console.error("Failed to control simulator", err);
+    }
+  };
+
+  const handleScenarioInject = async (scenario) => {
+    try {
+      const res = await axios.post('http://localhost:8000/api/simulator/scenario', { scenario });
+      setSimStatus(prev => ({ ...prev, active_scenario: res.data.scenario }));
+    } catch (err) {
+      console.error("Failed to inject scenario", err);
+    }
+  };
+
+  const handleSelectWell = async (newWellId) => {
+    setSelectedWell(newWellId);
+    setProximityWarning(null);
+    setAlertState({ active: false, prediction: null });
+    try {
+      await axios.post('http://localhost:8000/api/simulator/control', {
+        action: 'set_well',
+        well_id: newWellId
+      });
+    } catch (err) {
+      console.error("Failed to switch simulator well", err);
+    }
+  };
+
 
   const fetchRagContext = async (prediction) => {
       try {
@@ -280,7 +398,7 @@ function App() {
               <Database size={14} className="text-status-fluid" />
               <select 
                   value={selectedWell} 
-                  onChange={(e) => setSelectedWell(e.target.value)}
+                  onChange={(e) => handleSelectWell(e.target.value)}
                   className="bg-transparent text-slate-200 text-sm font-medium outline-none cursor-pointer"
               >
                   <option value="OIL-BAGHJAN-1">OIL-BAGHJAN-1</option>
@@ -305,6 +423,15 @@ function App() {
             >
                 <Radar size={14} className="text-amber-400" />
                 <span>Hazard Radar</span>
+            </button>
+
+            <button 
+                onClick={() => setIsCorrelationOpen(true)}
+                className="flex items-center space-x-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 transition shadow-sm"
+                title="Cross-Well Correlation, Casing Programs & Stratigraphic Cross-Section"
+            >
+                <Layers size={14} className="text-indigo-400" />
+                <span>Correlation & Cross-Section</span>
             </button>
 
             <button 
@@ -404,6 +531,52 @@ function App() {
         {/* Map Container */}
         <div className="flex-1 bg-slate-900 relative overflow-hidden flex flex-col">
           
+          {/* Proactive Depth-Proximity Lookahead Warning Banner (CORRECTION 3: Reuses /api/wells/{id}/lookahead) */}
+          {proximityWarning?.active && (
+            <div className="absolute top-3 left-4 right-4 z-30 bg-gradient-to-r from-amber-950/95 via-amber-900/90 to-amber-950/95 border-2 border-amber-500/80 p-3.5 rounded-xl shadow-2xl backdrop-blur-md flex items-center justify-between gap-4 animate-in slide-in-from-top-3">
+              <div className="flex items-center space-x-3">
+                <div className="p-2.5 bg-amber-500/20 rounded-lg border border-amber-500/40 text-amber-300 animate-pulse shrink-0">
+                  <AlertTriangle size={22} />
+                </div>
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-[11px] font-black uppercase tracking-wider bg-amber-500 text-slate-950 px-2 py-0.5 rounded font-mono">
+                      Proactive Proximity Alert
+                    </span>
+                    <span className="text-xs font-bold text-amber-200">
+                      {proximityWarning.distance_m}m Ahead: Impending Entry into {proximityWarning.formation} ({proximityWarning.tvd_top}m TVD)
+                    </span>
+                  </div>
+                  <p className="text-xs text-amber-100/90 mt-1">
+                    <strong className="text-white">Threat:</strong> {proximityWarning.primary_risk}
+                    {proximityWarning.offset_precedent && (
+                      <span className="text-amber-300 font-mono ml-2">
+                        • Precedent: {proximityWarning.offset_precedent}
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2 shrink-0">
+                <button
+                  onClick={() => setIsRadarOpen(true)}
+                  className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center space-x-1.5 shadow-lg shadow-amber-500/30 transition cursor-pointer"
+                >
+                  <Radar size={14} />
+                  <span>Inspect Ahead-of-Bit Radar</span>
+                </button>
+                <button
+                  onClick={() => setProximityWarning(null)}
+                  className="p-1 rounded-lg text-amber-300/70 hover:text-white hover:bg-amber-900/50 transition"
+                  title="Dismiss alert"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Active Drilling Status Card overlay */}
           <div className="absolute top-4 left-4 z-10 flex gap-4">
             <div className="bg-slate-900/90 backdrop-blur border border-slate-700 p-4 rounded-lg shadow-xl min-w-[200px]">
@@ -465,9 +638,103 @@ function App() {
             })()}
           </div>
 
+          {/* In-App Telemetry Feed Controller (CORRECTION 4: Realistic Scenario Injector) */}
+          <div className="absolute bottom-6 left-4 z-20 bg-slate-900/95 backdrop-blur-md border border-slate-700/80 p-3 rounded-xl shadow-2xl flex flex-wrap items-center gap-3">
+            <div className="flex items-center space-x-2 border-r border-slate-800 pr-3">
+              <button
+                onClick={() => handleSimControl(simStatus.is_running ? 'pause' : 'play')}
+                className={`px-3 py-1.5 rounded-lg font-bold text-xs flex items-center space-x-1.5 transition shadow-md ${
+                  simStatus.is_running
+                    ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-500/20'
+                    : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/20'
+                }`}
+              >
+                {simStatus.is_running ? <Pause size={14} /> : <Play size={14} />}
+                <span>{simStatus.is_running ? 'Pause Simulator' : 'Play Simulator'}</span>
+              </button>
+
+              <button
+                onClick={() => handleSimControl('reset')}
+                className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition"
+                title="Reset TVD to 2240m"
+              >
+                <RotateCcw size={14} />
+              </button>
+            </div>
+
+            {/* Scenario Injectors */}
+            <div className="flex items-center space-x-1.5">
+              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider mr-1">Inject:</span>
+              
+              <button
+                onClick={() => handleScenarioInject('normal')}
+                className={`px-2.5 py-1 rounded text-xs font-semibold transition border ${
+                  simStatus.active_scenario === 'normal'
+                    ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-300'
+                    : 'bg-slate-800/80 border-slate-700/60 text-slate-400 hover:text-white'
+                }`}
+                title="Nominal baseline circulating parameters"
+              >
+                Normal
+              </button>
+
+              <button
+                onClick={() => handleScenarioInject('gas_kick')}
+                className={`px-2.5 py-1 rounded text-xs font-semibold transition border flex items-center space-x-1 ${
+                  simStatus.active_scenario === 'gas_kick'
+                    ? 'bg-amber-500/30 border-amber-500/80 text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.3)]'
+                    : 'bg-amber-950/20 border-amber-800/40 text-amber-400 hover:bg-amber-900/30'
+                }`}
+                title="Simulate formation gas influx (flow-out increase, pit gain, SPP drop)"
+              >
+                <Flame size={12} />
+                <span>Inject Gas Kick</span>
+              </button>
+
+              <button
+                onClick={() => handleScenarioInject('lost_circulation')}
+                className={`px-2.5 py-1 rounded text-xs font-semibold transition border flex items-center space-x-1 ${
+                  simStatus.active_scenario === 'lost_circulation'
+                    ? 'bg-cyan-500/30 border-cyan-500/80 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
+                    : 'bg-cyan-950/20 border-cyan-800/40 text-cyan-400 hover:bg-cyan-900/30'
+                }`}
+                title="Simulate mud loss (flow-out deficit, pit volume drop, ECD decrease)"
+              >
+                <Droplets size={12} />
+                <span>Inject Lost Circ</span>
+              </button>
+
+              <button
+                onClick={() => handleScenarioInject('stuck_pipe')}
+                className={`px-2.5 py-1 rounded text-xs font-semibold transition border flex items-center space-x-1 ${
+                  simStatus.active_scenario === 'stuck_pipe'
+                    ? 'bg-rose-500/30 border-rose-500/80 text-rose-300 shadow-[0_0_10px_rgba(244,63,94,0.3)]'
+                    : 'bg-rose-950/20 border-rose-800/40 text-rose-400 hover:bg-rose-900/30'
+                }`}
+                title="Simulate mechanical packoff (torque spike, zero ROP, motor stall)"
+              >
+                <Anchor size={12} />
+                <span>Inject Stuck Pipe</span>
+              </button>
+            </div>
+
+            {/* Active Status Badge */}
+            <div className="flex items-center space-x-2 border-l border-slate-800 pl-3">
+              <span className={`w-2 h-2 rounded-full ${simStatus.is_running ? 'bg-emerald-400 animate-ping' : 'bg-slate-600'}`}></span>
+              <span className="text-[11px] font-mono text-slate-300">
+                {simStatus.active_scenario !== 'normal' ? (
+                  <span className="text-amber-400 font-bold uppercase">{simStatus.active_scenario.replace('_', ' ')} (Active)</span>
+                ) : (
+                  <span>Baseline Steady</span>
+                )}
+              </span>
+            </div>
+          </div>
+
+
           <WellMap 
              activeWellId={selectedWell} 
-             onSelectWell={setSelectedWell} 
+             onSelectWell={handleSelectWell} 
           />
         </div>
 
@@ -525,9 +792,151 @@ function App() {
           
           <div className="flex-1 p-4 overflow-y-auto custom-scrollbar pb-10 space-y-4">
             
+            {/* Multi-Hazard Risk Engine Gauges (SIH 2026 Mandate) */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
+                <div className="flex items-center space-x-2">
+                  <Gauge size={16} className="text-cyan-400" />
+                  <h3 className="text-xs uppercase font-bold text-slate-300 tracking-wider">Multi-Hazard Risk Engine</h3>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs text-slate-400">Composite:</span>
+                  <span className={`text-xs font-bold font-mono px-2 py-0.5 rounded ${
+                    (predictionData?.risk_probability || 0.15) >= 0.75 ? 'bg-red-500/20 text-red-400 border border-red-500/40' :
+                    (predictionData?.risk_probability || 0.15) >= 0.40 ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' :
+                    'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                  }`}>
+                    {Math.round((predictionData?.risk_probability || 0.15) * 100)}% ({predictionData?.risk_level || 'LOW'})
+                  </span>
+                </div>
+              </div>
+
+              {/* 4 Disaggregated Hazard Indicators */}
+              <div className="grid grid-cols-2 gap-2.5">
+                {/* Gas Kick */}
+                {(() => {
+                  const kick = predictionData?.hazards?.gas_kick || { probability: 0.08, level: 'LOW', key_indicator: 'Flow: 100%, Pit: +0 bbl' };
+                  return (
+                    <div className="p-2.5 rounded-lg bg-slate-950/70 border border-slate-800 flex flex-col justify-between">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[11px] font-semibold text-slate-300 flex items-center space-x-1">
+                          <Flame size={12} className="text-amber-400" />
+                          <span>Gas Kick</span>
+                        </span>
+                        <span className={`text-[10px] font-mono font-bold ${kick.probability > 0.6 ? 'text-amber-400' : 'text-slate-400'}`}>
+                          {Math.round(kick.probability * 100)}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mb-1.5">
+                        <div 
+                          className={`h-full transition-all duration-500 ${kick.probability > 0.7 ? 'bg-red-500' : kick.probability > 0.35 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                          style={{ width: `${Math.round(kick.probability * 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-mono truncate">{kick.key_indicator || 'Nominal'}</span>
+                    </div>
+                  );
+                })()}
+
+                {/* Lost Circulation */}
+                {(() => {
+                  const loss = predictionData?.hazards?.lost_circulation || { probability: 0.07, level: 'LOW', key_indicator: 'Flow: 100%, Normal FG' };
+                  return (
+                    <div className="p-2.5 rounded-lg bg-slate-950/70 border border-slate-800 flex flex-col justify-between">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[11px] font-semibold text-slate-300 flex items-center space-x-1">
+                          <Droplets size={12} className="text-cyan-400" />
+                          <span>Lost Circ</span>
+                        </span>
+                        <span className={`text-[10px] font-mono font-bold ${loss.probability > 0.6 ? 'text-cyan-400' : 'text-slate-400'}`}>
+                          {Math.round(loss.probability * 100)}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mb-1.5">
+                        <div 
+                          className={`h-full transition-all duration-500 ${loss.probability > 0.7 ? 'bg-red-500' : loss.probability > 0.35 ? 'bg-cyan-500' : 'bg-emerald-500'}`}
+                          style={{ width: `${Math.round(loss.probability * 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-mono truncate">{loss.key_indicator || 'Nominal'}</span>
+                    </div>
+                  );
+                })()}
+
+                {/* Stuck Pipe */}
+                {(() => {
+                  const stuck = predictionData?.hazards?.stuck_pipe || { probability: 0.06, level: 'LOW', key_indicator: 'Torque Normal' };
+                  return (
+                    <div className="p-2.5 rounded-lg bg-slate-950/70 border border-slate-800 flex flex-col justify-between">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[11px] font-semibold text-slate-300 flex items-center space-x-1">
+                          <Anchor size={12} className="text-rose-400" />
+                          <span>Stuck Pipe</span>
+                        </span>
+                        <span className={`text-[10px] font-mono font-bold ${stuck.probability > 0.6 ? 'text-rose-400' : 'text-slate-400'}`}>
+                          {Math.round(stuck.probability * 100)}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mb-1.5">
+                        <div 
+                          className={`h-full transition-all duration-500 ${stuck.probability > 0.7 ? 'bg-red-500' : stuck.probability > 0.35 ? 'bg-rose-500' : 'bg-emerald-500'}`}
+                          style={{ width: `${Math.round(stuck.probability * 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-mono truncate">{stuck.key_indicator || 'Torque normal'}</span>
+                    </div>
+                  );
+                })()}
+
+                {/* Torque & Drag */}
+                {(() => {
+                  const torqueH = predictionData?.hazards?.torque_drag || { probability: 0.08, level: 'LOW', key_indicator: 'Smooth Rotation' };
+                  return (
+                    <div className="p-2.5 rounded-lg bg-slate-950/70 border border-slate-800 flex flex-col justify-between">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[11px] font-semibold text-slate-300 flex items-center space-x-1">
+                          <RotateCcw size={12} className="text-purple-400" />
+                          <span>Torque & Drag</span>
+                        </span>
+                        <span className={`text-[10px] font-mono font-bold ${torqueH.probability > 0.6 ? 'text-purple-400' : 'text-slate-400'}`}>
+                          {Math.round(torqueH.probability * 100)}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mb-1.5">
+                        <div 
+                          className={`h-full transition-all duration-500 ${torqueH.probability > 0.7 ? 'bg-red-500' : torqueH.probability > 0.35 ? 'bg-purple-500' : 'bg-emerald-500'}`}
+                          style={{ width: `${Math.round(torqueH.probability * 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-mono truncate">{torqueH.key_indicator || 'Nominal'}</span>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Physics Parameters Footer */}
+              <div className="pt-2 border-t border-slate-800/80 grid grid-cols-3 gap-2 text-[11px] font-mono text-slate-400">
+                <div>
+                  <span className="text-slate-500 block">MSE:</span>
+                  <span className="text-white font-semibold">{predictionData?.mse_kpsi || '---'} kpsi</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block">d_xc:</span>
+                  <span className="text-white font-semibold">{predictionData?.d_xc || '---'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block">FG Margin:</span>
+                  <span className="text-emerald-400 font-semibold">
+                    {predictionData?.fracture_margin_ppg ? `${predictionData.fracture_margin_ppg > 0 ? '+' : ''}${predictionData.fracture_margin_ppg} ppg` : '---'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
             {/* Real-time Trajectory Widget */}
             <div className="bg-slate-900 border border-slate-800 rounded p-4 mb-4">
               <h3 className="text-xs uppercase font-bold text-slate-500 mb-3">Torque vs Depth (TVD)</h3>
+
               <div className="h-64 flex items-center justify-center rounded overflow-hidden">
                 <Plot
                   data={[

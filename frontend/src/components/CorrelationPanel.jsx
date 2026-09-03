@@ -1,17 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Plot from 'react-plotly.js';
-import { X, Loader2, Link2, Columns, Info, HelpCircle, ChevronDown, ChevronUp, Layers } from 'lucide-react';
+import { 
+  X, 
+  Loader2, 
+  Link2, 
+  Columns, 
+  Info, 
+  HelpCircle, 
+  ChevronDown, 
+  ChevronUp, 
+  Layers, 
+  ShieldAlert, 
+  Wrench, 
+  Maximize2,
+  AlertTriangle,
+  CheckCircle2
+} from 'lucide-react';
 
 const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell }) => {
+    const [activeTab, setActiveTab] = useState('dtw'); // 'dtw' | 'casing' | 'cross_section'
+    
+    // DTW state
     const [data, setData] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
     const [isAligned, setIsAligned] = useState(false);
     const [showHelp, setShowHelp] = useState(false);
 
+    // Casing & Cement state
+    const [casingData, setCasingData] = useState(null);
+    const [casingLoading, setCasingLoading] = useState(false);
+
+    // Stratigraphic cross-section state
+    const [stratData, setStratData] = useState(null);
+    const [stratLoading, setStratLoading] = useState(false);
+
+    // Fetch DTW
     useEffect(() => {
-        if (!isOpen) return;
+        if (!isOpen || activeTab !== 'dtw') return;
 
         const fetchCorrelation = async () => {
             setIsLoading(true);
@@ -30,15 +57,58 @@ const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell }) => {
         };
 
         fetchCorrelation();
-    }, [isOpen, activeWell, offsetWell]);
+    }, [isOpen, activeWell, offsetWell, activeTab]);
+
+    // Fetch Casing & Cement
+    useEffect(() => {
+        if (!isOpen || activeTab !== 'casing') return;
+
+        const fetchCasing = async () => {
+            setCasingLoading(true);
+            try {
+                const res = await axios.get('http://localhost:8000/api/wells/casing-cement-correlation', {
+                    params: { active_well: activeWell }
+                });
+                setCasingData(res.data);
+            } catch (err) {
+                console.error("Casing correlation failed", err);
+            } finally {
+                setCasingLoading(false);
+            }
+        };
+
+        fetchCasing();
+    }, [isOpen, activeWell, activeTab]);
+
+    // Fetch Stratigraphic Cross-Section
+    useEffect(() => {
+        if (!isOpen || activeTab !== 'cross_section') return;
+
+        const fetchStrat = async () => {
+            setStratLoading(true);
+            try {
+                const res = await axios.get('http://localhost:8000/api/wells/stratigraphic-cross-section', {
+                    params: { active_well: activeWell }
+                });
+                setStratData(res.data);
+            } catch (err) {
+                console.error("Cross-section failed", err);
+            } finally {
+                setStratLoading(false);
+            }
+        };
+
+        fetchStrat();
+    }, [isOpen, activeWell, activeTab]);
 
     if (!isOpen) return null;
 
+    // DTW plot data preparation
     const traces = [];
     const shapes = [];
     const annotations = [];
     
-    if (data) {
+    if (data && activeTab === 'dtw') {
         // 1. Active Well Trace
         traces.push({
             x: data.active_gr,
@@ -58,7 +128,6 @@ const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell }) => {
         if (isAligned) {
             const alignedOffsetGr = [];
             const alignedOffsetDepths = [];
-            // Use the DTW path to warp the offset well depths to match the active well
             data.mapping.forEach(([aIdx, oIdx]) => {
                 alignedOffsetGr.push(data.offset_gr[oIdx]);
                 alignedOffsetDepths.push(data.active_depths[aIdx]);
@@ -78,7 +147,7 @@ const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell }) => {
             yaxis: 'y'
         });
 
-        // 3. Shaded Formation Bands (Draw clean connector lines & depth labels)
+        // 3. Shaded Formation Bands
         const numBands = 7;
         const step = Math.floor(data.mapping.length / numBands);
         const bandColors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7'];
@@ -99,224 +168,437 @@ const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell }) => {
                 opacity: 0.65
             });
 
-            // Gutter annotation in the center gap (x=0.5)
             annotations.push({
-                xref: 'paper',
-                yref: 'y',
-                x: 0.5,
-                y: isAligned ? activeY : (activeY + offsetY) / 2,
-                text: isAligned 
-                    ? `Horizon ${i} • Aligned (${Math.round(activeY)}m)` 
-                    : `Horizon ${i} • Dip: ${dip > 0 ? '+' : ''}${dip}m`,
+                xref: 'paper', x: 0.5,
+                yref: 'y', y: (activeY + offsetY) / 2,
+                text: isAligned ? `Layer ${i} Correlated` : `Layer ${i}: ${dip > 0 ? `+${dip}m dip` : `${dip}m dip`}`,
                 showarrow: false,
-                font: { size: 9, color: '#f8fafc', family: 'monospace' },
-                bgcolor: 'rgba(15, 23, 42, 0.9)',
+                font: { size: 10, color: '#f8fafc', family: 'monospace' },
+                bgcolor: 'rgba(15, 23, 42, 0.85)',
                 bordercolor: color,
                 borderwidth: 1,
-                borderpad: 3,
-                opacity: 0.95
+                borderpad: 3
             });
         }
     }
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-slate-900 border border-slate-700 w-[84vw] h-[92vh] rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="bg-slate-900 border border-slate-700 w-full max-w-6xl h-[92vh] rounded-xl shadow-2xl overflow-hidden flex flex-col">
                 
-                {/* Header */}
-                <div className="flex justify-between items-center px-5 py-3.5 border-b border-slate-800 bg-slate-900/80">
-                    <div className="flex items-center space-x-3 text-slate-200">
-                        <Link2 size={20} className="text-status-fluid" />
+                {/* Header with Navigation Tabs */}
+                <div className="px-6 py-3.5 bg-slate-950 border-b border-slate-800 flex flex-wrap justify-between items-center gap-4">
+                    <div className="flex items-center space-x-3">
+                        <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20 text-indigo-400">
+                            <Layers size={20} />
+                        </div>
                         <div>
-                            <h2 className="text-lg font-semibold tracking-wide flex items-center gap-2">
-                                Cross-Well Stratigraphic Correlation
-                            </h2>
+                            <div className="flex items-center space-x-2">
+                                <h3 className="text-base font-bold text-white tracking-wide">
+                                    Offset Well Correlation & Geological Synthesis
+                                </h3>
+                                <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-950 border border-cyan-800 text-cyan-300 font-mono">
+                                    {activeWell}
+                                </span>
+                            </div>
                             <p className="text-xs text-slate-400">
-                                Dynamic Time Warping (DTW) geological horizon matching
+                                Cross-well geological matching, casing program design, and stratigraphic fence correlation
                             </p>
                         </div>
                     </div>
-                    
-                    {data && (
-                        <div className="flex items-center space-x-4">
-                            <div className="flex items-center space-x-2 text-sm bg-slate-950/60 px-3 py-1.5 rounded-lg border border-slate-800">
-                                <span className="text-slate-400">DTW Cost:</span>
-                                <span className="font-mono font-semibold text-emerald-400">{data.distance.toFixed(1)}</span>
-                                <span className="text-slate-500 text-xs">(Strong match)</span>
-                            </div>
-                            
-                            <button 
-                                onClick={() => setIsAligned(!isAligned)}
-                                className={`flex items-center space-x-2 px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all shadow-sm ${
-                                    isAligned 
-                                        ? 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-[0_0_15px_rgba(6,182,212,0.4)]' 
-                                        : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
-                                }`}
-                            >
-                                <Columns size={15} />
-                                <span>{isAligned ? '✓ DTW-Aligned View' : 'Raw Depth View'}</span>
-                            </button>
 
-                            <button 
-                                onClick={() => setShowHelp(!showHelp)}
-                                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                                    showHelp ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/40' : 'bg-slate-800/80 hover:bg-slate-800 text-slate-300 border border-slate-700/60'
-                                }`}
-                                title="Learn how to read this chart"
-                            >
-                                <HelpCircle size={14} className="text-indigo-400" />
-                                <span>Guide</span>
-                                {showHelp ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                            </button>
-                        </div>
-                    )}
+                    {/* Tab Switcher */}
+                    <div className="flex items-center bg-slate-900 p-1 rounded-lg border border-slate-800 space-x-1">
+                        <button
+                            onClick={() => setActiveTab('dtw')}
+                            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${
+                                activeTab === 'dtw' 
+                                    ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20' 
+                                    : 'text-slate-400 hover:text-white'
+                            }`}
+                        >
+                            DTW Log Correlation
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('casing')}
+                            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${
+                                activeTab === 'casing' 
+                                    ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20' 
+                                    : 'text-slate-400 hover:text-white'
+                            }`}
+                        >
+                            Casing & Cement Programs
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('cross_section')}
+                            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${
+                                activeTab === 'cross_section' 
+                                    ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20' 
+                                    : 'text-slate-400 hover:text-white'
+                            }`}
+                        >
+                            Stratigraphic Cross-Section (3 Wells)
+                        </button>
+                    </div>
 
-                    <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors p-1 rounded-lg hover:bg-slate-800">
-                        <X size={22} />
-                    </button>
+                    <div className="flex items-center space-x-2">
+                        {activeTab === 'dtw' && (
+                            <>
+                                <button
+                                    onClick={() => setIsAligned(!isAligned)}
+                                    className={`px-3 py-1.5 rounded text-xs font-medium border transition flex items-center space-x-1.5 ${
+                                        isAligned 
+                                            ? 'bg-cyan-950 border-cyan-500/60 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.3)]' 
+                                            : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'
+                                    }`}
+                                >
+                                    <Columns size={13} />
+                                    <span>{isAligned ? 'Warped Depth (Aligned)' : 'Raw Measured Depth'}</span>
+                                </button>
+                                <button
+                                    onClick={() => setShowHelp(!showHelp)}
+                                    className="p-1.5 rounded border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800"
+                                    title="Explanation"
+                                >
+                                    <HelpCircle size={15} />
+                                </button>
+                            </>
+                        )}
+                        <button
+                            onClick={onClose}
+                            className="p-1.5 rounded-lg border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800"
+                        >
+                            <X size={18} />
+                        </button>
+                    </div>
                 </div>
 
-                {/* Guide & Legend Strip */}
-                {data && (
-                    <div className="bg-slate-950/70 border-b border-slate-800/80 px-5 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
-                        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-                            {/* Active Well */}
-                            <div className="flex items-center space-x-2">
-                                <span className="w-3.5 h-1 rounded bg-[#06B6D4] inline-block shadow-[0_0_8px_rgba(6,182,212,0.6)]"></span>
-                                <span className="text-slate-400">Active Well:</span>
-                                <span className="font-semibold text-cyan-300 font-mono">{activeWell}</span>
-                            </div>
-
-                            {/* Offset Well */}
-                            <div className="flex items-center space-x-2">
-                                <span className="w-3.5 h-1 rounded bg-[#F59E0B] inline-block shadow-[0_0_8px_rgba(245,158,11,0.6)]"></span>
-                                <span className="text-slate-400">Historical Offset:</span>
-                                <span className="font-semibold text-amber-300 font-mono">{offsetWell}</span>
-                            </div>
-
-                            <div className="h-4 w-px bg-slate-800 hidden md:block"></div>
-
-                            {/* Colored Lines Description */}
-                            <div className="flex items-center space-x-2">
-                                <div className="flex -space-x-1">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 border border-slate-950"></span>
-                                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 border border-slate-950"></span>
-                                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-slate-950"></span>
-                                    <span className="w-2.5 h-2.5 rounded-full bg-blue-500 border border-slate-950"></span>
+                {/* TAB 1: DTW LOG CORRELATION */}
+                {activeTab === 'dtw' && (
+                    <div className="flex-1 flex flex-col overflow-hidden">
+                        {data && (
+                            <div className="bg-slate-950/70 border-b border-slate-800/80 px-5 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
+                                <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                                    <div className="flex items-center space-x-2">
+                                        <span className="w-3.5 h-1 rounded bg-[#06B6D4] inline-block shadow-[0_0_8px_rgba(6,182,212,0.6)]"></span>
+                                        <span className="text-slate-400">Active Well:</span>
+                                        <span className="font-semibold text-cyan-300 font-mono">{activeWell}</span>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <span className="w-3.5 h-1 rounded bg-[#F59E0B] inline-block shadow-[0_0_8px_rgba(245,158,11,0.6)]"></span>
+                                        <span className="text-slate-400">Historical Offset:</span>
+                                        <span className="font-semibold text-amber-300 font-mono">{offsetWell}</span>
+                                    </div>
+                                    <div className="h-4 w-px bg-slate-800 hidden md:block"></div>
+                                    <div className="text-slate-300">
+                                        <strong className="text-slate-100">DTW Alignment:</strong>
+                                        <span className="text-slate-400 ml-1.5">
+                                            {isAligned 
+                                                ? 'Formations flattened at matching horizon datums' 
+                                                : 'Tie-lines slope illustrates structural formation dip'}
+                                        </span>
+                                    </div>
                                 </div>
-                                <span className="text-slate-300">
-                                    <strong className="text-slate-100">Colored Lines:</strong> Matching formation horizons (rock layers).
-                                    <span className="text-slate-400 ml-1.5 hidden lg:inline">
-                                        {isAligned 
-                                            ? 'Flattened to confirm geological property match.' 
-                                            : 'Slope shows structural dip / depth offset between wells.'}
+                                <div className="text-slate-400 font-mono">
+                                    DTW Distance: <span className="text-cyan-400 font-bold">{data.distance ? Math.round(data.distance) : 0}</span>
+                                </div>
+                            </div>
+                        )}
+
+                        {showHelp && (
+                            <div className="bg-slate-900/95 border-b border-indigo-500/30 p-4 text-xs animate-in slide-in-from-top-2">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <div className="bg-slate-950/70 p-3 rounded-lg border border-slate-800">
+                                        <h6 className="text-cyan-400 font-semibold mb-1">1. Gamma Ray Curves</h6>
+                                        <p className="text-slate-300 leading-relaxed">
+                                            Shows rock radioactivity (0–120 API). Low GR marks permeable sandstone reservoirs; high GR marks dense shale seals.
+                                        </p>
+                                    </div>
+                                    <div className="bg-slate-950/70 p-3 rounded-lg border border-slate-800">
+                                        <h6 className="text-amber-400 font-semibold mb-1">2. Colored Horizon Tie-Lines</h6>
+                                        <p className="text-slate-300 leading-relaxed">
+                                            Connects the identical geological horizon in both wells. Slope indicates regional dip and displacement across faults.
+                                        </p>
+                                    </div>
+                                    <div className="bg-slate-950/70 p-3 rounded-lg border border-slate-800">
+                                        <h6 className="text-emerald-400 font-semibold mb-1">3. DTW Alignment</h6>
+                                        <p className="text-slate-300 leading-relaxed">
+                                            Stretches curves to align matching formations horizontally, allowing drillers to compare lithology and bed thickness.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        
+                        <div className="flex-1 relative bg-slate-950 p-4">
+                            {isLoading ? (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
+                                    <Loader2 size={32} className="animate-spin mb-4 text-cyan-400" />
+                                    <p>Running FastDTW log correlation...</p>
+                                </div>
+                            ) : error ? (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center text-red-400">
+                                    <p>{error}</p>
+                                </div>
+                            ) : data ? (
+                                <div className="w-full h-full bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
+                                    <Plot
+                                        data={traces}
+                                        revision={isAligned ? 1 : 0}
+                                        layout={{
+                                            datarevision: isAligned ? 1 : 0,
+                                            autosize: true,
+                                            margin: { l: 60, r: 40, b: 50, t: 30 },
+                                            paper_bgcolor: 'transparent',
+                                            plot_bgcolor: 'transparent',
+                                            hovermode: 'y unified',
+                                            xaxis: { 
+                                                domain: [0, 0.45],
+                                                title: 'Active Well GR (API)', 
+                                                gridcolor: '#334155', 
+                                                zerolinecolor: '#334155', 
+                                                color: '#06B6D4'
+                                            },
+                                            xaxis2: { 
+                                                domain: [0.55, 1],
+                                                title: 'Offset Well GR (API)', 
+                                                gridcolor: '#334155', 
+                                                zerolinecolor: '#334155', 
+                                                color: '#F59E0B'
+                                            },
+                                            yaxis: { 
+                                                title: 'Depth TVD (m)', 
+                                                autorange: 'reversed', 
+                                                gridcolor: '#334155', 
+                                                zerolinecolor: '#334155', 
+                                                color: '#94a3b8',
+                                                spikemode: 'across',
+                                                spikedash: 'solid',
+                                                spikecolor: '#64748b',
+                                                spikethickness: 1
+                                            },
+                                            shapes: shapes,
+                                            annotations: annotations,
+                                            showlegend: false
+                                        }}
+                                        useResizeHandler={true}
+                                        style={{ width: '100%', height: '100%' }}
+                                    />
+                                </div>
+                            ) : null}
+                        </div>
+                    </div>
+                )}
+
+                {/* TAB 2: CASING & CEMENTING CORRELATION */}
+                {activeTab === 'casing' && (
+                    <div className="flex-1 overflow-y-auto p-6 bg-slate-950 space-y-6">
+                        {casingLoading ? (
+                            <div className="h-64 flex flex-col items-center justify-center text-slate-400">
+                                <Loader2 size={32} className="animate-spin mb-4 text-cyan-400" />
+                                <p>Loading casing and cementing programs...</p>
+                            </div>
+                        ) : casingData ? (
+                            <>
+                                {/* Recommended Engineering Best Practices Box */}
+                                <div className="p-4 rounded-xl bg-cyan-950/30 border border-cyan-800/50">
+                                    <div className="flex items-center space-x-2 text-cyan-300 font-bold text-sm mb-2">
+                                        <Wrench size={16} />
+                                        <span>Engineering Casing & Cementing Guidelines for {activeWell}</span>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-slate-300">
+                                        {casingData.recommended_practices?.map((rec, i) => (
+                                            <div key={i} className="flex items-start space-x-2 bg-slate-900/60 p-2.5 rounded border border-slate-800">
+                                                <CheckCircle2 size={14} className="text-cyan-400 mt-0.5 shrink-0" />
+                                                <span>{rec}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Comparison across wells */}
+                                <div className="space-y-6">
+                                    {casingData.comparison?.map((well, wIdx) => (
+                                        <div key={wIdx} className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+                                            <div className="px-5 py-3 bg-slate-800/60 border-b border-slate-700/60 flex items-center justify-between">
+                                                <div className="flex items-center space-x-3">
+                                                    <span className={`w-3 h-3 rounded-full ${well.role.includes('Active') ? 'bg-cyan-400' : 'bg-amber-400'}`}></span>
+                                                    <h4 className="font-bold text-white text-sm font-mono">{well.well_id}</h4>
+                                                    <span className="text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-300">{well.role}</span>
+                                                </div>
+                                                <span className="text-xs text-slate-400 font-mono">Planned TD: {well.total_depth_tvd}m TVD</span>
+                                            </div>
+
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-left text-xs text-slate-300">
+                                                    <thead className="bg-slate-950/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+                                                        <tr>
+                                                            <th className="px-4 py-2.5">Casing String</th>
+                                                            <th className="px-3 py-2.5">Hole / OD</th>
+                                                            <th className="px-3 py-2.5">Depth (TVD)</th>
+                                                            <th className="px-3 py-2.5">Weight / Grade</th>
+                                                            <th className="px-3 py-2.5">Shoe Formation</th>
+                                                            <th className="px-3 py-2.5">TOC</th>
+                                                            <th className="px-3 py-2.5">Slurry / Density</th>
+                                                            <th className="px-3 py-2.5">LOT EMW</th>
+                                                            <th className="px-4 py-2.5">Integrity & Offset Notes</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-800/60">
+                                                        {well.casing_strings?.map((cs, cIdx) => (
+                                                            <tr key={cIdx} className="hover:bg-slate-800/40 transition">
+                                                                <td className="px-4 py-3 font-semibold text-white">{cs.name}</td>
+                                                                <td className="px-3 py-3 font-mono">{cs.hole_size_in}" / {cs.casing_od_in}"</td>
+                                                                <td className="px-3 py-3 font-mono text-cyan-300">{cs.depth_tvd_m} m</td>
+                                                                <td className="px-3 py-3 font-mono">{cs.weight_ppf}# {cs.grade}</td>
+                                                                <td className="px-3 py-3">{cs.shoe_formation}</td>
+                                                                <td className="px-3 py-3 font-mono text-slate-400">{cs.toc_tvd_m} m</td>
+                                                                <td className="px-3 py-3">
+                                                                    <div className="font-semibold text-slate-200">{cs.slurry_density_ppg} ppg</div>
+                                                                    <div className="text-[11px] text-slate-400 truncate max-w-[160px]">{cs.slurry_type}</div>
+                                                                </td>
+                                                                <td className="px-3 py-3 font-mono font-bold text-amber-300">{cs.lot_emw_ppg} ppg</td>
+                                                                <td className="px-4 py-3 text-slate-300 max-w-xs">
+                                                                    {cs.integrity_notes.includes('WARNING') ? (
+                                                                        <span className="text-amber-300 font-semibold">{cs.integrity_notes}</span>
+                                                                    ) : (
+                                                                        cs.integrity_notes
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        ) : null}
+                    </div>
+                )}
+
+                {/* TAB 3: STRATIGRAPHIC CROSS-SECTION (3 OFFSET WELLS FENCE DIAGRAM) */}
+                {activeTab === 'cross_section' && (
+                    <div className="flex-1 overflow-y-auto p-6 bg-slate-950 flex flex-col space-y-4">
+                        {stratLoading ? (
+                            <div className="h-64 flex flex-col items-center justify-center text-slate-400">
+                                <Loader2 size={32} className="animate-spin mb-4 text-cyan-400" />
+                                <p>Constructing 3-well stratigraphic fence diagram...</p>
+                            </div>
+                        ) : stratData ? (
+                            <>
+                                {/* Geological Summary Banner */}
+                                <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-xs flex items-center justify-between">
+                                    <div className="flex items-center space-x-2 text-slate-300">
+                                        <Info size={15} className="text-cyan-400 shrink-0" />
+                                        <span>{stratData.geological_summary}</span>
+                                    </div>
+                                    <span className="text-slate-400 font-mono text-[11px] shrink-0 ml-4">
+                                        Orientation: {stratData.cross_section_orientation}
                                     </span>
-                                </span>
-                            </div>
-                        </div>
+                                </div>
 
-                        <div className="text-slate-400 flex items-center space-x-1.5">
-                            <span className="inline-block w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
-                            <span>{isAligned ? 'Formations aligned at common datum' : 'Showing true measured depths'}</span>
-                        </div>
+                                {/* Fence Diagram Visual Canvas */}
+                                <div className="flex-1 bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col">
+                                    {/* Well Headers */}
+                                    <div className="grid grid-cols-3 gap-8 mb-4 border-b border-slate-800 pb-3">
+                                        {stratData.wells?.map((w, i) => (
+                                            <div key={i} className={`text-center p-3 rounded-lg border ${w.is_active ? 'bg-cyan-950/40 border-cyan-500/50' : 'bg-slate-950/60 border-slate-800'}`}>
+                                                <div className="flex items-center justify-center space-x-2">
+                                                    <span className={`w-2.5 h-2.5 rounded-full ${w.is_active ? 'bg-cyan-400 animate-pulse' : 'bg-amber-400'}`}></span>
+                                                    <h5 className="font-bold text-sm text-white font-mono">{w.name}</h5>
+                                                </div>
+                                                <div className="text-[11px] text-slate-400 mt-1 flex justify-center space-x-4 font-mono">
+                                                    <span>KB: {w.kb_elevation_m}m</span>
+                                                    <span>TD: {w.total_depth_tvd_m}m</span>
+                                                    <span>Offset: {w.x_offset_km} km</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Stratigraphic Columns & Formations */}
+                                    <div className="grid grid-cols-3 gap-8 flex-1 relative min-h-[420px]">
+                                        {stratData.wells?.map((w, wIdx) => (
+                                            <div key={wIdx} className="flex flex-col h-full space-y-1.5 relative">
+                                                {w.formations?.map((form, fIdx) => {
+                                                    const thickness = form.base_tvd - form.top_tvd;
+                                                    // Calculate height percentage relative to well TD (~3600m)
+                                                    const heightPct = Math.max(12, (thickness / 3600.0) * 100);
+                                                    return (
+                                                        <div 
+                                                            key={fIdx} 
+                                                            style={{ 
+                                                                flexGrow: thickness,
+                                                                borderLeftColor: form.color,
+                                                                borderLeftWidth: '4px'
+                                                            }}
+                                                            className="rounded p-2.5 bg-slate-950/70 border border-slate-800 flex flex-col justify-between hover:bg-slate-800/60 transition group relative"
+                                                        >
+                                                            <div className="flex justify-between items-start">
+                                                                <div>
+                                                                    <span className="font-bold text-xs" style={{ color: form.color }}>
+                                                                        {form.name}
+                                                                    </span>
+                                                                    <div className="text-[10px] text-slate-400">
+                                                                        {form.lithology}
+                                                                    </div>
+                                                                </div>
+                                                                <span className="text-[10px] font-mono text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded">
+                                                                    Top: {form.top_tvd}m
+                                                                </span>
+                                                            </div>
+                                                            <div className="text-[10px] font-mono text-slate-500 mt-1 flex justify-between">
+                                                                <span>Base: {form.base_tvd}m</span>
+                                                                <span>Δ {Math.round(thickness)}m</span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+
+                                                {/* Incidents on this column */}
+                                                {w.incidents?.map((inc, incIdx) => (
+                                                    <div 
+                                                        key={incIdx} 
+                                                        className="p-2 rounded bg-red-950/60 border border-red-500/40 text-[11px] text-red-200 mt-1 flex items-start space-x-1.5 shadow-lg"
+                                                    >
+                                                        <AlertTriangle size={13} className="text-red-400 mt-0.5 shrink-0" />
+                                                        <div>
+                                                            <div className="font-bold">{inc.type}</div>
+                                                            <div className="text-[10px] text-red-300 font-mono">Depth: {inc.depth_tvd}m TVD ({inc.formation})</div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Correlative Formation Tie-Lines Legend */}
+                                    <div className="mt-6 pt-4 border-t border-slate-800/80">
+                                        <h6 className="text-xs font-bold text-slate-300 mb-2 uppercase tracking-wider">
+                                            Correlative Formation Horizons (Realistic 3D Theme Matching):
+                                        </h6>
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                                            {stratData.tie_lines?.map((tl, tlIdx) => (
+                                                <div key={tlIdx} className="p-2.5 rounded bg-slate-950/80 border border-slate-800 flex flex-col justify-between">
+                                                    <div className="flex items-center space-x-2 mb-1">
+                                                        <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: tl.color }}></span>
+                                                        <span className="font-bold text-white truncate">{tl.formation}</span>
+                                                    </div>
+                                                    <p className="text-[11px] text-slate-400 leading-tight">
+                                                        {tl.structural_dip_trend}
+                                                    </p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
+                        ) : null}
                     </div>
                 )}
 
-                {/* Expandable Explanation Drawer */}
-                {showHelp && (
-                    <div className="bg-slate-900/95 border-b border-indigo-500/30 p-4 text-xs animate-in slide-in-from-top-2">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <div className="bg-slate-950/70 p-3 rounded-lg border border-slate-800">
-                                <div className="flex items-center space-x-2 text-cyan-400 font-semibold mb-1">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
-                                    <h6>1. Gamma Ray Curves</h6>
-                                </div>
-                                <p className="text-slate-300 leading-relaxed">
-                                    Shows rock radioactivity (0–120 API). Low values indicate permeable sandstone reservoirs; high values indicate impermeable shale seals.
-                                </p>
-                            </div>
-
-                            <div className="bg-slate-950/70 p-3 rounded-lg border border-slate-800">
-                                <div className="flex items-center space-x-2 text-amber-400 font-semibold mb-1">
-                                    <Layers size={14} />
-                                    <h6>2. Colored Horizon Tie-Lines</h6>
-                                </div>
-                                <p className="text-slate-300 leading-relaxed">
-                                    Each colored line connects the <strong>exact same geological layer</strong> in both wells. In <em>Raw Depth View</em>, the downward slope indicates the formation is dipping deeper in the offset well.
-                                </p>
-                            </div>
-
-                            <div className="bg-slate-950/70 p-3 rounded-lg border border-slate-800">
-                                <div className="flex items-center space-x-2 text-emerald-400 font-semibold mb-1">
-                                    <Columns size={14} />
-                                    <h6>3. DTW-Aligned View</h6>
-                                </div>
-                                <p className="text-slate-300 leading-relaxed">
-                                    Clicking the toggle stretches and aligns matching layers horizontally. This allows geologists to immediately compare bed thicknesses and verify formation targets.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                )}
-                
-                {/* Plot Area */}
-                <div className="flex-1 relative bg-slate-950 p-4">
-                    {isLoading ? (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
-                            <Loader2 size={32} className="animate-spin mb-4 text-status-fluid" />
-                            <p>Running Dynamic Time Warping...</p>
-                        </div>
-                    ) : error ? (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-red-400">
-                            <p>{error}</p>
-                        </div>
-                    ) : data ? (
-                        <div className="w-full h-full bg-slate-900 border border-slate-800 rounded">
-                            <Plot
-                                data={traces}
-                                revision={isAligned ? 1 : 0}
-                                layout={{
-                                    datarevision: isAligned ? 1 : 0,
-                                    autosize: true,
-                                    margin: { l: 60, r: 40, b: 50, t: 30 },
-                                    paper_bgcolor: 'transparent',
-                                    plot_bgcolor: 'transparent',
-                                    hovermode: 'y unified',
-                                    xaxis: { 
-                                        domain: [0, 0.45],
-                                        title: 'Active Well GR (API)', 
-                                        gridcolor: '#334155', 
-                                        zerolinecolor: '#334155', 
-                                        color: '#06B6D4'
-                                    },
-                                    xaxis2: { 
-                                        domain: [0.55, 1],
-                                        title: 'Offset Well GR (API)', 
-                                        gridcolor: '#334155', 
-                                        zerolinecolor: '#334155', 
-                                        color: '#F59E0B'
-                                    },
-                                    yaxis: { 
-                                        title: 'Depth TVD (m)', 
-                                        autorange: 'reversed', 
-                                        gridcolor: '#334155', 
-                                        zerolinecolor: '#334155', 
-                                        color: '#94a3b8',
-                                        spikemode: 'across',
-                                        spikedash: 'solid',
-                                        spikecolor: '#64748b',
-                                        spikethickness: 1
-                                    },
-                                    shapes: shapes,
-                                    annotations: annotations,
-                                    showlegend: false
-                                }}
-                                useResizeHandler={true}
-                                style={{ width: '100%', height: '100%' }}
-                            />
-                        </div>
-                    ) : null}
-                </div>
             </div>
         </div>
     );

@@ -10,6 +10,7 @@ from trajectory_calc import compute_realistic_trajectory, compute_anti_collision
 router = APIRouter()
 
 @router.get("/api/wells/{well_id}/pre-spud-dossier")
+@router.get("/api/wells/{well_id}/dossier")
 def get_pre_spud_dossier(
     well_id: str,
     radius_km: float = Query(25.0, description="Offset well search radius in km"),

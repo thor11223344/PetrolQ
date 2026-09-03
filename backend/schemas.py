@@ -87,13 +87,33 @@ class TelemetryInput(BaseModel):
     torque: float
     mud_weight: float
     ecd: Optional[float] = None
+    flow_out_pct: Optional[float] = None
+    pit_gain_bbl: Optional[float] = None
+    spp_psi: Optional[float] = None
 
 class SHAPFactor(BaseModel):
     feature: str
     impact: float
     direction: str
 
+class HazardMetric(BaseModel):
+    probability: float
+    level: str
+    trigger_reason: str
+    key_indicator: Optional[str] = None
+    margin: Optional[float] = None
+
+class HazardBreakdown(BaseModel):
+    gas_kick: HazardMetric
+    lost_circulation: HazardMetric
+    stuck_pipe: HazardMetric
+    torque_drag: HazardMetric
+
 class RiskPredictionResponse(BaseModel):
     risk_probability: float
     risk_level: str
     top_factors: List[SHAPFactor]
+    hazards: Optional[HazardBreakdown] = None
+    hazard_breakdown: Optional[HazardBreakdown] = None
+    mse_kpsi: Optional[float] = None
+    d_xc: Optional[float] = None

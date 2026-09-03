@@ -2,8 +2,9 @@ dataset/
 demo_data/
 data/processed/
 __pycache__/
+*.pyc
+.pytest_cache/
+frontend/dist/
 .env
-
-# Ignore PDF reports
 *.pdf
 other_proj/
