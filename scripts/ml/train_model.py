@@ -52,6 +52,8 @@ def bootstrap_mock_data(df, target_size=1000):
         df_synthetic.loc[hazard_mask, 'mud_weight'] *= 1.3  # Elevate mud weight
     if 'depth_tvd' in df_synthetic.columns:
         df_synthetic.loc[hazard_mask, 'depth_tvd'] = 2450.0  # Elevate depth
+    if 'mse' in df_synthetic.columns:
+        df_synthetic.loc[hazard_mask, 'mse'] = 850.0  # Elevate MSE for mechanical sticking/packoff
         
     return pd.concat([df, df_synthetic], ignore_index=True)
 

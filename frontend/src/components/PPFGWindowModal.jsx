@@ -325,12 +325,21 @@ const PPFGWindowModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1' }) =>
               </div>
             </div>
 
-            {/* Engineering Note */}
-            <div className="p-3 rounded-lg bg-cyan-950/20 border border-cyan-800/40 text-[11px] text-cyan-200/90 flex items-start space-x-2">
-              <Info size={16} className="text-cyan-400 flex-shrink-0 mt-0.5" />
-              <span>
-                Derived from Eaton's method calibrated against historical offset kicks and LOT (Leak-Off Test) reports in Upper Assam.
-              </span>
+            {/* Engineering Note - Eaton's Method Technical Methodology */}
+            <div className="p-3 rounded-lg bg-cyan-950/30 border border-cyan-700/50 text-[11px] text-cyan-200 space-y-2">
+              <div className="flex items-start space-x-2">
+                <Info size={16} className="text-cyan-400 flex-shrink-0 mt-0.5" />
+                <span className="font-semibold text-white">Methodology & Transparency:</span>
+              </div>
+              <p className="text-slate-300 leading-relaxed text-[11px]">
+                Pore pressure and fracture gradient computed using Eaton's method (1972) with a synthetic sonic-log input calibrated to produce a plausible Upper Assam Basin overpressure signature — real acoustic log data was not available.
+              </p>
+              <div className="bg-slate-950/80 p-2 rounded border border-slate-800 text-[10px] font-mono text-slate-400 space-y-1">
+                <div><span className="text-cyan-400">• Trend:</span> Δtn(z) = 185 · exp(-0.0003 · z) μs/ft</div>
+                <div><span className="text-cyan-400">• Exponent:</span> N = 3.0 (Eaton shale acoustic)</div>
+                <div><span className="text-cyan-400">• Overburden:</span> σv = 19.2 ppg (1.0 psi/ft constant)</div>
+                <div><span className="text-cyan-400">• Poisson's:</span> ν(z) = 0.25 + 0.15 · (z / 3500)</div>
+              </div>
             </div>
 
           </div>

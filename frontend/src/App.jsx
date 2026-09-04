@@ -63,6 +63,7 @@ function App() {
   const [isDossierOpen, setIsDossierOpen] = useState(false);
   const [isContributeOpen, setIsContributeOpen] = useState(false);
   const [role, setRole] = useState('Field Engineer');
+  const [isBackendConnected, setIsBackendConnected] = useState(false);
   const wsRef = useRef(null);
 
   const showAlerts = role === 'Field Engineer';
@@ -168,78 +169,96 @@ function App() {
   useEffect(() => {
     let isCleanedUp = false;
     let ws = null;
+    let reconnectTimeout = null;
 
     const connectWebSocket = () => {
-      ws = new WebSocket('ws://localhost:8000/api/ws/telemetry');
-      wsRef.current = ws;
+      if (isCleanedUp) return;
+      try {
+        ws = new WebSocket('ws://localhost:8000/api/ws/telemetry');
+        wsRef.current = ws;
 
-      ws.onopen = () => {
-        if (isCleanedUp) {
-          ws.close();
-          return;
-        }
-        console.log("WebSocket Connected");
-      };
-
-      ws.onmessage = (event) => {
-        if (isCleanedUp) return;
-        try {
-          const data = JSON.parse(event.data);
-          if (data.status === 'success') {
-            const currentTelemetry = data.data;
-            const prediction = data.prediction;
-            
-            setTelemetryData(currentTelemetry);
-            if (prediction) {
-              setPredictionData(prediction);
-            }
-            if (data.scenario) {
-              setSimStatus(prev => ({
-                is_running: data.is_running !== undefined ? data.is_running : prev.is_running,
-                active_scenario: data.scenario
-              }));
-            }
-            
-            // Update Trajectory Data for plotting (keep last 50 points to prevent lag)
-            if (currentTelemetry && currentTelemetry.depth_tvd !== undefined) {
-              setTrajectoryData(prev => {
-                const newDepth = [...prev.depth, currentTelemetry.depth_tvd].slice(-50);
-                const newTorque = [...prev.torque, currentTelemetry.torque].slice(-50);
-                const newRop = [...prev.rop, currentTelemetry.rop].slice(-50);
-                return { depth: newDepth, torque: newTorque, rop: newRop };
-              });
-            }
-
-            // Check for High Risk Alert
-            if (prediction?.risk_level === 'HIGH' || prediction?.risk_level === 'CRITICAL') {
-              setAlertState({ active: true, prediction });
-              fetchRagContext(prediction);
-            } else if (data.scenario === 'normal' && prediction?.risk_level === 'LOW') {
-              setAlertState({ active: false, prediction: null });
-            }
+        ws.onopen = () => {
+          if (isCleanedUp) {
+            ws.close();
+            return;
           }
-        } catch (err) {
-          console.error("Error parsing websocket message", err);
-        }
-      };
+          console.log("WebSocket Connected to FastAPI (:8000)");
+          setIsBackendConnected(true);
+          fetchHistory(selectedWell);
+        };
 
-      ws.onclose = () => {
-        if (!isCleanedUp) {
-          console.log("WebSocket Disconnected");
-        }
-      };
+        ws.onmessage = (event) => {
+          if (isCleanedUp) return;
+          try {
+            const data = JSON.parse(event.data);
+            if (data.status === 'success') {
+              const currentTelemetry = data.data;
+              const prediction = data.prediction;
+              
+              setTelemetryData(currentTelemetry);
+              if (prediction) {
+                setPredictionData(prediction);
+              }
+              if (data.scenario) {
+                setSimStatus(prev => ({
+                  is_running: data.is_running !== undefined ? data.is_running : prev.is_running,
+                  active_scenario: data.scenario
+                }));
+              }
+              
+              // Update Trajectory Data for plotting (keep last 50 points to prevent lag)
+              if (currentTelemetry && currentTelemetry.depth_tvd !== undefined) {
+                setTrajectoryData(prev => {
+                  const newDepth = [...prev.depth, currentTelemetry.depth_tvd].slice(-50);
+                  const newTorque = [...prev.torque, currentTelemetry.torque].slice(-50);
+                  const newRop = [...prev.rop, currentTelemetry.rop].slice(-50);
+                  return { depth: newDepth, torque: newTorque, rop: newRop };
+                });
+              }
 
-      ws.onerror = (err) => {
+              // Check for High Risk Alert
+              if (prediction?.risk_level === 'HIGH' || prediction?.risk_level === 'CRITICAL') {
+                setAlertState({ active: true, prediction });
+                fetchRagContext(prediction);
+              } else if (data.scenario === 'normal' && prediction?.risk_level === 'LOW') {
+                setAlertState({ active: false, prediction: null });
+              }
+            }
+          } catch (err) {
+            console.error("Error parsing websocket message", err);
+          }
+        };
+
+        ws.onclose = () => {
+          if (!isCleanedUp) {
+            setIsBackendConnected(false);
+            // Auto-reconnect after 3 seconds
+            reconnectTimeout = setTimeout(() => {
+              connectWebSocket();
+            }, 3000);
+          }
+        };
+
+        ws.onerror = () => {
+          if (!isCleanedUp) {
+            setIsBackendConnected(false);
+          }
+        };
+      } catch (err) {
+        setIsBackendConnected(false);
         if (!isCleanedUp) {
-          console.warn("WebSocket status note:", err);
+          reconnectTimeout = setTimeout(() => {
+            connectWebSocket();
+          }, 3000);
         }
-      };
+      }
     };
 
     connectWebSocket();
 
     return () => {
       isCleanedUp = true;
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
       if (ws) {
         if (ws.readyState === WebSocket.OPEN) {
           ws.close();
@@ -251,7 +270,7 @@ function App() {
         }
       }
     };
-  }, []);
+  }, [selectedWell, fetchHistory]);
 
   // Proactive Depth-Proximity Lookahead Warning Engine (CORRECTION 3: Reuses /api/wells/{id}/lookahead)
   useEffect(() => {
@@ -412,6 +431,27 @@ function App() {
                   <option value="OIL-SHALMARI-1">OIL-SHALMARI-1</option>
               </select>
             </div>
+          </div>
+
+          {/* Backend API Live Status Indicator */}
+          <div className="flex items-center space-x-2 border-l border-slate-800 pl-4">
+            {isBackendConnected ? (
+              <div 
+                className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono"
+                title="FastAPI Backend is online on port 8000"
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>API Online</span>
+              </div>
+            ) : (
+              <div 
+                className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-rose-500/15 border border-rose-500/40 text-rose-300 text-xs font-mono animate-pulse"
+                title="FastAPI is offline at port 8000. Start it via 'npm run dev' or '.\start.bat'"
+              >
+                <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                <span>API Offline (:8000)</span>
+              </div>
+            )}
           </div>
 
           {/* Core Decision Support Modules (SIH 2026 Mandate) */}

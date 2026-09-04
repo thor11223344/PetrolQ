@@ -14,6 +14,9 @@ def get_ppfg_safe_window(
 ):
     """
     Pore Pressure & Fracture Gradient (PPFG) Safe Mud Weight Window:
+    Pore pressure and fracture gradient computed using Eaton's method (1972) with a synthetic
+    sonic-log input calibrated to produce a plausible Upper Assam Basin overpressure signature
+    — real acoustic log data was not available.
     Generates depth-indexed Pore Pressure and Fracture Gradient curves (in ppg and sg)
     alongside casing shoe depths and the active rig's current Equivalent Circulating Density (ECD).
     """
@@ -25,32 +28,52 @@ def get_ppfg_safe_window(
     num_pts = 80
     depths_tvd = np.linspace(50.0, tvd_max, num_pts)
 
-    # 1. Pore Pressure Gradient Curve (ppg)
-    # Upper Assam basin profile: Hydrostatic shallow, abrupt overpressure ramp in Barail Formation (2200-2800m)
-    pp_curve = []
-    for z in depths_tvd:
-        if z < 1200:
-            pp = 8.6 + 0.2 * (z / 1200.0) # Normal hydrostatic fresh/brackish water
-        elif z < 2100:
-            pp = 8.8 + 0.8 * ((z - 1200.0) / 900.0) # Transition zone
-        elif z < 2800:
-            # Overpressure transition in Barail shale/sand kick zone
-            ramp = (z - 2100.0) / 700.0
-            pp = 9.6 + 2.8 * (ramp ** 1.3) # Climbs to ~12.4 ppg
-        else:
-            pp = 12.4 + 0.3 * np.sin((z - 2800.0) / 200.0)
-        pp_curve.append(round(float(pp), 2))
+    # -------------------------------------------------------------------------
+    # GENUINE EATON'S METHOD (1972) PORE PRESSURE & FRACTURE GRADIENT
+    # -------------------------------------------------------------------------
+    # SIMPLIFIED: constant overburden gradient, not integrated from density log
+    sigma_v = 19.2  # ppg (~1.0 psi/ft) Overburden stress gradient
+    p_hyd = 8.6     # ppg (~0.447 psi/ft) Normal hydrostatic gradient
+    eaton_n = 3.0   # Standard published Eaton acoustic transit time exponent for shales
 
-    # 2. Fracture Gradient Curve (ppg) (Eaton's / Hubbert-Willis correlation)
-    fg_curve = []
-    for z in depths_tvd:
-        if z < 1200:
-            fg = 13.0 + 1.2 * (z / 1200.0) # Shallow unconsolidated rock
-        elif z < 2200:
-            fg = 14.2 + 0.9 * ((z - 1200.0) / 1000.0)
+    # 1. Normal Compaction Trend (sonic-based):
+    # Δtn(z) = 185 * exp(-0.0003 * z) [μs/ft, normal shale compaction trend]
+    dt_n = 185.0 * np.exp(-0.0003 * depths_tvd)
+
+    # 2. Observed Acoustic Transit Time Δtobs(z):
+    # SYNTHETIC: Δtobs derived to produce a plausible Upper Assam overpressure signature in absence of real sonic log data; Eaton formula and exponent (N=3.0) are the genuine published method.
+    dt_obs = []
+    for i, z in enumerate(depths_tvd):
+        if z < 1200.0:
+            # Hydrostatic regime (Tipam & shallow sands)
+            factor = 1.0
+        elif z < 2100.0:
+            # Gentle transition towards top of Barail
+            factor = 1.0 + 0.02 * ((z - 1200.0) / 900.0)
+        elif z < 2800.0:
+            # Undercompacted overpressure zone in Barail Formation
+            ramp = (z - 2100.0) / 700.0
+            factor = 1.02 + 0.145 * (ramp ** 1.3)
         else:
-            fg = 15.1 + 1.4 * ((z - 2200.0) / max(1.0, tvd_max - 2200.0))
-        fg_curve.append(round(float(fg), 2))
+            # Elevated pore pressure regime into Kopili
+            factor = 1.165 + 0.01 * np.sin((z - 2800.0) / 200.0)
+        dt_obs.append(float(dt_n[i] * factor))
+
+    dt_obs = np.array(dt_obs)
+
+    # 3. Eaton Pore Pressure Equation:
+    # Pp(z) = σv(z) - [σv(z) - Phyd(z)] * (Δtn(z) / Δtobs(z))^N
+    dt_ratio = dt_n / dt_obs
+    pp_raw = sigma_v - (sigma_v - p_hyd) * (dt_ratio ** eaton_n)
+    pp_curve = [round(float(p), 2) for p in pp_raw]
+
+    # 4. Eaton Fracture Gradient Equation:
+    # FG(z) = Pp(z) + [ν(z) / (1 - ν(z))] * [σv(z) - Pp(z)]
+    # ν(z) = 0.25 + 0.15 * (z / 3500)
+    nu_z = 0.25 + 0.15 * (depths_tvd / 3500.0)
+    stress_ratio = nu_z / (1.0 - nu_z)
+    fg_raw = pp_raw + stress_ratio * (sigma_v - pp_raw)
+    fg_curve = [round(float(f), 2) for f in fg_raw]
 
     # 3. Casing Shoe Seating Depths
     # SYNTHETIC: casing depths estimated, not from real schema data
@@ -117,6 +140,15 @@ def get_ppfg_safe_window(
         "fracture_gradient_sg": [round(f / 8.33, 3) for f in fg_curve],
         "casing_shoes": casing_shoes,
         "formations": formations,
+        "eaton_metadata": {
+            "method": "Eaton's Method (1972)",
+            "normal_compaction_trend": "Δtn(z) = 185 * exp(-0.0003 * z) μs/ft",
+            "eaton_exponent_N": 3.0,
+            "overburden_gradient_ppg": 19.2,
+            "hydrostatic_gradient_ppg": 8.6,
+            "poisson_ratio_formula": "ν(z) = 0.25 + 0.15 * (z / 3500)",
+            "notes": "Pore pressure and fracture gradient computed using Eaton's method (1972) with a synthetic sonic-log input calibrated to produce a plausible Upper Assam Basin overpressure signature — real acoustic log data was not available."
+        },
         "active_status": {
             "current_tvd": round(current_tvd, 1),
             "mud_weight_ppg": round(current_mw, 2),

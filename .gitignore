@@ -1,3 +1,4 @@
+node_modules/
 dataset/
 demo_data/
 data/processed/
@@ -8,3 +9,6 @@ frontend/dist/
 .env
 *.pdf
 other_proj/
+logs/
+*.log
+*.db

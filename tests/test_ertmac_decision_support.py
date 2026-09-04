@@ -23,6 +23,13 @@ def test_physics_formulas():
     mse = svc.calculate_mse(wob=14.0, rpm=105.0, rop=16.5, torque=13200.0)
     assert mse > 0, "MSE must be positive"
     assert 200.0 < mse < 600.0, f"MSE {mse} kpsi out of realistic field range"
+    # Hand-calculated exact expected value:
+    # A_b = (pi/4)*8.5^2 = 56.7450 sq in
+    # axial_psi = (14.0 * 1000) / 56.7450 = 246.72 psi
+    # rop_ft_hr = 16.5 * 3.28084 = 54.13386 ft/hr
+    # rotary_psi = (120 * pi * 105 * 13200) / (56.7450 * 54.13386) = 170094.79 psi
+    # total_mse_psi = 246.72 + (170094.79 / 0.35) = 486231.84 psi -> 486.24 kpsi
+    assert abs(mse - 486.24) < 0.05, f"Expected hand-calculated MSE 486.24 kpsi, got {mse}"
 
     # 2. Jorden & Shirley (1966) Corrected d-exponent (d_xc)
     d_xc = svc.calculate_d_xc(rop=16.5, rpm=105.0, wob=14.0, ecd=11.6)
@@ -51,6 +58,9 @@ def test_hazard_disaggregation_and_backward_compatibility():
     assert normal_res['risk_level'] == 'LOW', f"Normal drilling should be LOW risk, got {normal_res['risk_level']}"
     assert normal_res['hazards']['gas_kick']['probability'] < 0.35
     assert normal_res['hazards']['stuck_pipe']['probability'] < 0.35
+    norm_probs = [normal_res['hazards'][h]['probability'] for h in ['gas_kick', 'lost_circulation', 'stuck_pipe', 'torque_drag']]
+    expected_norm_comp = round(0.70 * max(norm_probs) + 0.30 * (sum(norm_probs) / 4.0), 3)
+    assert normal_res['risk_probability'] == expected_norm_comp, "Normal risk_probability must strictly match composite formula"
 
     # Gas Kick influx
     kick_res = svc.predict_risk({
@@ -62,6 +72,12 @@ def test_hazard_disaggregation_and_backward_compatibility():
     assert kick_res['hazards']['gas_kick']['level'] in ['HIGH', 'CRITICAL']
     # Backward compatibility: single risk_probability must be elevated
     assert kick_res['risk_probability'] >= 0.70, f"Backward compatible risk_probability {kick_res['risk_probability']} should be >= 0.70"
+    kick_probs = [kick_res['hazards'][h]['probability'] for h in ['gas_kick', 'lost_circulation', 'stuck_pipe', 'torque_drag']]
+    expected_kick_comp = round(0.70 * max(kick_probs) + 0.30 * (sum(kick_probs) / 4.0), 3)
+    assert kick_res['risk_probability'] == expected_kick_comp, (
+        f"risk_probability {kick_res['risk_probability']} does not match composite formula "
+        f"0.70*max + 0.30*mean ({expected_kick_comp})"
+    )
 
     # Stuck pipe
     stuck_res = svc.predict_risk({
@@ -71,6 +87,12 @@ def test_hazard_disaggregation_and_backward_compatibility():
     })
     assert stuck_res['hazards']['stuck_pipe']['probability'] >= 0.75, "Stuck pipe probability should be HIGH/CRITICAL"
     assert stuck_res['risk_probability'] >= 0.75, f"Backward compatible risk_probability {stuck_res['risk_probability']} should be >= 0.75"
+    stuck_probs = [stuck_res['hazards'][h]['probability'] for h in ['gas_kick', 'lost_circulation', 'stuck_pipe', 'torque_drag']]
+    expected_stuck_comp = round(0.70 * max(stuck_probs) + 0.30 * (sum(stuck_probs) / 4.0), 3)
+    assert stuck_res['risk_probability'] == expected_stuck_comp, (
+        f"risk_probability {stuck_res['risk_probability']} does not match composite formula "
+        f"0.70*max + 0.30*mean ({expected_stuck_comp})"
+    )
 
 def test_simulator_realistic_scenario_injection():
     """
@@ -154,6 +176,34 @@ def test_api_endpoints():
     # 7. Pre-Spud Dossier
     dossier_res = client.get("/api/wells/OIL-BAGHJAN-1/dossier")
     assert dossier_res.status_code == 200
+
+    # 8. Eaton's Method PPFG Safe Window
+    ppfg_res = client.get("/api/wells/OIL-BAGHJAN-1/ppfg")
+    assert ppfg_res.status_code == 200
+    ppdata = ppfg_res.json()
+    assert "pore_pressure_ppg" in ppdata
+    assert "fracture_gradient_ppg" in ppdata
+    assert "eaton_metadata" in ppdata
+    assert ppdata["eaton_metadata"]["eaton_exponent_N"] == 3.0
+    assert ppdata["eaton_metadata"]["overburden_gradient_ppg"] == 19.2
+    assert ppdata["eaton_metadata"]["hydrostatic_gradient_ppg"] == 8.6
+    assert "Eaton's method (1972)" in ppdata["eaton_metadata"]["notes"]
+
+    # Hydrostatic behavior above ~1200m
+    depths = ppdata["depths_tvd"]
+    pp_vals = ppdata["pore_pressure_ppg"]
+    fg_vals = ppdata["fracture_gradient_ppg"]
+    for d, p in zip(depths, pp_vals):
+        if d < 1200.0:
+            assert abs(p - 8.6) < 0.05, f"Pore pressure above 1200m should be ~8.6 ppg hydrostatic, got {p} at {d}m"
+
+    # Overpressure regime through 2200-2800m
+    deep_pp = [p for d, p in zip(depths, pp_vals) if 2200.0 <= d <= 2800.0]
+    assert max(deep_pp) >= 11.5, f"Expected overpressure peak in Barail zone (2200-2800m), max was {max(deep_pp)}"
+    # Verify fracture gradient exceeds pore pressure throughout
+    for p, f in zip(pp_vals, fg_vals):
+        assert f > p, f"Fracture gradient ({f}) must exceed pore pressure ({p})"
+
 
 @pytest.mark.asyncio
 async def test_multi_client_websocket_broadcast():
