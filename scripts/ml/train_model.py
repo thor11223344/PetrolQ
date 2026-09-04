@@ -28,7 +28,7 @@ def bootstrap_mock_data(df, target_size=1000):
     df_synthetic['well_id'] = fake_wells
     
     # Add Gaussian noise
-    noise_cols = ['rop', 'torque', 'wob', 'rpm', 'mud_weight', 'ecd', 'mse', 'd_xc']
+    noise_cols = ['rop', 'torque', 'wob', 'rpm', 'mud_weight', 'ecd', 'mse', 'd_xc', 'flow_out_pct', 'pit_gain_bbl', 'spp_psi']
     for col in noise_cols:
         if col in df_synthetic.columns:
             df_synthetic[col] = pd.to_numeric(df_synthetic[col], errors='coerce').fillna(0)
@@ -39,21 +39,50 @@ def bootstrap_mock_data(df, target_size=1000):
             noise = np.random.normal(0, max(0.01, std * 0.2), size=len(df_synthetic))
             df_synthetic[col] += noise
             
-    if df_synthetic['hazard_upcoming'].nunique() < 2:
-        idx_hazard = df_synthetic.sample(frac=0.2).index
-        df_synthetic.loc[idx_hazard, 'hazard_upcoming'] = 1
-        df_synthetic.loc[idx_hazard, 'hazard_type'] = np.random.choice(['Stuck Pipe', 'Kick', 'Mud Loss'], size=len(idx_hazard))
+    if 'hazard_type' not in df.columns:
+        df['hazard_type'] = 'Normal'
+    else:
+        df['hazard_type'] = df['hazard_type'].fillna('Normal')
+        df['hazard_type'] = df['hazard_type'].replace({'Mud Loss': 'Lost Circulation', 'Kick': 'Gas Kick'})
         
-    # Inject a deterministic signal so the mock model can actually learn (ensuring >85% recall)
-    hazard_mask = df_synthetic['hazard_upcoming'] == 1
+    df_synthetic['hazard_type'] = 'Normal'
+    
+    idx_hazard = df_synthetic.sample(frac=0.4).index
+    hazard_types = ['Gas Kick', 'Lost Circulation', 'Stuck Pipe', 'Torque & Drag']
+    df_synthetic.loc[idx_hazard, 'hazard_type'] = np.random.choice(hazard_types, size=len(idx_hazard))
+    df_synthetic.loc[idx_hazard, 'hazard_upcoming'] = 1
+    
+    # Gas kick signatures
+    kick_mask = df_synthetic['hazard_type'] == 'Gas Kick'
+    if 'flow_out_pct' in df_synthetic.columns:
+        df_synthetic.loc[kick_mask, 'flow_out_pct'] = 115.0 + np.random.normal(0, 2, size=kick_mask.sum())
+    if 'pit_gain_bbl' in df_synthetic.columns:
+        df_synthetic.loc[kick_mask, 'pit_gain_bbl'] = 12.0 + np.random.normal(0, 1, size=kick_mask.sum())
+    if 'spp_psi' in df_synthetic.columns:
+        df_synthetic.loc[kick_mask, 'spp_psi'] = 2500.0 - np.random.normal(0, 50, size=kick_mask.sum())
+
+    # Lost circulation signatures
+    loss_mask = df_synthetic['hazard_type'] == 'Lost Circulation'
+    if 'flow_out_pct' in df_synthetic.columns:
+        df_synthetic.loc[loss_mask, 'flow_out_pct'] = 85.0 - np.random.normal(0, 2, size=loss_mask.sum())
+    if 'pit_gain_bbl' in df_synthetic.columns:
+        df_synthetic.loc[loss_mask, 'pit_gain_bbl'] = -10.0 - np.random.normal(0, 1, size=loss_mask.sum())
+
+    # Stuck pipe signatures
+    stuck_mask = df_synthetic['hazard_type'] == 'Stuck Pipe'
     if 'torque' in df_synthetic.columns:
-        df_synthetic.loc[hazard_mask, 'torque'] = 28500.0  # Elevate torque heavily
-    if 'mud_weight' in df_synthetic.columns:
-        df_synthetic.loc[hazard_mask, 'mud_weight'] *= 1.3  # Elevate mud weight
-    if 'depth_tvd' in df_synthetic.columns:
-        df_synthetic.loc[hazard_mask, 'depth_tvd'] = 2450.0  # Elevate depth
+        df_synthetic.loc[stuck_mask, 'torque'] = 28500.0 + np.random.normal(0, 500, size=stuck_mask.sum())
     if 'mse' in df_synthetic.columns:
-        df_synthetic.loc[hazard_mask, 'mse'] = 850.0  # Elevate MSE for mechanical sticking/packoff
+        df_synthetic.loc[stuck_mask, 'mse'] = 850.0 + np.random.normal(0, 20, size=stuck_mask.sum())
+    if 'rop' in df_synthetic.columns:
+        df_synthetic.loc[stuck_mask, 'rop'] = 0.5 + np.random.normal(0, 0.1, size=stuck_mask.sum())
+
+    # Torque & Drag signatures
+    torque_mask = df_synthetic['hazard_type'] == 'Torque & Drag'
+    if 'torque' in df_synthetic.columns:
+        df_synthetic.loc[torque_mask, 'torque'] = 18500.0 + np.random.normal(0, 400, size=torque_mask.sum())
+    if 'torque_roll_std_5' in df_synthetic.columns:
+        df_synthetic.loc[torque_mask, 'torque_roll_std_5'] = 1500.0 + np.random.normal(0, 100, size=torque_mask.sum())
         
     return pd.concat([df, df_synthetic], ignore_index=True)
 
@@ -66,18 +95,24 @@ def train():
     print(f"Loading data from {data_path}...")
     df = pd.read_csv(data_path)
     
+    if 'flow_out_pct' not in df.columns: df['flow_out_pct'] = 100.0
+    if 'pit_gain_bbl' not in df.columns: df['pit_gain_bbl'] = 0.0
+    if 'spp_psi' not in df.columns: df['spp_psi'] = 2800.0
+
     if len(df) < 200:
         df = bootstrap_mock_data(df, target_size=800)
         
     # Prepare features
     features = ['depth_tvd', 'rop', 'wob', 'rpm', 'torque', 'mud_weight', 'ecd', 'mse', 'd_xc', 
-                'rop_roll_mean_5', 'torque_roll_std_5']
+                'flow_out_pct', 'pit_gain_bbl', 'spp_psi', 'rop_roll_mean_5', 'torque_roll_std_5']
                 
     # Ensure available features mapped safely
     available_features = [f for f in features if f in df.columns]
 
     X = df[available_features]
-    y = df['hazard_upcoming']
+    if 'hazard_type' not in df.columns:
+        df['hazard_type'] = 'Normal'
+    y = df['hazard_type'].fillna('Normal')
     groups = df.get('well_id', pd.Series(np.zeros(len(df)))) # Fallback if well_id missing
     
     # 1. Train/Test Split (Well-grouped Split)
@@ -92,30 +127,29 @@ def train():
         print("Only 1 well found. Falling back to standard stratified split.")
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
     
-    # 2. Train LightGBM Model with is_unbalance=True
-    print("\n--- Training LightGBM Model (hazard_upcoming) ---")
+    # 2. Train LightGBM Model with multi-class
+    print("\n--- Training LightGBM Model (hazard_type) ---")
     clf = LGBMClassifier(
         n_estimators=50, 
         min_child_samples=2, 
-        is_unbalance=True, 
+        class_weight='balanced', 
+        objective='multiclass',
         random_state=42
     )
     clf.fit(X_train, y_train)
     
     # 3. Model Evaluation (Metrics)
     y_pred = clf.predict(X_test)
-    y_prob = clf.predict_proba(X_test)[:, 1]
+    y_prob = clf.predict_proba(X_test)
     
-    print("\nClassification Report (Prioritizing Recall):")
+    print("\nClassification Report:")
     print(classification_report(y_test, y_pred))
     
     try:
-        roc_auc = roc_auc_score(y_test, y_prob)
-        pr_auc = average_precision_score(y_test, y_prob)
-        print(f"ROC-AUC: {roc_auc:.4f}")
-        print(f"PR-AUC:  {pr_auc:.4f}")
+        roc_auc = roc_auc_score(y_test, y_prob, multi_class='ovr')
+        print(f"ROC-AUC (OVR): {roc_auc:.4f}")
     except ValueError:
-        print("ROC-AUC/PR-AUC cannot be calculated (usually due to test set containing a single class).")
+        print("ROC-AUC cannot be calculated (usually due to test set missing some classes).")
     
     # 4. Save Model
     model_path = os.path.join(artifact_dir, 'lgbm_hazard_model.joblib')

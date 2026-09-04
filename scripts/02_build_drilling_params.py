@@ -17,7 +17,7 @@ def normalize_columns(df):
 
 def build_drilling_params():
     logger.info("Building drilling parameters...")
-    schema = ['well_id', 'timestamp', 'depth_md', 'depth_tvd', 'rop', 'wob', 'rpm', 'torque', 'mud_weight', 'ecd', 'mse', 'd_xc']
+    schema = ['well_id', 'timestamp', 'depth_md', 'depth_tvd', 'rop', 'wob', 'rpm', 'torque', 'mud_weight', 'ecd', 'flow_out_pct', 'pit_gain_bbl', 'spp_psi', 'mse', 'd_xc']
     
     all_data = []
     
@@ -31,7 +31,14 @@ def build_drilling_params():
                     
                     for col in schema:
                         if col not in df.columns and col not in ['mse', 'd_xc']:
-                            df[col] = np.nan
+                            if col == 'flow_out_pct':
+                                df[col] = 100.0
+                            elif col == 'pit_gain_bbl':
+                                df[col] = 0.0
+                            elif col == 'spp_psi':
+                                df[col] = 2800.0
+                            else:
+                                df[col] = np.nan
                             
                     if df['well_id'].isna().all():
                         df['well_id'] = "OIL-VOLVE-15-9-F-14"
@@ -62,7 +69,10 @@ def build_drilling_params():
                     'rpm': 84 - i,
                     'torque': (21.3 + i*0.5) * 1000.0,  # Converted from kft-lbf to ft-lbf (consistent with service.py & simulator.py)
                     'mud_weight': 1.17,
-                    'ecd': 1.2 + i*0.01
+                    'ecd': 1.2 + i*0.01,
+                    'flow_out_pct': 100.0,
+                    'pit_gain_bbl': 0.0,
+                    'spp_psi': 2800.0
                 })
         df = pd.DataFrame(synthetic_rows)
     else:

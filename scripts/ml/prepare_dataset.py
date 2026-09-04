@@ -37,8 +37,20 @@ def prepare_ml_dataset(params_path, events_path, output_path):
         print("Warning: d_xc not found, inserting dummy 0.0 values.")
         df_params['d_xc'] = 0.0
         
+    # Ensure physical well-control indicators exist
+    if 'flow_out_pct' not in df_params.columns:
+        df_params['flow_out_pct'] = 100.0
+    if 'pit_gain_bbl' not in df_params.columns:
+        df_params['pit_gain_bbl'] = 0.0
+    if 'spp_psi' not in df_params.columns:
+        df_params['spp_psi'] = 2800.0
+
     # Fill NaN for rolling std where window < 2
-    df_params = df_params.fillna(0.0)
+    df_params = df_params.fillna({
+        'flow_out_pct': 100.0,
+        'pit_gain_bbl': 0.0,
+        'spp_psi': 2800.0
+    }).fillna(0.0)
 
     print("Generating target labels (30m look-ahead window)...")
     # 2. Target Labeling
@@ -62,7 +74,6 @@ def prepare_ml_dataset(params_path, events_path, output_path):
             (df_params['depth_tvd'] <= incident_depth)
         )
 
-        
         df_params.loc[mask, 'hazard_upcoming'] = 1
         
         # Map to multi-class hazard type
@@ -70,9 +81,9 @@ def prepare_ml_dataset(params_path, events_path, output_path):
         if 'stuck' in event_lower:
             hazard_class = 'Stuck Pipe'
         elif 'kick' in event_lower or 'gas' in event_lower:
-            hazard_class = 'Kick'
+            hazard_class = 'Gas Kick'
         elif 'loss' in event_lower or 'lost' in event_lower:
-            hazard_class = 'Mud Loss'
+            hazard_class = 'Lost Circulation'
         else:
             hazard_class = event_type
             

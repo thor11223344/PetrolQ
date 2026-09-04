@@ -250,7 +250,13 @@ class HazardPredictionService:
         df_input = pd.DataFrame(input_data)
         
         # 4. Base ML Model Prediction
-        base_ml_prob = float(self.model.predict_proba(df_input)[0, 1])
+        ml_probs = self.model.predict_proba(df_input)[0]
+        classes = list(self.model.classes_)
+        
+        ml_kick = float(ml_probs[classes.index('Gas Kick')]) if 'Gas Kick' in classes else 0.0
+        ml_loss = float(ml_probs[classes.index('Lost Circulation')]) if 'Lost Circulation' in classes else 0.0
+        ml_stuck = float(ml_probs[classes.index('Stuck Pipe')]) if 'Stuck Pipe' in classes else 0.0
+        ml_torque = float(ml_probs[classes.index('Torque & Drag')]) if 'Torque & Drag' in classes else 0.0
         
         # 5. Physics-Driven Multi-Hazard Disaggregation
         
@@ -275,7 +281,8 @@ class HazardPredictionService:
             kick_score += 0.10
             kick_reasons.append("Drilling break detected in permeable interval")
             
-        kick_prob = float(round(max(0.04, min(0.96, kick_score)), 3))
+        physics_kick_prob = float(round(max(0.04, min(0.96, kick_score)), 3))
+        kick_prob = float(round(0.80 * physics_kick_prob + 0.20 * ml_kick, 3))
         kick_level = "CRITICAL" if kick_prob >= 0.80 else "HIGH" if kick_prob >= 0.65 else "MEDIUM" if kick_prob >= 0.35 else "LOW"
         kick_reason = "; ".join(kick_reasons) if kick_reasons else "Normal circulating parameters; no influx detected"
         
@@ -297,7 +304,8 @@ class HazardPredictionService:
             loss_score += 0.60
             loss_reasons.append(f"ECD exceeds formation fracture gradient by {abs(fg_margin_ppg):.2f} ppg")
             
-        loss_prob = float(round(max(0.03, min(0.96, loss_score)), 3))
+        physics_loss_prob = float(round(max(0.03, min(0.96, loss_score)), 3))
+        loss_prob = float(round(0.80 * physics_loss_prob + 0.20 * ml_loss, 3))
         loss_level = "CRITICAL" if loss_prob >= 0.80 else "HIGH" if loss_prob >= 0.65 else "MEDIUM" if loss_prob >= 0.35 else "LOW"
         loss_reason = "; ".join(loss_reasons) if loss_reasons else "Adequate fracture gradient margin; wellbore sealed"
         
@@ -319,7 +327,8 @@ class HazardPredictionService:
             stuck_score += 0.20
             stuck_reasons.append(f"High torque volatility (std {torque_roll_std:.0f} ft-lbf)")
             
-        stuck_prob = float(round(max(0.04, min(0.97, stuck_score)), 3))
+        physics_stuck_prob = float(round(max(0.04, min(0.97, stuck_score)), 3))
+        stuck_prob = float(round(0.80 * physics_stuck_prob + 0.20 * ml_stuck, 3))
         stuck_level = "CRITICAL" if stuck_prob >= 0.80 else "HIGH" if stuck_prob >= 0.65 else "MEDIUM" if stuck_prob >= 0.35 else "LOW"
         stuck_reason = "; ".join(stuck_reasons) if stuck_reasons else "Torque and drag within normal mechanical limits"
         
@@ -337,7 +346,8 @@ class HazardPredictionService:
             torque_score += 0.25
             torque_reasons.append("Rotary stall tendency detected")
             
-        torque_prob = float(round(max(0.05, min(0.95, torque_score)), 3))
+        physics_torque_prob = float(round(max(0.05, min(0.95, torque_score)), 3))
+        torque_prob = float(round(0.80 * physics_torque_prob + 0.20 * ml_torque, 3))
         torque_level = "CRITICAL" if torque_prob >= 0.80 else "HIGH" if torque_prob >= 0.65 else "MEDIUM" if torque_prob >= 0.35 else "LOW"
         torque_reason = "; ".join(torque_reasons) if torque_reasons else "Smooth rotary drillstring rotation"
         
@@ -407,11 +417,12 @@ class HazardPredictionService:
             try:
                 shap_values = self.explainer.shap_values(df_input)
                 
-                # Extract SHAP array for positive class (index 1)
+                # Extract SHAP array for predicted class
+                predicted_class_idx = int(np.argmax(ml_probs))
                 if isinstance(shap_values, list):
-                    sv = shap_values[1][0]
+                    sv = shap_values[predicted_class_idx][0]
                 elif len(shap_values.shape) == 3:
-                    sv = shap_values[0, :, 1]
+                    sv = shap_values[0, :, predicted_class_idx]
                 elif len(shap_values.shape) == 2:
                     sv = shap_values[0, :]
                 else:

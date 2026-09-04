@@ -70,6 +70,11 @@ def test_hazard_disaggregation_and_backward_compatibility():
     })
     assert kick_res['hazards']['gas_kick']['probability'] >= 0.70, "Gas kick probability should be HIGH/CRITICAL"
     assert kick_res['hazards']['gas_kick']['level'] in ['HIGH', 'CRITICAL']
+    # Prove ML model is actively contributing:
+    # Max possible physics score is 0.96. 80% of 0.96 = 0.768.
+    # If final probability > 0.768, the ML model MUST have output a strong positive signal (20% weight).
+    assert kick_res['hazards']['gas_kick']['probability'] > 0.768, "ML model must contribute to elevate probability above the 80% physics ceiling"
+    
     # Backward compatibility: single risk_probability must be elevated
     assert kick_res['risk_probability'] >= 0.70, f"Backward compatible risk_probability {kick_res['risk_probability']} should be >= 0.70"
     kick_probs = [kick_res['hazards'][h]['probability'] for h in ['gas_kick', 'lost_circulation', 'stuck_pipe', 'torque_drag']]
