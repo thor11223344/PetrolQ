@@ -30,10 +30,10 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
-logger = logging.getLogger("eRTMAC_NWIS")
+logger = logging.getLogger("PetrolQ")
 
-# --- OIL INDIA PROJECT CONFIGURATION ---
-# Target Oil India Fields for this project
+# --- PETROLQ PROJECT CONFIGURATION ---
+# Target PetrolQ Fields for this project
 PROJECT_FIELDS = ["Baghjan", "Naharkatiya", "Moran", "Digboi", "Duliajan", "Makum"]
 
 # --- DRILLING & GEOLOGICAL ALIAS MAPPING ---

@@ -8,7 +8,7 @@ load_dotenv()
 # Read the database URL from environment, default to a local Postgres instance
 DATABASE_URL = os.environ.get(
     "DATABASE_URL", 
-    "postgresql://postgres:YOUR_PASSWORD_HERE@localhost:5432/ertmac_nwis"
+    "postgresql://postgres:YOUR_PASSWORD_HERE@localhost:5432/petrolq_nwis"
 )
 
 # Create the SQLAlchemy engine

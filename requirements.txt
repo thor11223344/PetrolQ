@@ -21,3 +21,11 @@ lightgbm
 scikit-learn
 shap
 joblib
+fastdtw
+pytesseract
+Pillow
+python-dotenv
+langchain-text-splitters
+python-multipart
+pytest-asyncio
+shapely

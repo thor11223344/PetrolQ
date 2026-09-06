@@ -97,7 +97,7 @@ const ContributeLessonModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1'
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                Log real-time operational experience directly into eRTMAC's institutional vector knowledge base
+                Log real-time operational experience directly into the institutional vector knowledge base
               </p>
             </div>
           </div>

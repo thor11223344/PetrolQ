@@ -30,7 +30,7 @@ async def simulate_live_feed():
         print("No data found in the dataset.")
         return
         
-    print(f"Connecting to eRTMAC WebSocket at {uri}...")
+    print(f"Connecting to RTMS WebSocket at {uri}...")
     
     try:
         async with websockets.connect(uri) as websocket:

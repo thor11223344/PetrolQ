@@ -127,7 +127,7 @@ def test_simulator_realistic_scenario_injection():
     assert stuck_state['prediction']['hazards']['stuck_pipe']['probability'] >= 0.70
 
 def test_api_endpoints():
-    """Verify all required API endpoints for eRTMAC-NWIS decision suite."""
+    """Verify all required API endpoints for PetrolQ decision suite."""
     # 1. Multi-hazard prediction
     pred_res = client.post("/api/predict-risk", json={
         "depth_tvd": 2240.0, "rop": 16.5, "wob": 14.0, "rpm": 105.0,

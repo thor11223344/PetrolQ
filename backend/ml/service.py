@@ -41,13 +41,11 @@ class HazardPredictionService:
                 
                 # Warmup SHAP to prevent the first request from taking >1s and blocking websockets
                 if self.model and self.metadata:
-                    print("Warming up ML model and SHAP explainer...")
                     dummy_params = {'wob': 10, 'rpm': 100, 'rop': 20, 'torque': 10000, 'ecd': 1.1}
                     self.predict_risk(dummy_params, [])
-                    print("Warmup complete.")
                     
             except Exception as e:
-                print(f"Warning: Failed to load SHAP explainer: {e}")
+                pass
 
     def calculate_mse(self, wob: float, rpm: float, rop: float, torque: float, bit_diameter_in: float = 8.5) -> float:
         """
@@ -448,7 +446,7 @@ class HazardPredictionService:
                         'direction': 'INCREASES_RISK' if is_positive_impact else 'DECREASES_RISK'
                     })
             except Exception as e:
-                print(f"SHAP local calculation failed: {e}")
+                pass
                 
         # Physical explainability: when an active hazard is detected, highlight the physical driver
         physical_factors = []

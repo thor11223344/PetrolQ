@@ -3,7 +3,7 @@ import fitz  # PyMuPDF
 
 def generate_oil_ddr_pdf(output_path: str):
     """
-    Generates a realistic Oil India Limited Daily Drilling Report (DDR) PDF
+    Generates a realistic Daily Drilling Report (DDR) PDF
     matching SIH 2026 problem statement specifications.
     """
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
@@ -19,7 +19,7 @@ def generate_oil_ddr_pdf(output_path: str):
     
     page.insert_text(
         fitz.Point(45, 48), 
-        "OIL INDIA LIMITED (A Govt. of India Enterprise)", 
+        "PETROLQ ENERGY", 
         fontsize=13, 
         fontname="helv", 
         color=(1, 1, 1)
@@ -175,7 +175,7 @@ def generate_oil_ddr_pdf(output_path: str):
 
     page.insert_text(fitz.Point(410, sig_y), "Approved by:", fontsize=8, fontname="helv", color=(0.4, 0.4, 0.4))
     page.insert_text(fitz.Point(410, sig_y + 14), "Superintendent Drilling (Operations)", fontsize=8, fontname="helv", color=(0, 0, 0))
-    page.insert_text(fitz.Point(410, sig_y + 26), "Oil India Limited, Corporate HQ", fontsize=7.5, fontname="helv", color=(0.4, 0.4, 0.4))
+    page.insert_text(fitz.Point(410, sig_y + 26), "PetrolQ Energy, Corporate HQ", fontsize=7.5, fontname="helv", color=(0.4, 0.4, 0.4))
 
     doc.save(output_path)
     doc.close()

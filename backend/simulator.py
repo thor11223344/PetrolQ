@@ -16,12 +16,10 @@ class WebSocketConnectionManager:
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
-        print(f"[WebSocket] Client connected. Total active clients: {len(self.active_connections)}")
 
     def disconnect(self, websocket: WebSocket):
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
-            print(f"[WebSocket] Client disconnected. Total active clients: {len(self.active_connections)}")
 
     async def broadcast(self, message: Dict[str, Any]):
         """Broadcasts a JSON-serializable message to all active WebSocket connections."""
@@ -33,7 +31,6 @@ class WebSocketConnectionManager:
             try:
                 await connection.send_json(message)
             except Exception as e:
-                print(f"[WebSocket] Broadcast error to client: {e}")
                 disconnected.append(connection)
                 
         for dead_conn in disconnected:
@@ -70,6 +67,7 @@ class TelemetrySimulator:
         self.spp_psi = 2800.0
         
         self.is_running = False
+        self.speed_multiplier = 1.0
         self.active_scenario = "normal"  # "normal" | "gas_kick" | "lost_circulation" | "stuck_pipe"
         self.history: List[Dict[str, Any]] = []
         self._task: Optional[asyncio.Task] = None
@@ -224,22 +222,33 @@ class TelemetrySimulator:
         while self.is_running:
             try:
                 await self.step_and_broadcast()
-            except Exception as e:
-                print(f"[Simulator] Error in simulation loop: {e}")
-            await asyncio.sleep(1.0)
+            except Exception:
+                pass
+            await asyncio.sleep(1.0 / max(0.1, self.speed_multiplier))
 
     def start(self):
         if not self.is_running:
             self.is_running = True
             self._task = asyncio.create_task(self._run_loop())
-            print(f"[Simulator] Started telemetry feed for {self.well_id} at {self.depth_tvd:.1f}m TVD")
 
     def pause(self):
         self.is_running = False
         if self._task:
             self._task.cancel()
             self._task = None
-        print(f"[Simulator] Paused telemetry feed at {self.depth_tvd:.1f}m TVD")
+
+    async def seek(self, depth_tvd: float):
+        self.depth_tvd = depth_tvd
+        params = self._get_current_params()
+        prediction = self.ml_service.predict_risk(params, self.history)
+        payload = {
+            "status": "success",
+            "data": params,
+            "prediction": prediction,
+            "scenario": self.active_scenario,
+            "is_running": self.is_running
+        }
+        await ws_manager.broadcast(payload)
 
     def reset(self, well_id: str = "OIL-BAGHJAN-1", depth_tvd: float = None):
         self.well_id = well_id
@@ -256,6 +265,5 @@ class TelemetrySimulator:
         }
         self.depth_tvd = depth_tvd if depth_tvd is not None else WELL_DEPTHS.get(well_id, 2240.0)
         self.set_scenario("normal")
-        print(f"[Simulator] Reset telemetry to {well_id} at {self.depth_tvd}m TVD")
 
 telemetry_simulator = TelemetrySimulator()

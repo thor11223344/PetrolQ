@@ -10,13 +10,12 @@ LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME", "llama3")
 # Initialize Local Embedding Model
 # We use BAAI/bge-small-en-v1.5 as requested for efficient local embeddings.
 # Loaded globally so it only initializes once when the module is imported.
-print("Initializing local embedding model (BAAI/bge-small-en-v1.5)...")
 try:
     # Initialize the model 
     embedding_model = SentenceTransformer("BAAI/bge-small-en-v1.5")
-    print("Embedding model loaded successfully.")
-except Exception as e:
-    print(f"Warning: Failed to load embedding model. Ensure dependencies are installed and internet is available for first download. Error: {e}")
+except Exception:
+    import logging
+    logging.getLogger(__name__).warning("Failed to load embedding model.")
     embedding_model = None
 
 def get_embedding(text: str) -> list[float]:

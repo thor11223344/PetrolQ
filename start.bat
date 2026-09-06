@@ -1,14 +1,14 @@
 @echo off
-title eRTMAC-NWIS Launcher
+title PetrolQ Launcher
 echo ===================================================
-echo   Starting eRTMAC-NWIS (Backend + Frontend)
+echo   Starting PetrolQ (Backend + Frontend)
 echo ===================================================
 echo.
 echo Starting FastAPI Backend on http://localhost:8000 ...
-start "eRTMAC Backend (:8000)" cmd /k "python -m uvicorn backend.main:app --reload --port 8000"
+start "PetrolQ Backend (:8000)" cmd /k "call venv\Scripts\activate && uvicorn backend.main:app --host 127.0.0.1 --port 8000"
 
 echo Starting Vite Frontend on http://localhost:5173 ...
-start "eRTMAC Frontend (:5173)" cmd /k "cd frontend && npm run dev"
+start "PetrolQ Frontend (:5173)" cmd /k "cd frontend && npm run dev"
 
 echo.
 echo ===================================================

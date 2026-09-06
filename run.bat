@@ -1,24 +1,31 @@
 @echo off
 echo ===================================================
-echo   Starting eRTMAC-NWIS Backend and Frontend
+echo   Setting up PetrolQ Backend and Frontend
 echo ===================================================
 
 echo.
-echo [1/4] Installing Backend Dependencies...
+echo [1/4] Setting up Python Virtual Environment...
+if not exist "venv\" (
+    python -m venv venv
+)
+call venv\Scripts\activate
+
+echo.
+echo [2/4] Installing Backend Dependencies...
 python -m pip install -r requirements.txt
 
 echo.
-echo [2/4] Installing Frontend Dependencies...
+echo [3/4] Installing Frontend Dependencies...
 cd frontend
 call npm install
 cd ..
 
 echo.
-echo [3/4] Starting Backend (FastAPI)...
-start cmd /k "python -m uvicorn backend.main:app --reload --port 8000"
+echo [4/4] Starting Servers...
+echo Starting Backend (FastAPI)...
+start cmd /k "call venv\Scripts\activate && uvicorn backend.main:app --host 127.0.0.1 --port 8000"
 
-echo.
-echo [4/4] Starting Frontend (Vite)...
+echo Starting Frontend (Vite)...
 start cmd /k "cd frontend && npm run dev"
 
 echo.

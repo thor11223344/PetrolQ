@@ -12,3 +12,7 @@ other_proj/
 logs/
 *.log
 *.db
+venv/
+fresh_venv/
+.vscode/
+temp_uploads/

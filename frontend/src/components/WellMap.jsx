@@ -36,7 +36,7 @@ function createGeoJSONCircle(center, radiusInKm, points = 64) {
     };
 }
 
-export default function WellMap({ activeWellId, onSelectWell }) {
+export default function WellMap({ activeWellId, onSelectWell, currentDepth, activeScenario }) {
     const [viewState, setViewState] = useState({
         longitude: 95.185,
         latitude: 27.415,
@@ -116,12 +116,31 @@ export default function WellMap({ activeWellId, onSelectWell }) {
         }
     };
 
+    const isOffline = import.meta.env.VITE_OFFLINE_MODE === 'true';
+    const offlineStyle = {
+        version: 8,
+        sources: {
+            'offline-tiles': {
+                type: 'raster',
+                tiles: ['http://localhost:8000/tiles/{z}/{x}/{y}.png'],
+                tileSize: 256
+            }
+        },
+        layers: [{
+            id: 'offline-tiles-layer',
+            type: 'raster',
+            source: 'offline-tiles',
+            minzoom: 0,
+            maxzoom: 22
+        }]
+    };
+
     return (
         <div className="relative w-full h-full flex-1">
             <Map
                 {...viewState}
                 onMove={evt => setViewState(evt.viewState)}
-                mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+                mapStyle={isOffline ? offlineStyle : "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"}
                 style={{ width: '100%', height: '100%' }}
             >
                 <NavigationControl position="bottom-right" />
@@ -150,7 +169,7 @@ export default function WellMap({ activeWellId, onSelectWell }) {
                 {/* Markers */}
                 {wells.map(well => {
                     const loc = well.surface_location;
-                    if (!loc) return null;
+                    if (!loc || typeof loc === 'string') return null;
                     
                     const isActive = well.well_id === activeWellId;
                     
@@ -244,6 +263,8 @@ export default function WellMap({ activeWellId, onSelectWell }) {
                 onClose={() => setIs3DViewerOpen(false)} 
                 activeWellId={activeWellId} 
                 offsetWells={wells} 
+                currentDepth={currentDepth}
+                activeScenario={activeScenario}
             />
         </div>
     );

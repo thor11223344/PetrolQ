@@ -456,7 +456,7 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
         <div className="px-6 py-3.5 bg-slate-950 border-t border-slate-800 flex justify-between items-center text-xs text-slate-400">
           <div className="flex items-center space-x-2">
             <Info size={14} className="text-cyan-400" />
-            <span>Look-Ahead Radar updates in real-time as bit advances via eRTMAC WITSML telemetry feed.</span>
+            <span>Look-Ahead Radar updates in real-time as bit advances via WITSML telemetry feed.</span>
           </div>
           <button
             onClick={onClose}

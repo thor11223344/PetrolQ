@@ -8,6 +8,7 @@ if backend_dir not in sys.path:
 
 from fastapi import FastAPI, Depends, Query, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from sqlalchemy import cast
 from geoalchemy2.functions import ST_DWithin, ST_MakePoint, ST_SetSRID
@@ -55,7 +56,7 @@ async def lifespan(app: FastAPI):
     yield
     # Clean up on shutdown if necessary
 
-app = FastAPI(title="eRTMAC-NWIS API", description="Oil & Gas Drilling Data API", lifespan=lifespan)
+app = FastAPI(title="PetrolQ API", description="Oil & Gas Drilling Data API", lifespan=lifespan)
 
 # Configure CORS
 app.add_middleware(
@@ -65,6 +66,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount offline tiles
+tiles_dir = os.path.join(backend_dir, "static", "tiles")
+os.makedirs(tiles_dir, exist_ok=True)
+app.mount("/tiles", StaticFiles(directory=tiles_dir), name="tiles")
 
 app.include_router(upload_router)
 app.include_router(correlate_router)
@@ -267,9 +273,10 @@ class ScenarioRequest(BaseModel):
     scenario: str  # "gas_kick", "lost_circulation", "stuck_pipe", "normal"
 
 class ControlRequest(BaseModel):
-    action: str  # "play", "pause", "reset", "step"
+    action: str  # "play", "pause", "reset", "step", "speed", "seek"
     well_id: Optional[str] = None
     depth: Optional[float] = None
+    speed_multiplier: Optional[float] = None
 
 @app.post("/api/simulator/scenario")
 async def trigger_scenario(req: ScenarioRequest):
@@ -310,6 +317,10 @@ async def control_simulator(req: ControlRequest):
         await telemetry_simulator.step_and_broadcast()
     elif req.action == "step":
         await telemetry_simulator.step_and_broadcast()
+    elif req.action == "speed" and req.speed_multiplier is not None:
+        telemetry_simulator.speed_multiplier = req.speed_multiplier
+    elif req.action == "seek" and req.depth is not None:
+        await telemetry_simulator.seek(req.depth)
     return telemetry_simulator.get_status()
 
 @app.get("/api/simulator/status")
@@ -339,8 +350,8 @@ async def websocket_telemetry(websocket: WebSocket):
             "scenario": current_status["active_scenario"],
             "is_running": current_status["is_running"]
         })
-    except Exception as e:
-        print(f"Error sending initial state to websocket: {e}")
+    except Exception:
+        pass
         
     try:
         import json

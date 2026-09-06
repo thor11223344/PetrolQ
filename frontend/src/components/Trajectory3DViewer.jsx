@@ -72,7 +72,7 @@ const createReservoirLensMesh = (cx, cy, cz, rx, ry, rz, color, opacity, name) =
     };
 };
 
-const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [] }) => {
+const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [], currentDepth, activeScenario }) => {
     const [plotData, setPlotData] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [theme, setTheme] = useState('dark');
@@ -93,6 +93,24 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [] })
         offsets: [],
         antiCollision: null
     });
+
+    const [stuckDepth, setStuckDepth] = useState(null);
+    const [pulse, setPulse] = useState(false);
+
+    useEffect(() => {
+        if (activeScenario === 'stuck_pipe') {
+            if (stuckDepth === null && currentDepth !== null) {
+                setStuckDepth(currentDepth);
+            }
+            const interval = setInterval(() => {
+                setPulse(p => !p);
+            }, 500);
+            return () => clearInterval(interval);
+        } else {
+            setStuckDepth(null);
+            setPulse(false);
+        }
+    }, [activeScenario, currentDepth]);
 
     const isGeo = theme === 'geo';
 
@@ -131,6 +149,69 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [] })
             maxY: Math.round(midY + halfSpan)
         };
     }, [isGeo, plotData]);
+
+    const liveBitTrace = React.useMemo(() => {
+        const isStuck = activeScenario === 'stuck_pipe';
+        const effectiveDepth = (isStuck && stuckDepth !== null) ? stuckDepth : currentDepth;
+
+        if (effectiveDepth === null || effectiveDepth === undefined || !rawDataRef.current.activeWell) return null;
+        
+        const activeWell = rawDataRef.current.activeWell;
+        const traj = activeWell.trajectory;
+        if (!traj || !traj.md || traj.md.length === 0) return null;
+
+        const mdArray = traj.md;
+        let idx0 = 0;
+        let idx1 = 0;
+        let t = 0;
+        
+        for (let i = 0; i < mdArray.length - 1; i++) {
+            if (mdArray[i] <= effectiveDepth && mdArray[i+1] >= effectiveDepth) {
+                idx0 = i;
+                idx1 = i + 1;
+                t = (effectiveDepth - mdArray[idx0]) / (mdArray[idx1] - mdArray[idx0] || 1);
+                break;
+            }
+        }
+        if (idx0 === 0 && idx1 === 0 && effectiveDepth > mdArray[mdArray.length - 1]) {
+            idx0 = mdArray.length - 1;
+            idx1 = mdArray.length - 1;
+            t = 0;
+        }
+
+        const interpolate = (arr, i0, i1, frac) => arr[i0] + (arr[i1] - arr[i0]) * frac;
+        
+        const x = interpolate(traj.x, idx0, idx1, t);
+        const y = interpolate(traj.y, idx0, idx1, t);
+        const z = interpolate(traj.z, idx0, idx1, t);
+
+        const markerColor = isStuck ? '#EF4444' : '#F97316';
+        const markerSymbol = isStuck ? 'x' : 'diamond';
+        const markerSize = isStuck ? (pulse ? 20 : 12) : 14;
+
+        return {
+            type: 'scatter3d',
+            mode: isStuck ? 'markers+text' : 'markers',
+            name: isStuck ? 'Stuck Pipe' : 'Live Bit Position',
+            x: [x],
+            y: [y],
+            z: [z],
+            text: isStuck ? [`<b>STUCK PIPE</b><br>${effectiveDepth.toFixed(1)}m TVD`] : [''],
+            textfont: { color: '#EF4444', size: 12, family: 'Inter', weight: 'bold' },
+            textposition: 'middle right',
+            marker: {
+                size: markerSize,
+                color: markerColor,
+                symbol: markerSymbol,
+                line: { color: '#FFFFFF', width: 2 }
+            },
+            showlegend: false,
+            hovertemplate: 
+                (isStuck ? '<b>STUCK PIPE</b><br>' : '<b>Live Bit Position</b><br>') +
+                'Depth: <b>%{z:.1f} m</b><br>' +
+                '<extra></extra>'
+        };
+    }, [currentDepth, stuckDepth, activeScenario, pulse, plotData]);
 
     useEffect(() => {
         if (!isOpen || !activeWellId) return;
@@ -830,7 +911,7 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [] })
                         </div>
                     ) : (
                         <Plot
-                            data={plotData}
+                            data={liveBitTrace ? [...plotData, liveBitTrace] : plotData}
                             layout={{
                                 autosize: true,
                                 margin: { l: 0, r: 0, b: 0, t: 0 },

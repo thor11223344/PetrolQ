@@ -142,9 +142,9 @@ def get_pre_spud_dossier(
     return {
         "report_metadata": {
             "title": "PRE-SPUD OFFSET WELL HAZARD & ENGINEERING DOSSIER",
-            "institution": "OIL INDIA LIMITED (OIL) - eRTMAC-NWIS",
+            "institution": "PETROLQ",
             "generated_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC"),
-            "document_id": f"OIL-NWIS-DOSSIER-{well_id}",
+            "document_id": f"PETROLQ-DOSSIER-{well_id}",
             "confidentiality": "RESTRICTED / OPERATIONAL"
         },
         "target_well": {

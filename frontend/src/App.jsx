@@ -46,6 +46,9 @@ function App() {
   const [telemetryData, setTelemetryData] = useState(null);
   const [predictionData, setPredictionData] = useState(null);
   const [simStatus, setSimStatus] = useState({ is_running: false, active_scenario: 'normal' });
+  const [simSpeed, setSimSpeed] = useState(1.0);
+  const [seekDepth, setSeekDepth] = useState(2240.0);
+  const [isDraggingSeek, setIsDraggingSeek] = useState(false);
   const [proximityWarning, setProximityWarning] = useState(null);
   const [trajectoryData, setTrajectoryData] = useState({ depth: [], torque: [], rop: [] });
   const [alertState, setAlertState] = useState({ active: false, prediction: null });
@@ -182,7 +185,7 @@ function App() {
             ws.close();
             return;
           }
-          console.log("WebSocket Connected to FastAPI (:8000)");
+          // Connected successfully
           setIsBackendConnected(true);
           fetchHistory(selectedWell);
         };
@@ -323,6 +326,29 @@ function App() {
     }
   };
 
+  const handleSpeedChange = async (speed) => {
+    setSimSpeed(speed);
+    try {
+      await axios.post('http://localhost:8000/api/simulator/control', {
+        action: 'speed',
+        speed_multiplier: speed
+      });
+    } catch (err) {
+      console.error("Failed to change speed", err);
+    }
+  };
+
+  const handleSeek = async (depth) => {
+    try {
+      await axios.post('http://localhost:8000/api/simulator/control', {
+        action: 'seek',
+        depth: depth
+      });
+    } catch (err) {
+      console.error("Failed to seek depth", err);
+    }
+  };
+
   const handleScenarioInject = async (scenario) => {
     try {
       const res = await axios.post('http://localhost:8000/api/simulator/scenario', { scenario });
@@ -383,7 +409,7 @@ function App() {
             <Activity size={18} />
           </div>
           <h1 className="text-lg font-semibold tracking-wide">
-            eRTMAC-NWIS <span className="text-slate-500 font-normal ml-2">| Offset Well Intelligence Platform</span>
+            PetrolQ <span className="text-slate-500 font-normal ml-2">| PetrolQ Platform</span>
           </h1>
         </div>
 
@@ -394,7 +420,7 @@ function App() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-status-active opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-status-active"></span>
             </span>
-            <span className="text-xs font-medium text-slate-300">eRTMAC Feed: Connected</span>
+            <span className="text-xs font-medium text-slate-300">Live Feed: Connected</span>
           </div>
 
           {/* Role Toggle */}
@@ -702,6 +728,46 @@ function App() {
               </button>
             </div>
 
+            {/* Speed Controls */}
+            <div className="flex items-center space-x-1 border-r border-slate-800 pr-3">
+              {[1, 2, 5].map(speed => (
+                <button
+                  key={speed}
+                  onClick={() => handleSpeedChange(speed)}
+                  className={`px-2 py-1 rounded text-xs font-bold transition ${
+                    simSpeed === speed
+                      ? 'bg-cyan-500 text-slate-900 shadow-md shadow-cyan-500/20'
+                      : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 border border-slate-700'
+                  }`}
+                  title={`${speed}x Simulation Speed`}
+                >
+                  {speed}x
+                </button>
+              ))}
+            </div>
+
+            {/* Seek Control */}
+            <div className="flex items-center space-x-3 border-r border-slate-800 pr-3 min-w-[200px]">
+              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Seek:</span>
+              <input
+                type="range"
+                min="0"
+                max="3500"
+                step="10"
+                value={isDraggingSeek ? seekDepth : (telemetryData?.depth_tvd || 2240)}
+                onPointerDown={() => setIsDraggingSeek(true)}
+                onChange={(e) => setSeekDepth(parseFloat(e.target.value))}
+                onPointerUp={(e) => {
+                  setIsDraggingSeek(false);
+                  handleSeek(parseFloat(e.target.value));
+                }}
+                className="flex-1 accent-cyan-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg appearance-none"
+              />
+              <span className="text-[10px] font-mono text-slate-300 w-12 text-right">
+                {(isDraggingSeek ? seekDepth : (telemetryData?.depth_tvd || 2240)).toFixed(0)}m
+              </span>
+            </div>
+
             {/* Scenario Injectors */}
             <div className="flex items-center space-x-1.5">
               <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider mr-1">Inject:</span>
@@ -775,6 +841,8 @@ function App() {
           <WellMap 
              activeWellId={selectedWell} 
              onSelectWell={handleSelectWell} 
+             currentDepth={telemetryData ? telemetryData.depth_tvd : null}
+             activeScenario={simStatus.active_scenario}
           />
         </div>
 
@@ -811,13 +879,13 @@ function App() {
                 <div className="bg-slate-900 text-slate-200 p-3 rounded text-sm border border-slate-700 shadow-inner">
                   <div className="flex items-center gap-2 mb-2 text-status-warning">
                     <TrendingDown size={16} />
-                    <span className="font-bold uppercase text-xs">Offset Well Intelligence</span>
+                    <span className="font-bold uppercase text-xs">PetrolQ</span>
                   </div>
                   <p className="mb-2"><span className="text-slate-400">Historical Match:</span> Offset well <span className="font-mono text-xs text-blue-300">{ragContext.well_id}</span> experienced <strong className="text-white">{ragContext.event_type}</strong> at {ragContext.depth_tvd}m.</p>
                   <p><span className="text-slate-400">Recommended Mitigation:</span> <span className="text-emerald-400 font-medium">{ragContext.mitigation_applied}</span></p>
                 </div>
               ) : (
-                <div className="text-sm text-red-200 animate-pulse">Fetching offset well intelligence...</div>
+                <div className="text-sm text-red-200 animate-pulse">Fetching PetrolQ...</div>
               )}
             </div>
           )}
