@@ -86,6 +86,40 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [], c
         center: { x: 0, y: 0, z: -0.15 },
         up: { x: 0, y: 0, z: 1 }
     });
+    const userCameraRef = useRef(null);
+    const isInteractingRef = useRef(false);
+    const pendingDepthRef = useRef(currentDepth);
+    const [displayedDepth, setDisplayedDepth] = useState(currentDepth);
+
+    // Keep pending depth updated without interrupting active user dragging
+    useEffect(() => {
+        pendingDepthRef.current = currentDepth;
+        if (!isInteractingRef.current) {
+            setDisplayedDepth(currentDepth);
+        }
+    }, [currentDepth]);
+
+    const handleMouseDown = () => {
+        isInteractingRef.current = true;
+    };
+
+    const handleMouseUp = () => {
+        if (isInteractingRef.current) {
+            isInteractingRef.current = false;
+            setDisplayedDepth(pendingDepthRef.current);
+        }
+    };
+
+    useEffect(() => {
+        window.addEventListener('mouseup', handleMouseUp);
+        return () => window.removeEventListener('mouseup', handleMouseUp);
+    }, []);
+
+    const handleRelayout = (event) => {
+        if (event && event['scene.camera']) {
+            userCameraRef.current = event['scene.camera'];
+        }
+    };
 
     // Cached raw data
     const rawDataRef = useRef({
@@ -95,22 +129,16 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [], c
     });
 
     const [stuckDepth, setStuckDepth] = useState(null);
-    const [pulse, setPulse] = useState(false);
 
     useEffect(() => {
         if (activeScenario === 'stuck_pipe') {
             if (stuckDepth === null && currentDepth !== null) {
                 setStuckDepth(currentDepth);
             }
-            const interval = setInterval(() => {
-                setPulse(p => !p);
-            }, 500);
-            return () => clearInterval(interval);
         } else {
             setStuckDepth(null);
-            setPulse(false);
         }
-    }, [activeScenario, currentDepth]);
+    }, [activeScenario]);
 
     const isGeo = theme === 'geo';
 
@@ -152,7 +180,7 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [], c
 
     const liveBitTrace = React.useMemo(() => {
         const isStuck = activeScenario === 'stuck_pipe';
-        const effectiveDepth = (isStuck && stuckDepth !== null) ? stuckDepth : currentDepth;
+        const effectiveDepth = (isStuck && stuckDepth !== null) ? stuckDepth : displayedDepth;
 
         if (effectiveDepth === null || effectiveDepth === undefined || !rawDataRef.current.activeWell) return null;
         
@@ -187,7 +215,7 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [], c
 
         const markerColor = isStuck ? '#EF4444' : '#F97316';
         const markerSymbol = isStuck ? 'x' : 'diamond';
-        const markerSize = isStuck ? (pulse ? 20 : 12) : 14;
+        const markerSize = isStuck ? 16 : 14;
 
         return {
             type: 'scatter3d',
@@ -211,7 +239,7 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [], c
                 'Depth: <b>%{z:.1f} m</b><br>' +
                 '<extra></extra>'
         };
-    }, [currentDepth, stuckDepth, activeScenario, pulse, plotData]);
+    }, [displayedDepth, stuckDepth, activeScenario, plotData]);
 
     useEffect(() => {
         if (!isOpen || !activeWellId) return;
@@ -770,9 +798,66 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [], c
             };
         }
 
+        userCameraRef.current = newCam;
         setCurrentCamera(newCam);
         setCameraRevision(prev => prev + 1);
     };
+
+    // Memoize the Plotly layout with constant uirevision to preserve user rotation/zoom during streaming
+    const plotLayout = React.useMemo(() => {
+        return {
+            autosize: true,
+            margin: { l: 0, r: 0, b: 0, t: 0 },
+            paper_bgcolor: theme === 'geo' ? '#DDEBF7' : 'transparent',
+            plot_bgcolor: theme === 'geo' ? '#DDEBF7' : 'transparent',
+            uirevision: 'subsurface_3d_user_revision', // Constant uirevision keeps user's rotation, zoom, & pan stable across data updates
+            scene: {
+                xaxis: { 
+                    title: 'East (m)', 
+                    gridcolor: isGeo ? '#475569' : '#334155', 
+                    zerolinecolor: isGeo ? '#334155' : '#475569', 
+                    color: isGeo ? '#0F172A' : '#94a3b8',
+                    backgroundcolor: isGeo ? '#DDEBF7' : 'transparent',
+                    showbackground: isGeo,
+                    range: isGeo && geoBounds ? [geoBounds.minX, geoBounds.maxX] : undefined
+                },
+                yaxis: { 
+                    title: 'North (m)', 
+                    gridcolor: isGeo ? '#475569' : '#334155', 
+                    zerolinecolor: isGeo ? '#334155' : '#475569', 
+                    color: isGeo ? '#0F172A' : '#94a3b8',
+                    backgroundcolor: isGeo ? '#DDEBF7' : 'transparent',
+                    showbackground: isGeo,
+                    range: isGeo && geoBounds ? [geoBounds.minY, geoBounds.maxY] : undefined
+                },
+                zaxis: { 
+                    title: 'TVD Depth (m)', 
+                    autorange: 'reversed', 
+                    gridcolor: isGeo ? '#475569' : '#334155', 
+                    zerolinecolor: isGeo ? '#334155' : '#475569', 
+                    color: isGeo ? '#0F172A' : '#94a3b8',
+                    backgroundcolor: isGeo ? '#DDEBF7' : 'transparent',
+                    showbackground: isGeo
+                },
+                aspectmode: isGeo ? 'manual' : undefined,
+                aspectratio: isGeo ? { x: 1.6, y: 1.6, z: 1.2 } : { x: 1, y: 1, z: 1.6 },
+                camera: userCameraRef.current || (isGeo
+                  ? { eye: { x: 1.9, y: 1.9, z: 0.9 }, center: { x: 0, y: 0, z: 0 } }
+                  : currentCamera)
+            },
+            showlegend: true,
+            legend: { 
+                font: { color: '#CBD5E1', size: 10, family: 'Inter' }, 
+                bgcolor: 'rgba(15, 23, 42, 0.75)',
+                bordercolor: '#334155',
+                borderwidth: 1,
+                x: 0.01,
+                y: 0.98,
+                itemclick: 'toggle',
+                itemdoubleclick: 'toggleothers'
+            }
+        };
+    }, [theme, isGeo, geoBounds, cameraRevision]);
 
     if (!isOpen) return null;
 
@@ -902,7 +987,10 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [], c
                 </div>
 
                 {/* 3D Canvas Area */}
-                <div className={`flex-1 relative overflow-hidden ${theme === 'geo' ? 'bg-[#DDEBF7]' : 'bg-slate-950'}`}>
+                <div 
+                    className={`flex-1 relative overflow-hidden ${theme === 'geo' ? 'bg-[#DDEBF7]' : 'bg-slate-950'}`}
+                    onMouseDown={handleMouseDown}
+                >
                     {isLoading ? (
                         <div className={`absolute inset-0 flex flex-col items-center justify-center text-slate-400 z-10 ${theme === 'geo' ? 'bg-[#DDEBF7]/90' : 'bg-slate-950/90'}`}>
                             <Loader2 size={36} className="animate-spin mb-3 text-cyan-400" />
@@ -912,58 +1000,8 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [], c
                     ) : (
                         <Plot
                             data={liveBitTrace ? [...plotData, liveBitTrace] : plotData}
-                            layout={{
-                                autosize: true,
-                                margin: { l: 0, r: 0, b: 0, t: 0 },
-                                paper_bgcolor: theme === 'geo' ? '#DDEBF7' : 'transparent',
-                                plot_bgcolor: theme === 'geo' ? '#DDEBF7' : 'transparent',
-                                uirevision: cameraRevision,
-                                scene: {
-                                    xaxis: { 
-                                        title: 'East (m)', 
-                                        gridcolor: isGeo ? '#475569' : '#334155', 
-                                        zerolinecolor: isGeo ? '#334155' : '#475569', 
-                                        color: isGeo ? '#0F172A' : '#94a3b8',
-                                        backgroundcolor: isGeo ? '#DDEBF7' : 'transparent',
-                                        showbackground: isGeo,
-                                        range: isGeo && geoBounds ? [geoBounds.minX, geoBounds.maxX] : undefined
-                                    },
-                                    yaxis: { 
-                                        title: 'North (m)', 
-                                        gridcolor: isGeo ? '#475569' : '#334155', 
-                                        zerolinecolor: isGeo ? '#334155' : '#475569', 
-                                        color: isGeo ? '#0F172A' : '#94a3b8',
-                                        backgroundcolor: isGeo ? '#DDEBF7' : 'transparent',
-                                        showbackground: isGeo,
-                                        range: isGeo && geoBounds ? [geoBounds.minY, geoBounds.maxY] : undefined
-                                    },
-                                    zaxis: { 
-                                        title: 'TVD Depth (m)', 
-                                        autorange: 'reversed', 
-                                        gridcolor: isGeo ? '#475569' : '#334155', 
-                                        zerolinecolor: isGeo ? '#334155' : '#475569', 
-                                        color: isGeo ? '#0F172A' : '#94a3b8',
-                                        backgroundcolor: isGeo ? '#DDEBF7' : 'transparent',
-                                        showbackground: isGeo
-                                    },
-                                    aspectmode: isGeo ? 'manual' : undefined,
-                                    aspectratio: isGeo ? { x: 1.6, y: 1.6, z: 1.2 } : { x: 1, y: 1, z: 1.6 },
-                                    camera: isGeo
-                                      ? { eye: { x: 1.9, y: 1.9, z: 0.9 }, center: { x: 0, y: 0, z: 0 } }
-                                      : currentCamera
-                                },
-                                showlegend: true,
-                                legend: { 
-                                    font: { color: '#CBD5E1', size: 10, family: 'Inter' }, 
-                                    bgcolor: 'rgba(15, 23, 42, 0.75)',
-                                    bordercolor: '#334155',
-                                    borderwidth: 1,
-                                    x: 0.01,
-                                    y: 0.98,
-                                    itemclick: 'toggle',
-                                    itemdoubleclick: 'toggleothers'
-                                }
-                            }}
+                            layout={plotLayout}
+                            onRelayout={handleRelayout}
                             useResizeHandler={true}
                             style={{ width: '100%', height: '100%' }}
                             config={{
