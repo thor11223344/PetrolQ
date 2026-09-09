@@ -9,6 +9,7 @@ frontend/dist/
 .env
 *.pdf
 other_proj/
+delete_database/
 logs/
 *.log
 *.db
