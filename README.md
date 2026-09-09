@@ -31,10 +31,11 @@ PetrolQ is an AI-powered Nearby Wells Intelligence System  designed to serve as 
    ```
 
 4. **Set Environment Variables:**
-   Create a `.env` file in the root directory (copy from `.env.example` if available) and ensure your database credentials are correct. If using the document extraction feature, set the LLM variables (defaults to a local Ollama endpoint):
+   Create a `.env` file in the root directory (copy from `.env.example` if available) and ensure your database credentials are correct. Make sure to set your `DATABASE_URL`. If using the document extraction feature, set the LLM variables (defaults to a local Ollama endpoint):
    ```env
-   LLM_API_KEY=your-api-key-here
-   LLM_ENDPOINT=http://localhost:11434/v1
+   DATABASE_URL=postgresql://<db_user>:<db_password>@<db_host>:<db_port>/<db_name>
+   LLM_API_KEY=<your-api-key-here>
+   LLM_ENDPOINT=<your-llm-endpoint-url>
    ```
 
 5. **Initialize and Seed the Database:**
@@ -65,6 +66,26 @@ PetrolQ is an AI-powered Nearby Wells Intelligence System  designed to serve as 
    ```bash
    npm run dev
    ```
+
+## Quick Start (Running Both Servers)
+
+Instead of starting the backend and frontend separately, you can launch both simultaneously using the root configuration:
+
+**Option 1: Using npm concurrently (Cross-platform)**
+1. In the root directory, install the root dependencies (like concurrently):
+   ```bash
+   npm install
+   ```
+2. Run the dev script:
+   ```bash
+   npm run dev
+   ```
+
+**Option 2: Using the batch script (Windows)**
+Simply double-click the `start.bat` file or run it from the command line:
+```cmd
+.\start.bat
+```
 
 ## Running the Test Suite
 

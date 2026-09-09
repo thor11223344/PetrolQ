@@ -52,6 +52,8 @@ function App() {
   const [proximityWarning, setProximityWarning] = useState(null);
   const [trajectoryData, setTrajectoryData] = useState({ depth: [], torque: [], rop: [] });
   const [alertState, setAlertState] = useState({ active: false, prediction: null });
+  const alertActiveRef = useRef(false);
+  const lastCheckedDepthRef = useRef(null);
   const [ragContext, setRagContext] = useState(null);
   const [recentEvents, setRecentEvents] = useState([]);
   const [newlyIngestedIds, setNewlyIngestedIds] = useState(new Set());
@@ -221,10 +223,18 @@ function App() {
 
               // Check for High Risk Alert
               if (prediction?.risk_level === 'HIGH' || prediction?.risk_level === 'CRITICAL') {
-                setAlertState({ active: true, prediction });
-                fetchRagContext(prediction);
+                if (!alertActiveRef.current) {
+                  alertActiveRef.current = true;
+                  setAlertState({ active: true, prediction });
+                  fetchRagContext(prediction);
+                } else {
+                  setAlertState(prev => ({ ...prev, prediction }));
+                }
               } else if (data.scenario === 'normal' && prediction?.risk_level === 'LOW') {
-                setAlertState({ active: false, prediction: null });
+                if (alertActiveRef.current) {
+                  alertActiveRef.current = false;
+                  setAlertState({ active: false, prediction: null });
+                }
               }
             }
           } catch (err) {
@@ -279,6 +289,12 @@ function App() {
   useEffect(() => {
     const checkDepthProximity = async () => {
       const currentDepth = telemetryData?.depth_tvd || 2240.0;
+      
+      if (lastCheckedDepthRef.current !== null && Math.abs(currentDepth - lastCheckedDepthRef.current) < 5.0) {
+        return;
+      }
+      lastCheckedDepthRef.current = currentDepth;
+
       try {
         const res = await axios.get(`http://localhost:8000/api/wells/${selectedWell}/lookahead`, {
           params: { current_depth: currentDepth, window_meters: 250.0 }
@@ -361,6 +377,8 @@ function App() {
   const handleSelectWell = async (newWellId) => {
     setSelectedWell(newWellId);
     setProximityWarning(null);
+    alertActiveRef.current = false;
+    lastCheckedDepthRef.current = null;
     setAlertState({ active: false, prediction: null });
     try {
       await axios.post('http://localhost:8000/api/simulator/control', {
@@ -395,6 +413,7 @@ function App() {
   };
 
   const dismissAlert = () => {
+      alertActiveRef.current = false;
       setAlertState({ active: false, prediction: null });
       setRagContext(null);
   };
