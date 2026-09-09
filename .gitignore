@@ -8,6 +8,7 @@ __pycache__/
 frontend/dist/
 .env
 *.pdf
+!sample_reports/*.pdf
 other_proj/
 delete_database/
 logs/
