@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_BASE } from '../lib/api';
 import Plot from 'react-plotly.js';
 import { 
   Gauge, 
@@ -22,7 +23,7 @@ const PPFGWindowModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1' }) =>
     if (!isOpen) return;
     setLoading(true);
     try {
-      const res = await axios.get(`http://localhost:8000/api/wells/${activeWellId}/ppfg`);
+      const res = await axios.get(`${API_BASE}/api/wells/${activeWellId}/ppfg`);
       setData(res.data);
     } catch (err) {
       console.error('Failed to fetch PPFG window:', err);

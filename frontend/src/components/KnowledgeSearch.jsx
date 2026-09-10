@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { API_BASE } from '../lib/api';
 import { Search, X, BookOpen, ChevronRight, Loader2 } from 'lucide-react';
 
 const KnowledgeSearch = ({ isOpen, onClose }) => {
@@ -15,7 +16,7 @@ const KnowledgeSearch = ({ isOpen, onClose }) => {
             setIsSearching(true);
             setHasSearched(true);
             try {
-                const response = await axios.get(`http://localhost:8000/api/events/search`, {
+                const response = await axios.get(`${API_BASE}/api/events/search`, {
                     params: { query: query.trim(), limit: 5 }
                 });
                 setResults(response.data || []);

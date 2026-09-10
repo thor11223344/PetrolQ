@@ -30,6 +30,7 @@ import {
   BarChart2
 } from 'lucide-react';
 import axios from 'axios';
+import { API_BASE, WS_BASE } from './lib/api';
 import Plot from 'react-plotly.js';
 
 import WellMap from './components/WellMap';
@@ -84,7 +85,7 @@ function App() {
 
   const exportWellData = async () => {
     try {
-        const res = await axios.get(`http://localhost:8000/api/wells/${selectedWell}/history`);
+        const res = await axios.get(`${API_BASE}/api/wells/${selectedWell}/history`);
         const well = res.data;
         
         let csvContent = "data:text/csv;charset=utf-8,";
@@ -118,7 +119,7 @@ function App() {
 
   const fetchHistory = useCallback(async (wellId = selectedWell) => {
     try {
-      const res = await axios.get(`http://localhost:8000/api/wells/${wellId}/history`);
+      const res = await axios.get(`${API_BASE}/api/wells/${wellId}/history`);
       if (res.data && res.data.events) {
         // Sort by ID descending so newly ingested events appear immediately at the top
         const sortedEvents = [...res.data.events].sort((a, b) => (b.id || 0) - (a.id || 0));
@@ -179,7 +180,7 @@ function App() {
     const connectWebSocket = () => {
       if (isCleanedUp) return;
       try {
-        ws = new WebSocket('ws://localhost:8000/api/ws/telemetry');
+        ws = new WebSocket(`${WS_BASE}/api/ws/telemetry`);
         wsRef.current = ws;
 
         ws.onopen = () => {
@@ -296,7 +297,7 @@ function App() {
       lastCheckedDepthRef.current = currentDepth;
 
       try {
-        const res = await axios.get(`http://localhost:8000/api/wells/${selectedWell}/lookahead`, {
+        const res = await axios.get(`${API_BASE}/api/wells/${selectedWell}/lookahead`, {
           params: { current_depth: currentDepth, window_meters: 250.0 }
         });
         const lookahead = res.data;
@@ -331,7 +332,7 @@ function App() {
   // Simulator Control Handlers (CORRECTION 4: Scenario Injector drives realistic physical parameters)
   const handleSimControl = async (action) => {
     try {
-      const res = await axios.post('http://localhost:8000/api/simulator/control', {
+      const res = await axios.post(`${API_BASE}/api/simulator/control`, {
         action,
         well_id: selectedWell,
         depth: telemetryData?.depth_tvd || 2240.0
@@ -345,7 +346,7 @@ function App() {
   const handleSpeedChange = async (speed) => {
     setSimSpeed(speed);
     try {
-      await axios.post('http://localhost:8000/api/simulator/control', {
+      await axios.post(`${API_BASE}/api/simulator/control`, {
         action: 'speed',
         speed_multiplier: speed
       });
@@ -356,7 +357,7 @@ function App() {
 
   const handleSeek = async (depth) => {
     try {
-      await axios.post('http://localhost:8000/api/simulator/control', {
+      await axios.post(`${API_BASE}/api/simulator/control`, {
         action: 'seek',
         depth: depth
       });
@@ -367,7 +368,7 @@ function App() {
 
   const handleScenarioInject = async (scenario) => {
     try {
-      const res = await axios.post('http://localhost:8000/api/simulator/scenario', { scenario });
+      const res = await axios.post(`${API_BASE}/api/simulator/scenario`, { scenario });
       setSimStatus(prev => ({ ...prev, active_scenario: res.data.scenario }));
     } catch (err) {
       console.error("Failed to inject scenario", err);
@@ -381,7 +382,7 @@ function App() {
     lastCheckedDepthRef.current = null;
     setAlertState({ active: false, prediction: null });
     try {
-      await axios.post('http://localhost:8000/api/simulator/control', {
+      await axios.post(`${API_BASE}/api/simulator/control`, {
         action: 'set_well',
         well_id: newWellId
       });
@@ -400,7 +401,7 @@ function App() {
               query = `Elevated ${topFactor} causing potential hazard during drilling`;
           }
           
-          const response = await axios.get(`http://localhost:8000/api/events/search`, {
+          const response = await axios.get(`${API_BASE}/api/events/search`, {
               params: { query, limit: 1 }
           });
           

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { API_BASE } from '../lib/api';
 import { 
   BookOpen, 
   Send, 
@@ -43,7 +44,7 @@ const ContributeLessonModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1'
 
     try {
       // Correction #3: Exact match with backend route /api/events/contribute
-      const res = await axios.post('http://localhost:8000/api/events/contribute', {
+      const res = await axios.post(`${API_BASE}/api/events/contribute`, {
         ...formData,
         well_id: activeWellId,
         depth_tvd: parseFloat(formData.depth_tvd),

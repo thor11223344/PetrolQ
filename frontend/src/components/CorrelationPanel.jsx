@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_BASE } from '../lib/api';
 import Plot from 'react-plotly.js';
 import { 
   X, 
@@ -44,7 +45,7 @@ const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell }) => {
             setIsLoading(true);
             setError(null);
             try {
-                const response = await axios.get('http://localhost:8000/api/correlate', {
+                const response = await axios.get(`${API_BASE}/api/correlate`, {
                     params: { active_well: activeWell, offset_well: offsetWell }
                 });
                 setData(response.data);
@@ -66,7 +67,7 @@ const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell }) => {
         const fetchCasing = async () => {
             setCasingLoading(true);
             try {
-                const res = await axios.get('http://localhost:8000/api/wells/casing-cement-correlation', {
+                const res = await axios.get(`${API_BASE}/api/wells/casing-cement-correlation`, {
                     params: { active_well: activeWell }
                 });
                 setCasingData(res.data);
@@ -87,7 +88,7 @@ const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell }) => {
         const fetchStrat = async () => {
             setStratLoading(true);
             try {
-                const res = await axios.get('http://localhost:8000/api/wells/stratigraphic-cross-section', {
+                const res = await axios.get(`${API_BASE}/api/wells/stratigraphic-cross-section`, {
                     params: { active_well: activeWell }
                 });
                 setStratData(res.data);

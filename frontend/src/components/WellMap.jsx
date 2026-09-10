@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Target, AlertTriangle, Box } from 'lucide-react';
 import Map, { Marker, NavigationControl, Source, Layer } from 'react-map-gl/maplibre';
 import axios from 'axios';
+import { API_BASE } from '../lib/api';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import Trajectory3DViewer from './Trajectory3DViewer';
 
@@ -60,7 +61,7 @@ export default function WellMap({ activeWellId, onSelectWell, currentDepth, acti
         // Fetch nearby wells based on searchCoords and radius
         const fetchNearby = async () => {
             try {
-                const response = await axios.get(`http://localhost:8000/api/wells/nearby`, {
+                const response = await axios.get(`${API_BASE}/api/wells/nearby`, {
                     params: {
                         lat: searchCoords.lat,
                         lon: searchCoords.lon,
@@ -122,7 +123,7 @@ export default function WellMap({ activeWellId, onSelectWell, currentDepth, acti
         sources: {
             'offline-tiles': {
                 type: 'raster',
-                tiles: ['http://localhost:8000/tiles/{z}/{x}/{y}.png'],
+                tiles: [`${API_BASE}/tiles/{z}/{x}/{y}.png`],
                 tileSize: 256
             }
         },

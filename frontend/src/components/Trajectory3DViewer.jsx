@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { API_BASE } from '../lib/api';
 import Plot from 'react-plotly.js';
 import { 
     X, 
@@ -250,7 +251,7 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [], c
                 // 1. Fetch Active Well Trajectory
                 let activeTrajectory = null;
                 try {
-                    const activeRes = await axios.get(`http://localhost:8000/api/wells/${activeWellId}/trajectory?is_active=true`);
+                    const activeRes = await axios.get(`${API_BASE}/api/wells/${activeWellId}/trajectory?is_active=true`);
                     activeTrajectory = activeRes.data;
                 } catch (e) {
                     console.error("Failed to load active well trajectory", e);
@@ -261,7 +262,7 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [], c
                 const offsetList = offsetWells.filter(w => w.well_id !== activeWellId);
                 for (const w of offsetList) {
                     try {
-                        const offsetRes = await axios.get(`http://localhost:8000/api/wells/${w.well_id}/trajectory?is_active=false`);
+                        const offsetRes = await axios.get(`${API_BASE}/api/wells/${w.well_id}/trajectory?is_active=false`);
                         loadedOffsets.push(offsetRes.data);
                     } catch (e) {
                         console.warn(`Could not load offset ${w.well_id}`, e);
@@ -272,7 +273,7 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [], c
                 let antiCollision = null;
                 try {
                     const offsetIdsParam = offsetList.map(w => w.well_id).join(',');
-                    const acRes = await axios.get(`http://localhost:8000/api/wells/${activeWellId}/anti-collision?offset_ids=${offsetIdsParam}`);
+                    const acRes = await axios.get(`${API_BASE}/api/wells/${activeWellId}/anti-collision?offset_ids=${offsetIdsParam}`);
                     antiCollision = acRes.data;
                     setAntiCollisionData(antiCollision);
                 } catch (e) {

@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import axios from 'axios';
+import { API_BASE } from '../lib/api';
 import { 
   UploadCloud, 
   File, 
@@ -104,7 +105,7 @@ const DocumentUploadModal = ({
         formData.append('well_id', targetWell || activeWellId || 'OIL-BAGHJAN-1');
 
         try {
-            const res = await axios.post('http://localhost:8000/api/upload-report', formData, {
+            const res = await axios.post(`${API_BASE}/api/upload-report`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             setUploadResult(res.data);

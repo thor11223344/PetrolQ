@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_BASE } from '../lib/api';
 import { 
   Radar, 
   AlertTriangle, 
@@ -60,7 +61,7 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
     const startTime = Date.now();
 
     try {
-      const res = await axios.get(`http://localhost:8000/api/wells/${wellToUse}/lookahead`, {
+      const res = await axios.get(`${API_BASE}/api/wells/${wellToUse}/lookahead`, {
         params: {
           current_depth: depthToUse,
           window_meters: windowMeters,
