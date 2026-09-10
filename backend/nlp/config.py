@@ -1,5 +1,4 @@
 import os
-from sentence_transformers import SentenceTransformer
 
 # LLM Configuration
 # Placeholder for Gemini API key, OpenAI API key, or a local Ollama endpoint.
