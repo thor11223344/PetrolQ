@@ -187,7 +187,7 @@ class HazardPredictionService:
         
         return descriptions.get(feature_name, f"{direction} {feature_name.replace('_', ' ')}")
 
-    def predict_risk(self, current_params: dict, history_params: list = None) -> dict:
+    def predict_risk(self, current_params: dict, history_params: list | None = None) -> dict:
         """
         Runs unified ML prediction, physics-based multi-hazard disaggregation, and SHAP explainability.
         Computes 4 disaggregated hazards (Gas Kick, Lost Circulation, Stuck Pipe, Torque & Drag)

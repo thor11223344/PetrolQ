@@ -141,12 +141,12 @@ def get_well_trajectory(well_id: str, is_active: bool = Query(False), db: Sessio
     if not well:
         raise HTTPException(status_code=404, detail="Well not found")
     
-    tvd_max = well.total_depth_tvd or 3500.0
+    tvd_max = float(well.total_depth_tvd or 3500.0)
     db_events = db.query(SyntheticEvent).filter(
         SyntheticEvent.well_id == well_id,
         SyntheticEvent.formation.isnot(None)
     ).all()
-    return compute_realistic_trajectory(well_id, tvd_max, is_active=is_active, db_events=db_events)
+    return compute_realistic_trajectory(str(well_id), tvd_max, is_active=is_active, db_events=db_events)
 
 @app.get("/api/wells/{well_id}/anti-collision")
 def get_anti_collision(
@@ -158,7 +158,7 @@ def get_anti_collision(
     if not active_well:
         raise HTTPException(status_code=404, detail="Active well not found")
         
-    active_traj = compute_realistic_trajectory(well_id, active_well.total_depth_tvd or 3500.0, is_active=True)
+    active_traj = compute_realistic_trajectory(str(well_id), float(active_well.total_depth_tvd or 3500.0), is_active=True)
     
     if offset_ids:
         offset_list = [oid.strip() for oid in offset_ids.split(",") if oid.strip()]
@@ -173,7 +173,7 @@ def get_anti_collision(
     for off in offsets:
         if off.well_id == well_id:
             continue
-        off_traj = compute_realistic_trajectory(off.well_id, off.total_depth_tvd or 3500.0, is_active=False)
+        off_traj = compute_realistic_trajectory(str(off.well_id), float(off.total_depth_tvd or 3500.0), is_active=False)
         ac = compute_anti_collision(active_traj, off_traj)
         results.append(ac)
         
@@ -214,22 +214,23 @@ def search_events(
     
     results = []
     for event in events:
-        if not event.embedding or len(event.embedding) == 0:
+        embedding_val = getattr(event, "embedding", None)
+        if embedding_val is None or len(embedding_val) == 0:
             continue
             
         # Calculate cosine similarity in-memory
         # (Since pgvector extension compilation failed, we use numpy on standard Postgres Arrays)
-        sim = compute_cosine_similarity(query_embedding, event.embedding)
+        sim = compute_cosine_similarity(query_embedding, embedding_val)
         
         results.append(
             RAGSearchResponse(
-                similarity_score=sim,
-                well_id=event.well_id,
+                similarity_score=float(sim),
+                well_id=str(event.well_id),
                 # Fallback to start depth if singular depth_tvd is required
-                depth_tvd=event.depth_start_tvd if event.depth_start_tvd is not None else 0.0,
-                event_type=event.event_type,
-                root_cause=event.root_cause,
-                mitigation_applied=event.mitigation_applied
+                depth_tvd=float(event.depth_start_tvd) if event.depth_start_tvd is not None else 0.0,
+                event_type=str(event.event_type or ""),
+                root_cause=str(event.root_cause or ""),
+                mitigation_applied=str(event.mitigation_applied or "")
             )
         )
         
@@ -313,10 +314,12 @@ async def control_simulator(req: ControlRequest):
     elif req.action == "pause":
         telemetry_simulator.pause()
     elif req.action == "reset":
-        telemetry_simulator.reset(well_id=req.well_id or "OIL-BAGHJAN-1", depth_tvd=req.depth)
+        depth_val = float(req.depth) if req.depth is not None else 2240.0
+        telemetry_simulator.reset(well_id=req.well_id or "OIL-BAGHJAN-1", depth_tvd=depth_val)
         await telemetry_simulator.step_and_broadcast()
     elif req.action == "set_well":
-        telemetry_simulator.reset(well_id=req.well_id or "OIL-BAGHJAN-1", depth_tvd=req.depth)
+        depth_val = float(req.depth) if req.depth is not None else 2240.0
+        telemetry_simulator.reset(well_id=req.well_id or "OIL-BAGHJAN-1", depth_tvd=depth_val)
         await telemetry_simulator.step_and_broadcast()
     elif req.action == "step":
         await telemetry_simulator.step_and_broadcast()
