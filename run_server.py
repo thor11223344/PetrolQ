@@ -2,13 +2,24 @@ import os
 import sys
 from pathlib import Path
 
-# Ensure paths
+# Ensure paths are set
 BASE_DIR = Path(__file__).resolve().parent
 sys.path.extend([str(BASE_DIR), str(BASE_DIR / "backend")])
 
 import uvicorn
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    print(f"Starting PetrolQ API server on 0.0.0.0:{port}...")
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=port, workers=1)
+    # Render assigns PORT (default 10000)
+    raw_port = os.environ.get("PORT", "10000")
+    try:
+        port = int(raw_port)
+    except ValueError:
+        port = 10000
+
+    print(f"[PetrolQ] Starting server on 0.0.0.0:{port}...", flush=True)
+
+    # Import app after paths are configured
+    from backend.main import app
+    print("[PetrolQ] FastAPI app imported successfully, starting Uvicorn...", flush=True)
+
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

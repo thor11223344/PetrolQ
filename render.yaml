@@ -11,3 +11,5 @@ services:
         sync: false
       - key: FRONTEND_URL
         value: "*"
+      - key: PYTHONUNBUFFERED
+        value: "1"
