@@ -7,9 +7,11 @@ import logging
 # Setup path so we can import from backend and config modules
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.append(str(BASE_DIR))
+sys.path.append(str(BASE_DIR / "backend"))
 
-from backend.database import engine, Base, SessionLocal
-from backend.models import WellMaster, DrillingParam, WellLog, SyntheticEvent
+import numpy as np
+from database import engine, Base, SessionLocal
+from models import WellMaster, DrillingParam, WellLog, SyntheticEvent
 from scripts.config import PROCESSED_DATA_DIR, logger
 
 def seed_database():
