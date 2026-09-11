@@ -81,6 +81,14 @@ app.include_router(lookahead_router)
 app.include_router(ppfg_router)
 app.include_router(dossier_router)
 
+@app.get("/")
+def root():
+    return {"status": "ok", "service": "PetrolQ API"}
+
+@app.get("/health")
+def health():
+    return {"status": "healthy"}
+
 @app.get("/api/wells/nearby", response_model=List[WellResponse])
 def get_nearby_wells(
     lat: float = Query(..., description="Latitude"),

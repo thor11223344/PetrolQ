@@ -3,7 +3,7 @@ services:
     name: petrolq-api
     env: python
     buildCommand: "pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && pip install --no-cache-dir -r requirements.txt"
-    startCommand: "uvicorn backend.main:app --host 0.0.0.0 --port 10000 --workers 1"
+    startCommand: "python run_server.py"
     envVars:
       - key: PORT
         value: 10000

@@ -1,5 +1,5 @@
 import os
-import fitz  # PyMuPDF
+import pymupdf as fitz
 import pdfplumber
 import logging
 from langchain_text_splitters import RecursiveCharacterTextSplitter
