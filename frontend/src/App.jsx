@@ -517,25 +517,20 @@ function App() {
     <div className="h-screen w-screen flex flex-col bg-[#070b14] text-slate-200 overflow-hidden font-sans">
       
       {/* Top Navigation Bar - Mission Control Bar */}
-      <header className="h-15 border-b border-slate-800/80 bg-[#0c1322]/90 backdrop-blur-xl flex items-center justify-between px-3 sm:px-6 z-50 shrink-0 shadow-[0_4px_25px_rgba(0,0,0,0.5)] relative">
-        <div className="flex items-center space-x-3">
-          <div className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500/20 via-blue-500/10 to-indigo-500/10 border border-cyan-500/40 text-cyan-400 shadow-glow-cyan shrink-0">
-            <Activity size={19} className="text-cyan-400 animate-pulse-subtle" />
+      <header className="h-14 sm:h-15 border-b border-slate-800/80 bg-[#0c1322]/95 backdrop-blur-xl flex items-center justify-between px-3 sm:px-4 lg:px-5 z-50 shrink-0 shadow-[0_4px_25px_rgba(0,0,0,0.5)] relative w-full">
+        <div className="flex items-center space-x-2.5 sm:space-x-3 shrink-0">
+          <div className="relative flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-cyan-500/20 via-blue-500/10 to-indigo-500/10 border border-cyan-500/40 text-cyan-400 shadow-glow-cyan shrink-0">
+            <Activity size={18} className="text-cyan-400 animate-pulse-subtle" />
             <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-[#0c1322] animate-ping" />
             <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-[#0c1322]" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="font-display text-lg sm:text-xl font-bold tracking-tight text-white leading-none">
-                Petrol<span className="text-cyan-400 font-extrabold">Q</span>
-              </h1>
-              <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-cyan-950/70 text-cyan-300 border border-cyan-500/30 tracking-wide">
-                SUBSURFACE AI
-              </span>
-            </div>
-            <p className="text-[10px] text-slate-400 font-mono hidden sm:block tracking-wider uppercase mt-0.5">
-              Autonomous Drilling Risk & Telemetry Engine
-            </p>
+          <div className="flex items-center gap-2">
+            <h1 className="font-display text-base sm:text-lg font-bold tracking-tight text-white leading-none">
+              Petrol<span className="text-cyan-400 font-extrabold">Q</span>
+            </h1>
+            <span className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-mono font-semibold bg-cyan-950/70 text-cyan-300 border border-cyan-500/30 tracking-wider">
+              SUBSURFACE AI
+            </span>
           </div>
         </div>
 
@@ -578,23 +573,23 @@ function App() {
         </div>
 
         {/* Desktop Navigation Toolbar (Hidden on mobile < lg) */}
-        <div className="hidden lg:flex items-center space-x-5">
+        <div className="hidden lg:flex items-center space-x-2 xl:space-x-2.5 2xl:space-x-3 shrink-0">
           {/* Status Indicator */}
-          <div className="flex items-center space-x-2 bg-slate-900/80 px-3 py-1.5 rounded-full border border-slate-800 shadow-inner">
+          <div className="flex items-center space-x-1.5 bg-slate-900/80 px-2 py-1 rounded-full border border-slate-800 shadow-inner shrink-0">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-status-active opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-status-active"></span>
             </span>
-            <span className="text-xs font-mono text-slate-300">Live 1.0Hz</span>
+            <span className="text-[11px] font-mono text-slate-300 whitespace-nowrap">Live 1.0Hz</span>
           </div>
 
           {/* Role Toggle */}
-          <div className="flex items-center space-x-2.5 border-l border-slate-800/80 pl-5">
-            <span className="text-xs text-slate-400 font-medium">Role:</span>
+          <div className="flex items-center space-x-1 border-l border-slate-800/80 pl-2 xl:pl-2.5 shrink-0">
+            <span className="text-[11px] text-slate-400 font-medium hidden 2xl:inline">Role:</span>
             <select 
                 value={role} 
                 onChange={handleRoleChange}
-                className="bg-slate-900 border border-slate-700 text-slate-200 text-xs font-medium rounded-lg px-2.5 py-1.5 outline-none focus:border-cyan-500 transition shadow-inner"
+                className="bg-slate-900 border border-slate-700 text-slate-200 text-xs font-medium rounded-lg px-2 py-1 outline-none focus:border-cyan-500 transition shadow-inner cursor-pointer"
             >
                 <option value="Field Engineer">Field Engineer</option>
                 <option value="Office Reviewer">Office Reviewer</option>
@@ -602,121 +597,120 @@ function App() {
           </div>
 
           {/* Active Well Selector */}
-          <div className="flex items-center space-x-2.5 border-l border-slate-800/80 pl-5">
-            <span className="text-xs text-slate-400 font-medium">Target:</span>
-            <div className="flex items-center space-x-2 bg-slate-900 hover:bg-slate-850 px-3 py-1.5 rounded-lg transition-colors border border-slate-700 shadow-inner">
-              <Database size={14} className="text-cyan-400" />
+          <div className="flex items-center space-x-1 border-l border-slate-800/80 pl-2 xl:pl-2.5 shrink-0">
+            <div className="flex items-center space-x-1.5 bg-slate-900 hover:bg-slate-850 px-2 py-1 rounded-lg transition-colors border border-slate-700 shadow-inner">
+              <Database size={13} className="text-cyan-400 shrink-0" />
               <select 
                   value={selectedWell} 
                   onChange={(e) => handleSelectWell(e.target.value)}
                   className="bg-transparent text-slate-200 text-xs font-mono font-medium outline-none cursor-pointer"
               >
-                  <option value="OIL-BAGHJAN-1">OIL-BAGHJAN-1</option>
-                  <option value="OIL-BAGHJAN-4">OIL-BAGHJAN-4</option>
-                  <option value="OIL-NAHARKATIYA-1">OIL-NAHARKATIYA-1</option>
-                  <option value="OIL-MORAN-1">OIL-MORAN-1</option>
-                  <option value="OIL-DIKOM-1">OIL-DIKOM-1</option>
-                  <option value="OIL-TENGAKHAT-1">OIL-TENGAKHAT-1</option>
-                  <option value="OIL-KOTHALONI-1">OIL-KOTHALONI-1</option>
-                  <option value="OIL-HAPJAN-1">OIL-HAPJAN-1</option>
-                  <option value="OIL-SHALMARI-1">OIL-SHALMARI-1</option>
+                  <option value="OIL-BAGHJAN-1">BAGHJAN-1</option>
+                  <option value="OIL-BAGHJAN-4">BAGHJAN-4</option>
+                  <option value="OIL-NAHARKATIYA-1">NAHARKATIYA-1</option>
+                  <option value="OIL-MORAN-1">MORAN-1</option>
+                  <option value="OIL-DIKOM-1">DIKOM-1</option>
+                  <option value="OIL-TENGAKHAT-1">TENGAKHAT-1</option>
+                  <option value="OIL-KOTHALONI-1">KOTHALONI-1</option>
+                  <option value="OIL-HAPJAN-1">HAPJAN-1</option>
+                  <option value="OIL-SHALMARI-1">SHALMARI-1</option>
               </select>
             </div>
           </div>
 
           {/* Backend API Live Status Indicator */}
-          <div className="flex items-center space-x-2 border-l border-slate-800/80 pl-4">
+          <div className="flex items-center border-l border-slate-800/80 pl-2 xl:pl-2.5 shrink-0">
             {isBackendConnected ? (
               <div 
-                className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono shadow-[0_0_12px_rgba(16,185,129,0.15)]"
-                title="FastAPI Backend is online on port 8000"
+                className="flex items-center space-x-1.5 px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-mono shadow-[0_0_10px_rgba(16,185,129,0.15)] whitespace-nowrap"
+                title="FastAPI Backend is online"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                 <span>API Online</span>
               </div>
             ) : (
               <div 
-                className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-300 text-xs font-mono animate-pulse shadow-[0_0_12px_rgba(244,63,94,0.2)]"
-                title="FastAPI is offline at port 8000. Start it via 'npm run dev' or '.\start.bat'"
+                className="flex items-center space-x-1.5 px-2 py-1 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-300 text-[11px] font-mono animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.2)] whitespace-nowrap"
+                title="FastAPI is offline"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                <span>API Offline (:8000)</span>
+                <span>Offline</span>
               </div>
             )}
           </div>
 
           {/* Core Decision Support Modules (SIH 2026 Mandate) */}
-          <div className="flex items-center space-x-2 border-l border-slate-800/80 pl-4">
+          <div className="flex items-center space-x-1 xl:space-x-1.5 border-l border-slate-800/80 pl-2 xl:pl-2.5 shrink-0">
             <button 
                 onClick={() => setIsRadarOpen(true)}
-                className="flex items-center space-x-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition shadow-glow-amber group"
-                title="Ahead-of-the-Bit Hazard Radar"
+                className="flex items-center space-x-1 text-xs font-semibold px-2 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition shadow-glow-amber group shrink-0"
+                title="Ahead-of-the-Bit Hazard Radar & Impending Formations"
             >
-                <Radar size={14} className="text-amber-400 group-hover:rotate-45 transition-transform" />
-                <span>Hazard Radar</span>
+                <Radar size={13} className="text-amber-400 group-hover:rotate-45 transition-transform shrink-0" />
+                <span>Radar</span>
             </button>
 
             <button 
                 onClick={() => setIsCorrelationOpen(true)}
-                className="flex items-center space-x-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 transition shadow-[0_0_15px_-3px_rgba(99,102,241,0.25)]"
-                title="Cross-Well Correlation, Casing Programs & Stratigraphic Cross-Section"
+                className="flex items-center space-x-1 text-xs font-semibold px-2 py-1 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 transition shadow-[0_0_15px_-3px_rgba(99,102,241,0.25)] shrink-0"
+                title="Cross-Well Log Correlation & Stratigraphic Programs"
             >
-                <Layers size={14} className="text-indigo-400" />
-                <span>Correlation & Offsets</span>
+                <Layers size={13} className="text-indigo-400 shrink-0" />
+                <span>Correlation</span>
             </button>
 
             <button 
                 onClick={() => setIsPPFGOpen(true)}
-                className="flex items-center space-x-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition shadow-glow-emerald"
-                title="Pore Pressure & Fracture Gradient Safe Mud Window"
+                className="flex items-center space-x-1 text-xs font-semibold px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition shadow-glow-emerald shrink-0"
+                title="Pore Pressure & Fracture Gradient Safe Mud Weight Window"
             >
-                <Gauge size={14} className="text-emerald-400" />
-                <span>Safe Mud Window</span>
+                <Gauge size={13} className="text-emerald-400 shrink-0" />
+                <span>PPFG<span className="hidden 2xl:inline"> Window</span></span>
             </button>
 
             <button 
                 onClick={() => setIsDossierOpen(true)}
-                className="flex items-center space-x-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 transition shadow-glow-cyan"
+                className="flex items-center space-x-1 text-xs font-semibold px-2 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 transition shadow-glow-cyan shrink-0"
                 title="1-Click Pre-Spud Offset Hazard Dossier"
             >
-                <FileText size={14} className="text-cyan-400" />
-                <span>Pre-Spud Report</span>
+                <FileText size={13} className="text-cyan-400 shrink-0" />
+                <span>Pre-Spud</span>
             </button>
 
             <button 
                 onClick={() => setIsContributeOpen(true)}
-                className="flex items-center space-x-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 transition shadow-[0_0_15px_-3px_rgba(168,85,247,0.25)]"
+                className="flex items-center space-x-1 text-xs font-semibold px-2 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 transition shadow-[0_0_15px_-3px_rgba(168,85,247,0.25)] shrink-0"
                 title="Add Field Lesson Learned to Institutional Memory"
             >
-                <Brain size={14} className="text-purple-400" />
-                <span>Add Lesson</span>
+                <Brain size={13} className="text-purple-400 shrink-0" />
+                <span>+ Lesson</span>
             </button>
           </div>
 
           {/* Tools */}
-          <div className="flex items-center space-x-2.5 text-slate-400 border-l border-slate-800/80 pl-4 relative">
+          <div className="flex items-center space-x-1.5 text-slate-400 border-l border-slate-800/80 pl-2 xl:pl-2.5 relative shrink-0">
             <button 
                 onClick={() => setIsUploadModalOpen(true)}
-                className="hover:text-white transition-all flex items-center space-x-1.5 text-xs font-medium bg-slate-900 hover:bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg shadow-sm hover:border-cyan-500/50"
-                title="Upload Document"
+                className="hover:text-white transition-all flex items-center space-x-1 text-xs font-medium bg-slate-900 hover:bg-slate-800 border border-slate-700 px-2 py-1 rounded-lg shadow-sm hover:border-cyan-500/50 shrink-0"
+                title="Upload DDR / LAS Document"
             >
-                <FileUp size={15} className="text-cyan-400" />
+                <FileUp size={14} className="text-cyan-400 shrink-0" />
                 <span>Upload</span>
             </button>
-            <div className="w-px h-4 bg-slate-800 mx-1"></div>
+            <div className="w-px h-3.5 bg-slate-800 mx-0.5"></div>
             <button 
                 onClick={() => setIsKnowledgeSearchOpen(!isKnowledgeSearchOpen)}
-                className={`p-1.5 rounded-lg transition-colors ${isKnowledgeSearchOpen ? 'text-cyan-400 bg-cyan-500/10' : 'hover:text-white hover:bg-slate-850'}`}
+                className={`p-1.5 rounded-lg transition-colors shrink-0 ${isKnowledgeSearchOpen ? 'text-cyan-400 bg-cyan-500/10' : 'hover:text-white hover:bg-slate-850'}`}
                 title="Search Knowledge Base"
             >
-                <Search size={17} />
+                <Search size={15} />
             </button>
             <button 
                 onClick={() => setIsSettingsOpen(!isSettingsOpen)} 
-                className={`p-1.5 rounded-lg transition-colors ${isSettingsOpen ? 'text-cyan-400 bg-cyan-500/10' : 'hover:text-white hover:bg-slate-850'}`}
+                className={`p-1.5 rounded-lg transition-colors shrink-0 ${isSettingsOpen ? 'text-cyan-400 bg-cyan-500/10' : 'hover:text-white hover:bg-slate-850'}`}
                 title="System Settings"
             >
-                <Settings size={17} />
+                <Settings size={15} />
             </button>
             
             {/* Settings Dropdown */}
