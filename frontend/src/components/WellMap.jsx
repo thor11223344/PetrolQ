@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Target, AlertTriangle, Box } from 'lucide-react';
 import Map, { Marker, NavigationControl, Source, Layer } from 'react-map-gl/maplibre';
+import maplibregl from 'maplibre-gl';
 import axios from 'axios';
 import { API_BASE } from '../lib/api';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -169,8 +170,8 @@ export default function WellMap({ activeWellId, onSelectWell, currentDepth, acti
 
     return (
         <div className="relative w-full h-full flex-1">
-            {console.log('CIRCLE DEBUG:', JSON.stringify(circleGeoJSON), 'radius:', radius, 'center:', searchCoords)}
             <Map
+                mapLib={maplibregl}
                 ref={mapRef}
                 {...viewState}
                 onMove={evt => setViewState(evt.viewState)}
