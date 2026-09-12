@@ -68,13 +68,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="PetrolQ API", description="Oil & Gas Drilling Data API", lifespan=lifespan)
 
-# Configure CORS - allow the Netlify frontend URL in production
-FRONTEND_URL = os.environ.get("FRONTEND_URL", "*")
-cors_origins = ["*"] if FRONTEND_URL == "*" else [FRONTEND_URL, "http://localhost:5173", "http://localhost:3000"]
-
+# Configure CORS - allow all Vercel previews and localhost
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
+    allow_origins=["http://localhost:5173", "http://localhost:3000", "https://petrol-q.vercel.app"],
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
