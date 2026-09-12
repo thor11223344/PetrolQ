@@ -213,20 +213,27 @@ export default function WellMap({ activeWellId, onSelectWell, currentDepth, acti
                                 onSelectWell(well.well_id);
                             }}
                         >
-                            <div className={`relative flex items-center justify-center cursor-pointer group`}>
+                            <div className="relative flex items-center justify-center cursor-pointer group">
                                 {isActive && (
-                                    <span className="animate-ping absolute inline-flex h-8 w-8 rounded-full bg-status-active opacity-50"></span>
+                                    <>
+                                        <span className="animate-ping absolute inline-flex h-9 w-9 rounded-full bg-status-active opacity-60"></span>
+                                        <span className="absolute inline-flex h-6 w-6 rounded-full bg-status-active/30 border border-status-active/50"></span>
+                                    </>
                                 )}
                                 <div className={`
-                                    relative z-10 w-4 h-4 rounded-full border-2 shadow-lg transition-transform hover:scale-125
+                                    relative z-10 rounded-full border-2 shadow-lg transition-transform group-hover:scale-125 flex items-center justify-center
                                     ${isActive 
-                                        ? 'bg-status-active border-slate-900 w-5 h-5' 
-                                        : 'bg-slate-400 border-slate-900'}
-                                `}></div>
+                                        ? 'bg-status-active border-white w-5 h-5 shadow-glow-emerald' 
+                                        : 'bg-slate-400 hover:bg-cyan-400 border-slate-900 w-3.5 h-3.5'}
+                                `}>
+                                    {isActive && <div className="w-1.5 h-1.5 rounded-full bg-slate-950"></div>}
+                                </div>
                                 
                                 {/* Tooltip */}
-                                <div className="absolute top-6 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-slate-200 text-xs px-2 py-1 rounded shadow pointer-events-none whitespace-nowrap z-50">
-                                    {well.well_id}
+                                <div className="absolute top-7 opacity-0 group-hover:opacity-100 transition-all duration-200 bg-[#0c1322]/95 border border-slate-700 text-slate-100 text-[11px] font-mono px-2.5 py-1 rounded-lg shadow-xl pointer-events-none whitespace-nowrap z-50 flex items-center space-x-1.5 backdrop-blur-md">
+                                    <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-status-active' : 'bg-cyan-400'}`}></span>
+                                    <span className="font-semibold">{well.well_id}</span>
+                                    {isActive && <span className="text-[10px] text-emerald-400 font-sans font-bold">(ACTIVE)</span>}
                                 </div>
                             </div>
                         </Marker>
@@ -236,38 +243,38 @@ export default function WellMap({ activeWellId, onSelectWell, currentDepth, acti
 
             {/* Floating Control Card (Draggable / Mobile Responsive) */}
             <div 
-                className={`absolute w-80 max-w-[calc(100vw-32px)] bg-slate-900/95 backdrop-blur-md border border-slate-700 shadow-2xl rounded-xl p-3 sm:p-4 z-10 transition-all ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                className={`absolute w-80 max-w-[calc(100vw-32px)] glass-panel border border-slate-750 shadow-glass rounded-2xl p-3.5 sm:p-4 z-10 transition-all ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
                 style={{ top: Math.max(60, position.y), left: Math.max(12, position.x), touchAction: 'none' }}
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
                 onPointerCancel={handlePointerUp}
             >
-                <div className="flex items-center justify-between mb-1 sm:mb-3">
-                    <h3 className="font-semibold text-slate-200 flex items-center text-xs sm:text-sm">
-                        <Target size={16} className="mr-2 text-status-fluid" />
-                        Offset Search
+                <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-display font-bold text-slate-100 flex items-center text-xs sm:text-sm">
+                        <Target size={16} className="mr-2 text-cyan-400" />
+                        Offset Search Horizon
                     </h3>
                     <div className="flex items-center space-x-1.5">
-                        <span className="bg-slate-800 px-2 py-0.5 rounded text-[11px] font-medium text-slate-300 border border-slate-700">
+                        <span className="bg-cyan-950/60 text-cyan-300 border border-cyan-500/30 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold">
                             {wells.length} Wells
                         </span>
                         <button
                             onClick={() => setIsCollapsed(!isCollapsed)}
-                            className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
                             title={isCollapsed ? "Expand Search Controls" : "Collapse Search Controls"}
                         >
-                            {isCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                            {isCollapsed ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
                         </button>
                     </div>
                 </div>
 
                 {!isCollapsed && (
-                    <div className="space-y-3 sm:space-y-4 pt-1">
+                    <div className="space-y-3 pt-1">
                         <div>
-                            <div className="flex justify-between text-xs text-slate-400 mb-1">
-                                <span>Search Radius</span>
-                                <span>{radius.toFixed(1)} km</span>
+                            <div className="flex justify-between text-xs font-mono text-slate-400 mb-1.5">
+                                <span>Radial Buffer:</span>
+                                <span className="text-cyan-400 font-bold">{radius.toFixed(1)} km</span>
                             </div>
                             <input 
                                 type="range" 
@@ -276,23 +283,23 @@ export default function WellMap({ activeWellId, onSelectWell, currentDepth, acti
                                 step="5.0" 
                                 value={radius}
                                 onChange={(e) => setRadius(parseFloat(e.target.value))}
-                                className="w-full accent-status-fluid bg-slate-800 rounded-lg appearance-none cursor-pointer h-2"
+                                className="w-full accent-cyan-500 bg-slate-800 rounded-lg appearance-none cursor-pointer h-1.5"
                             />
                         </div>
 
                         <button 
                             onClick={setAsActiveRig}
-                            className="w-full bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-200 text-xs sm:text-sm font-medium py-2 sm:py-2.5 rounded-lg transition-colors border border-slate-700 flex items-center justify-center min-h-[44px]"
+                            className="w-full bg-slate-850 hover:bg-slate-800 active:bg-slate-750 text-slate-200 text-xs font-medium py-2.5 rounded-xl transition-colors border border-slate-700/80 flex items-center justify-center min-h-[40px] shadow-sm"
                         >
                             Set Selected as Active Rig
                         </button>
                         
                         <button 
                             onClick={() => setIs3DViewerOpen(true)}
-                            className="w-full bg-status-fluid/20 hover:bg-status-fluid/30 active:bg-status-fluid/40 text-status-fluid text-xs sm:text-sm font-medium py-2 sm:py-2.5 rounded-lg transition-colors border border-status-fluid/30 flex items-center justify-center min-h-[44px]"
+                            className="w-full bg-gradient-to-r from-cyan-500/20 via-blue-500/20 to-cyan-500/20 hover:from-cyan-500/30 hover:to-blue-500/30 active:scale-[0.99] text-cyan-300 text-xs font-semibold py-2.5 rounded-xl transition-all border border-cyan-500/40 shadow-glow-cyan flex items-center justify-center min-h-[40px]"
                         >
-                            <Box size={16} className="mr-2" />
-                            View 3D Subsurface
+                            <Box size={15} className="mr-2 text-cyan-400" />
+                            View 3D Subsurface Trajectory
                         </button>
                     </div>
                 )}

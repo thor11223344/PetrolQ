@@ -514,17 +514,29 @@ function App() {
   };
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-slate-950 text-slate-200 overflow-hidden font-sans">
+    <div className="h-screen w-screen flex flex-col bg-[#070b14] text-slate-200 overflow-hidden font-sans">
       
-      {/* Top Navigation Bar */}
-      <header className="h-14 border-b border-slate-800 bg-slate-900 flex items-center justify-between px-3 sm:px-6 z-50 shrink-0 shadow-md relative">
+      {/* Top Navigation Bar - Mission Control Bar */}
+      <header className="h-15 border-b border-slate-800/80 bg-[#0c1322]/90 backdrop-blur-xl flex items-center justify-between px-3 sm:px-6 z-50 shrink-0 shadow-[0_4px_25px_rgba(0,0,0,0.5)] relative">
         <div className="flex items-center space-x-3">
-          <div className="flex items-center justify-center w-8 h-8 rounded bg-status-active/20 text-status-active shrink-0">
-            <Activity size={18} />
+          <div className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500/20 via-blue-500/10 to-indigo-500/10 border border-cyan-500/40 text-cyan-400 shadow-glow-cyan shrink-0">
+            <Activity size={19} className="text-cyan-400 animate-pulse-subtle" />
+            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-[#0c1322] animate-ping" />
+            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-[#0c1322]" />
           </div>
-          <h1 className="text-base sm:text-lg font-semibold tracking-wide truncate">
-            PetrolQ <span className="hidden sm:inline text-slate-500 font-normal ml-2">| Drilling Risk Intelligence</span>
-          </h1>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="font-display text-lg sm:text-xl font-bold tracking-tight text-white leading-none">
+                Petrol<span className="text-cyan-400 font-extrabold">Q</span>
+              </h1>
+              <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-cyan-950/70 text-cyan-300 border border-cyan-500/30 tracking-wide">
+                SUBSURFACE AI
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-400 font-mono hidden sm:block tracking-wider uppercase mt-0.5">
+              Autonomous Drilling Risk & Telemetry Engine
+            </p>
+          </div>
         </div>
 
         {/* Mobile Quick Action Bar (Visible only on mobile < lg) */}
@@ -533,7 +545,7 @@ function App() {
           <select 
             value={selectedWell} 
             onChange={(e) => handleSelectWell(e.target.value)}
-            className="bg-slate-800 border border-slate-700 text-slate-200 text-xs font-medium rounded-lg px-2 py-1.5 outline-none max-w-[130px] truncate"
+            className="bg-slate-900 border border-slate-700/80 text-slate-200 text-xs font-mono font-medium rounded-lg px-2 py-1.5 outline-none max-w-[130px] truncate shadow-inner focus:border-cyan-500"
           >
             <option value="OIL-BAGHJAN-1">BAGHJAN-1</option>
             <option value="OIL-BAGHJAN-4">BAGHJAN-4</option>
@@ -549,7 +561,7 @@ function App() {
           {/* Quick Upload Icon Button */}
           <button
             onClick={() => setIsUploadModalOpen(true)}
-            className="p-2 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 border border-slate-700 text-slate-300 rounded-lg transition"
+            className="p-2 bg-slate-900/90 hover:bg-slate-800 active:bg-slate-700 border border-slate-700/80 text-slate-300 rounded-lg transition shadow-sm"
             title="Upload Document"
           >
             <FileUp size={16} />
@@ -558,7 +570,7 @@ function App() {
           {/* Mobile Menu Toggle Button */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-2 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 border border-slate-700 text-slate-200 rounded-lg transition"
+            className="p-2 bg-slate-900/90 hover:bg-slate-800 active:bg-slate-700 border border-slate-700/80 text-slate-200 rounded-lg transition shadow-sm"
             aria-label="Toggle Menu"
           >
             {isMobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
@@ -566,23 +578,23 @@ function App() {
         </div>
 
         {/* Desktop Navigation Toolbar (Hidden on mobile < lg) */}
-        <div className="hidden lg:flex items-center space-x-6">
+        <div className="hidden lg:flex items-center space-x-5">
           {/* Status Indicator */}
-          <div className="flex items-center space-x-2 bg-slate-800/50 px-3 py-1.5 rounded-full border border-slate-700/50">
+          <div className="flex items-center space-x-2 bg-slate-900/80 px-3 py-1.5 rounded-full border border-slate-800 shadow-inner">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-status-active opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-status-active"></span>
             </span>
-            <span className="text-xs font-medium text-slate-300">Live Feed: Connected</span>
+            <span className="text-xs font-mono text-slate-300">Live 1.0Hz</span>
           </div>
 
           {/* Role Toggle */}
-          <div className="flex items-center space-x-3 border-l border-slate-800 pl-6">
-            <span className="text-sm text-slate-400">View As:</span>
+          <div className="flex items-center space-x-2.5 border-l border-slate-800/80 pl-5">
+            <span className="text-xs text-slate-400 font-medium">Role:</span>
             <select 
                 value={role} 
                 onChange={handleRoleChange}
-                className="bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded px-2 py-1 outline-none focus:border-status-fluid"
+                className="bg-slate-900 border border-slate-700 text-slate-200 text-xs font-medium rounded-lg px-2.5 py-1.5 outline-none focus:border-cyan-500 transition shadow-inner"
             >
                 <option value="Field Engineer">Field Engineer</option>
                 <option value="Office Reviewer">Office Reviewer</option>
@@ -590,14 +602,14 @@ function App() {
           </div>
 
           {/* Active Well Selector */}
-          <div className="flex items-center space-x-3 border-l border-slate-800 pl-6">
-            <span className="text-sm text-slate-400">Active Target:</span>
-            <div className="flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded transition-colors border border-slate-700">
-              <Database size={14} className="text-status-fluid" />
+          <div className="flex items-center space-x-2.5 border-l border-slate-800/80 pl-5">
+            <span className="text-xs text-slate-400 font-medium">Target:</span>
+            <div className="flex items-center space-x-2 bg-slate-900 hover:bg-slate-850 px-3 py-1.5 rounded-lg transition-colors border border-slate-700 shadow-inner">
+              <Database size={14} className="text-cyan-400" />
               <select 
                   value={selectedWell} 
                   onChange={(e) => handleSelectWell(e.target.value)}
-                  className="bg-transparent text-slate-200 text-sm font-medium outline-none cursor-pointer"
+                  className="bg-transparent text-slate-200 text-xs font-mono font-medium outline-none cursor-pointer"
               >
                   <option value="OIL-BAGHJAN-1">OIL-BAGHJAN-1</option>
                   <option value="OIL-BAGHJAN-4">OIL-BAGHJAN-4</option>
@@ -613,58 +625,58 @@ function App() {
           </div>
 
           {/* Backend API Live Status Indicator */}
-          <div className="flex items-center space-x-2 border-l border-slate-800 pl-4">
+          <div className="flex items-center space-x-2 border-l border-slate-800/80 pl-4">
             {isBackendConnected ? (
               <div 
-                className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono"
+                className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono shadow-[0_0_12px_rgba(16,185,129,0.15)]"
                 title="FastAPI Backend is online on port 8000"
               >
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                 <span>API Online</span>
               </div>
             ) : (
               <div 
-                className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-rose-500/15 border border-rose-500/40 text-rose-300 text-xs font-mono animate-pulse"
+                className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-300 text-xs font-mono animate-pulse shadow-[0_0_12px_rgba(244,63,94,0.2)]"
                 title="FastAPI is offline at port 8000. Start it via 'npm run dev' or '.\start.bat'"
               >
-                <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
                 <span>API Offline (:8000)</span>
               </div>
             )}
           </div>
 
           {/* Core Decision Support Modules (SIH 2026 Mandate) */}
-          <div className="flex items-center space-x-2 border-l border-slate-800 pl-4">
+          <div className="flex items-center space-x-2 border-l border-slate-800/80 pl-4">
             <button 
                 onClick={() => setIsRadarOpen(true)}
-                className="flex items-center space-x-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition shadow-sm"
+                className="flex items-center space-x-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition shadow-glow-amber group"
                 title="Ahead-of-the-Bit Hazard Radar"
             >
-                <Radar size={14} className="text-amber-400" />
+                <Radar size={14} className="text-amber-400 group-hover:rotate-45 transition-transform" />
                 <span>Hazard Radar</span>
             </button>
 
             <button 
                 onClick={() => setIsCorrelationOpen(true)}
-                className="flex items-center space-x-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 transition shadow-sm"
+                className="flex items-center space-x-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 transition shadow-[0_0_15px_-3px_rgba(99,102,241,0.25)]"
                 title="Cross-Well Correlation, Casing Programs & Stratigraphic Cross-Section"
             >
                 <Layers size={14} className="text-indigo-400" />
-                <span>Correlation & Cross-Section</span>
+                <span>Correlation & Offsets</span>
             </button>
 
             <button 
                 onClick={() => setIsPPFGOpen(true)}
-                className="flex items-center space-x-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition shadow-sm"
+                className="flex items-center space-x-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition shadow-glow-emerald"
                 title="Pore Pressure & Fracture Gradient Safe Mud Window"
             >
                 <Gauge size={14} className="text-emerald-400" />
-                <span>Safe Mud Weight Window</span>
+                <span>Safe Mud Window</span>
             </button>
 
             <button 
                 onClick={() => setIsDossierOpen(true)}
-                className="flex items-center space-x-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 transition shadow-sm"
+                className="flex items-center space-x-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 transition shadow-glow-cyan"
                 title="1-Click Pre-Spud Offset Hazard Dossier"
             >
                 <FileText size={14} className="text-cyan-400" />
@@ -673,68 +685,71 @@ function App() {
 
             <button 
                 onClick={() => setIsContributeOpen(true)}
-                className="flex items-center space-x-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 transition shadow-sm"
+                className="flex items-center space-x-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 transition shadow-[0_0_15px_-3px_rgba(168,85,247,0.25)]"
                 title="Add Field Lesson Learned to Institutional Memory"
             >
                 <Brain size={14} className="text-purple-400" />
-                <span>Add Lesson Learned</span>
+                <span>Add Lesson</span>
             </button>
           </div>
 
           {/* Tools */}
-          <div className="flex items-center space-x-3 text-slate-400 border-l border-slate-800 pl-6 relative">
+          <div className="flex items-center space-x-2.5 text-slate-400 border-l border-slate-800/80 pl-4 relative">
             <button 
                 onClick={() => setIsUploadModalOpen(true)}
-                className="hover:text-white transition-colors flex items-center space-x-2 text-sm bg-slate-800 px-3 py-1 rounded"
+                className="hover:text-white transition-all flex items-center space-x-1.5 text-xs font-medium bg-slate-900 hover:bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg shadow-sm hover:border-cyan-500/50"
                 title="Upload Document"
             >
-                <FileUp size={16} />
+                <FileUp size={15} className="text-cyan-400" />
                 <span>Upload</span>
             </button>
-            <div className="w-px h-4 bg-slate-700 mx-2"></div>
+            <div className="w-px h-4 bg-slate-800 mx-1"></div>
             <button 
                 onClick={() => setIsKnowledgeSearchOpen(!isKnowledgeSearchOpen)}
-                className={`transition-colors ${isKnowledgeSearchOpen ? 'text-white' : 'hover:text-white'}`}
+                className={`p-1.5 rounded-lg transition-colors ${isKnowledgeSearchOpen ? 'text-cyan-400 bg-cyan-500/10' : 'hover:text-white hover:bg-slate-850'}`}
                 title="Search Knowledge Base"
             >
-                <Search size={18} />
+                <Search size={17} />
             </button>
-            <button className="hover:text-white transition-colors"><Bell size={18} /></button>
             <button 
                 onClick={() => setIsSettingsOpen(!isSettingsOpen)} 
-                className={`transition-colors ${isSettingsOpen ? 'text-white' : 'hover:text-white'}`}
+                className={`p-1.5 rounded-lg transition-colors ${isSettingsOpen ? 'text-cyan-400 bg-cyan-500/10' : 'hover:text-white hover:bg-slate-850'}`}
+                title="System Settings"
             >
-                <Settings size={18} />
+                <Settings size={17} />
             </button>
             
             {/* Settings Dropdown */}
             {isSettingsOpen && (
-                <div className="absolute top-10 right-0 w-64 bg-slate-900 border border-slate-700 shadow-2xl rounded-lg p-4 z-50 animate-in fade-in zoom-in-95">
-                    <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-2">
-                        <h3 className="font-semibold text-slate-200">System Settings</h3>
-                        <button onClick={() => setIsSettingsOpen(false)} className="text-slate-500 hover:text-slate-300">
+                <div className="absolute top-11 right-0 w-68 bg-slate-900/98 backdrop-blur-xl border border-slate-700 shadow-2xl rounded-xl p-4 z-50 animate-in fade-in zoom-in-95">
+                    <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-2.5">
+                        <div className="flex items-center space-x-2">
+                          <Settings size={15} className="text-cyan-400" />
+                          <h3 className="font-semibold text-slate-100 text-xs tracking-wide uppercase">System Settings</h3>
+                        </div>
+                        <button onClick={() => setIsSettingsOpen(false)} className="text-slate-400 hover:text-white transition">
                             <XCircle size={16} />
                         </button>
                     </div>
-                    <div className="space-y-4">
+                    <div className="space-y-3.5">
                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-400">Dark Mode</span>
-                            <div className="w-8 h-4 bg-status-active rounded-full relative cursor-pointer">
-                                <div className="absolute right-1 top-0.5 w-3 h-3 bg-white rounded-full"></div>
+                            <span className="text-xs text-slate-300">Dark Matter Theme</span>
+                            <div className="w-8 h-4 bg-status-active rounded-full relative cursor-pointer shadow-glow-emerald">
+                                <div className="absolute right-1 top-0.5 w-3 h-3 bg-white rounded-full shadow"></div>
                             </div>
                         </div>
                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-400">Audio Alerts</span>
-                            <div className="w-8 h-4 bg-slate-700 rounded-full relative cursor-pointer">
+                            <span className="text-xs text-slate-300">Hazard Audio Alerts</span>
+                            <div className="w-8 h-4 bg-slate-750 rounded-full relative cursor-pointer border border-slate-700">
                                 <div className="absolute left-1 top-0.5 w-3 h-3 bg-slate-400 rounded-full"></div>
                             </div>
                         </div>
                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-400">Telemetry Rate</span>
-                            <select className="bg-slate-800 text-xs border border-slate-700 rounded p-1 text-slate-300">
-                                <option>1.0 Hz</option>
-                                <option>0.5 Hz</option>
-                                <option>2.0 Hz</option>
+                            <span className="text-xs text-slate-300">Telemetry Stream Rate</span>
+                            <select className="bg-slate-800 text-xs font-mono border border-slate-700 rounded-md px-2 py-1 text-slate-200 outline-none">
+                                <option>1.0 Hz (Realtime)</option>
+                                <option>0.5 Hz (Balanced)</option>
+                                <option>2.0 Hz (High Speed)</option>
                             </select>
                         </div>
                     </div>
@@ -935,25 +950,62 @@ function App() {
           </div>
 
           {/* Active Drilling Status Card overlay (Hidden on < sm) */}
-          <div className="absolute top-4 left-4 z-10 hidden sm:flex gap-4">
-            <div className="bg-slate-900/90 backdrop-blur border border-slate-700 p-4 rounded-lg shadow-xl min-w-[200px]">
-              <h3 className="text-xs uppercase text-slate-400 font-bold mb-2">Current TVD</h3>
-              <div className="text-3xl font-light text-white">
-                {telemetryData ? telemetryData.depth_tvd.toFixed(1) : "---"} <span className="text-sm text-slate-500">m</span>
+          <div className="absolute top-4 left-4 z-10 hidden sm:flex gap-3">
+            {/* TVD */}
+            <div className="glass-panel p-3.5 sm:p-4 rounded-xl shadow-glass border-slate-750 min-w-[180px] relative overflow-hidden group">
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent" />
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] uppercase text-cyan-400 font-mono font-bold tracking-wider flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                  Current TVD
+                </span>
+                <span className="text-[10px] text-slate-500 font-mono">Bit Depth</span>
+              </div>
+              <div className="text-3xl font-mono font-semibold tracking-tight text-white flex items-baseline gap-1.5">
+                {telemetryData ? telemetryData.depth_tvd.toFixed(1) : "---"}
+                <span className="text-xs font-mono font-normal text-slate-400">m</span>
               </div>
             </div>
             
-            <div className="bg-slate-900/90 backdrop-blur border border-slate-700 p-4 rounded-lg shadow-xl min-w-[150px]">
-              <h3 className="text-xs uppercase text-slate-400 font-bold mb-2">ROP</h3>
-              <div className="text-2xl font-light text-status-active">
-                {telemetryData ? telemetryData.rop.toFixed(1) : "---"} <span className="text-sm text-slate-500">m/h</span>
+            {/* ROP */}
+            <div className="glass-panel p-3.5 sm:p-4 rounded-xl shadow-glass border-slate-750 min-w-[145px] relative overflow-hidden group">
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-emerald-400/50 to-transparent" />
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] uppercase text-emerald-400 font-mono font-bold tracking-wider flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  ROP
+                </span>
+                <span className="text-[10px] text-slate-500 font-mono">Penetration</span>
+              </div>
+              <div className="text-3xl font-mono font-semibold tracking-tight text-emerald-400 flex items-baseline gap-1.5">
+                {telemetryData ? telemetryData.rop.toFixed(1) : "---"}
+                <span className="text-xs font-mono font-normal text-slate-400">m/h</span>
               </div>
             </div>
 
-            <div className={`bg-slate-900/90 backdrop-blur border ${showAlerts && alertState.active ? 'border-status-danger bg-status-danger/10' : 'border-slate-700'} p-4 rounded-lg shadow-xl min-w-[150px] transition-colors duration-500`}>
-              <h3 className="text-xs uppercase text-slate-400 font-bold mb-2">Torque</h3>
-              <div className={`text-2xl font-light ${showAlerts && alertState.active ? 'text-status-danger animate-pulse' : 'text-status-warning'}`}>
-                {telemetryData ? telemetryData.torque.toFixed(0) : "---"} <span className="text-sm text-slate-500">lbf-ft</span>
+            {/* Torque */}
+            <div className={`glass-panel p-3.5 sm:p-4 rounded-xl shadow-glass min-w-[165px] relative overflow-hidden transition-all duration-500 ${
+              showAlerts && alertState.active 
+                ? 'border-status-danger/80 bg-rose-950/30 shadow-glow-danger' 
+                : 'border-slate-750'
+            }`}>
+              <div className={`absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent ${
+                showAlerts && alertState.active ? 'via-rose-500/80' : 'via-amber-400/50'
+              } to-transparent`} />
+              <div className="flex items-center justify-between mb-1.5">
+                <span className={`text-[10px] uppercase font-mono font-bold tracking-wider flex items-center gap-1.5 ${
+                  showAlerts && alertState.active ? 'text-rose-400' : 'text-amber-400'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${showAlerts && alertState.active ? 'bg-rose-500 animate-ping' : 'bg-amber-400'}`} />
+                  Torque
+                </span>
+                <span className="text-[10px] text-slate-500 font-mono">Surface</span>
+              </div>
+              <div className={`text-3xl font-mono font-semibold tracking-tight flex items-baseline gap-1.5 ${
+                showAlerts && alertState.active ? 'text-rose-400 animate-pulse' : 'text-amber-400'
+              }`}>
+                {telemetryData ? telemetryData.torque.toFixed(0) : "---"}
+                <span className="text-xs font-mono font-normal text-slate-400">lbf-ft</span>
               </div>
             </div>
 
@@ -974,46 +1026,48 @@ function App() {
               return (
                 <button 
                   onClick={() => setIsRadarOpen(true)}
-                  className="bg-slate-900/90 backdrop-blur border border-amber-500/40 hover:border-amber-500 p-3.5 rounded-lg shadow-xl min-w-[220px] text-left transition group cursor-pointer"
+                  className="glass-panel hover:border-amber-500/60 p-3.5 rounded-xl shadow-glass min-w-[230px] text-left transition-all duration-300 group cursor-pointer relative overflow-hidden border-amber-500/30"
                 >
+                  <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-amber-400/50 to-transparent" />
                   <div className="flex items-center justify-between text-xs uppercase text-amber-400 font-bold mb-1.5">
-                    <span className="flex items-center space-x-1.5">
-                      <Radar size={14} className="animate-spin-slow" />
-                      <span>Hazard Radar</span>
+                    <span className="flex items-center space-x-1.5 font-mono text-[11px]">
+                      <Radar size={14} className="animate-spin-slow text-amber-400" />
+                      <span>Lookahead Radar</span>
                     </span>
-                    <span className="text-[10px] bg-amber-500/20 px-1.5 py-0.5 rounded font-mono text-amber-300">+250m Scan</span>
+                    <span className="text-[10px] bg-amber-500/20 px-2 py-0.5 rounded-full font-mono text-amber-300 border border-amber-500/30">+250m</span>
                   </div>
-                  <div className="text-sm font-bold text-white group-hover:text-amber-300 transition truncate">
+                  <div className="text-sm font-semibold text-white group-hover:text-amber-300 transition truncate">
                     {preview.horizon}
                   </div>
-                  <div className="text-[11px] text-slate-400 mt-1 flex items-center justify-between">
-                    <span>Next Top: ~{preview.top}</span>
-                    <span className="text-cyan-400 font-bold">Open Radar →</span>
+                  <div className="text-[11px] text-slate-400 mt-1.5 flex items-center justify-between font-mono">
+                    <span>Top: ~{preview.top}</span>
+                    <span className="text-cyan-400 font-bold group-hover:translate-x-0.5 transition-transform flex items-center gap-1">
+                      Scan →
+                    </span>
                   </div>
                 </button>
               );
             })()}
           </div>
 
-          {/* In-App Telemetry Feed Controller (CORRECTION 4: Realistic Scenario Injector) */}
-          {/* In-App Telemetry Feed Controller (CORRECTION 4: Realistic Scenario Injector - Desktop Only) */}
-          <div className="absolute bottom-6 left-4 z-20 bg-slate-900/95 backdrop-blur-md border border-slate-700/80 p-3 rounded-xl shadow-2xl hidden lg:flex flex-wrap items-center gap-3">
-            <div className="flex items-center space-x-2 border-r border-slate-800 pr-3">
+          {/* In-App Telemetry Feed Controller (Desktop Tactical Cyber-Console) */}
+          <div className="absolute bottom-6 left-4 z-20 glass-panel border border-slate-700/80 p-3.5 rounded-2xl shadow-2xl hidden lg:flex flex-wrap items-center gap-3.5">
+            <div className="flex items-center space-x-2 border-r border-slate-800 pr-3.5">
               <button
                 onClick={() => handleSimControl(simStatus.is_running ? 'pause' : 'play')}
-                className={`px-3 py-1.5 rounded-lg font-bold text-xs flex items-center space-x-1.5 transition shadow-md ${
+                className={`px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center space-x-1.5 transition-all shadow-md active:scale-95 ${
                   simStatus.is_running
-                    ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-500/20'
-                    : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/20'
+                    ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-glow-amber'
+                    : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-glow-emerald'
                 }`}
               >
                 {simStatus.is_running ? <Pause size={14} /> : <Play size={14} />}
-                <span>{simStatus.is_running ? 'Pause Simulator' : 'Play Simulator'}</span>
+                <span>{simStatus.is_running ? 'Pause Sim' : 'Play Simulator'}</span>
               </button>
 
               <button
                 onClick={() => handleSimControl('reset')}
-                className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition"
+                className="p-1.5 rounded-lg border border-slate-700/80 hover:bg-slate-800 text-slate-400 hover:text-white transition"
                 title="Reset TVD to 2240m"
               >
                 <RotateCcw size={14} />
@@ -1021,15 +1075,15 @@ function App() {
             </div>
 
             {/* Speed Controls */}
-            <div className="flex items-center space-x-1 border-r border-slate-800 pr-3">
+            <div className="flex items-center space-x-1 border-r border-slate-800 pr-3.5">
               {[1, 2, 5].map(speed => (
                 <button
                   key={speed}
                   onClick={() => handleSpeedChange(speed)}
-                  className={`px-2 py-1 rounded text-xs font-bold transition ${
+                  className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition ${
                     simSpeed === speed
-                      ? 'bg-cyan-500 text-slate-900 shadow-md shadow-cyan-500/20'
-                      : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 border border-slate-700'
+                      ? 'bg-cyan-500 text-slate-950 shadow-glow-cyan'
+                      : 'bg-slate-900/80 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-700/60'
                   }`}
                   title={`${speed}x Simulation Speed`}
                 >
@@ -1039,8 +1093,8 @@ function App() {
             </div>
 
             {/* Seek Control */}
-            <div className="flex items-center space-x-3 border-r border-slate-800 pr-3 min-w-[200px]">
-              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Seek:</span>
+            <div className="flex items-center space-x-3 border-r border-slate-800 pr-3.5 min-w-[210px]">
+              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Seek TVD:</span>
               <input
                 type="range"
                 min="0"
@@ -1055,7 +1109,7 @@ function App() {
                 }}
                 className="flex-1 accent-cyan-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg appearance-none"
               />
-              <span className="text-[10px] font-mono text-slate-300 w-12 text-right">
+              <span className="text-xs font-mono font-bold text-cyan-400 w-14 text-right">
                 {(isDraggingSeek ? seekDepth : (telemetryData?.depth_tvd || 2240)).toFixed(0)}m
               </span>
             </div>
@@ -1066,10 +1120,10 @@ function App() {
               
               <button
                 onClick={() => handleScenarioInject('normal')}
-                className={`px-2.5 py-1 rounded text-xs font-semibold transition border ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition border ${
                   simStatus.active_scenario === 'normal'
-                    ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-300'
-                    : 'bg-slate-800/80 border-slate-700/60 text-slate-400 hover:text-white'
+                    ? 'bg-emerald-500/20 border-emerald-500/70 text-emerald-300 shadow-glow-emerald'
+                    : 'bg-slate-900/80 border-slate-700/60 text-slate-400 hover:text-white'
                 }`}
                 title="Nominal baseline circulating parameters"
               >
@@ -1078,41 +1132,41 @@ function App() {
 
               <button
                 onClick={() => handleScenarioInject('gas_kick')}
-                className={`px-2.5 py-1 rounded text-xs font-semibold transition border flex items-center space-x-1 ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition border flex items-center space-x-1 ${
                   simStatus.active_scenario === 'gas_kick'
-                    ? 'bg-amber-500/30 border-amber-500/80 text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.3)]'
+                    ? 'bg-amber-500/25 border-amber-500/80 text-amber-300 shadow-glow-amber'
                     : 'bg-amber-950/20 border-amber-800/40 text-amber-400 hover:bg-amber-900/30'
                 }`}
                 title="Simulate formation gas influx (flow-out increase, pit gain, SPP drop)"
               >
-                <Flame size={12} />
-                <span>Inject Gas Kick</span>
+                <Flame size={12} className="text-amber-400" />
+                <span>Gas Kick</span>
               </button>
 
               <button
                 onClick={() => handleScenarioInject('lost_circulation')}
-                className={`px-2.5 py-1 rounded text-xs font-semibold transition border flex items-center space-x-1 ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition border flex items-center space-x-1 ${
                   simStatus.active_scenario === 'lost_circulation'
-                    ? 'bg-cyan-500/30 border-cyan-500/80 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
+                    ? 'bg-cyan-500/25 border-cyan-500/80 text-cyan-300 shadow-glow-cyan'
                     : 'bg-cyan-950/20 border-cyan-800/40 text-cyan-400 hover:bg-cyan-900/30'
                 }`}
                 title="Simulate mud loss (flow-out deficit, pit volume drop, ECD decrease)"
               >
-                <Droplets size={12} />
-                <span>Inject Lost Circ</span>
+                <Droplets size={12} className="text-cyan-400" />
+                <span>Lost Circ</span>
               </button>
 
               <button
                 onClick={() => handleScenarioInject('stuck_pipe')}
-                className={`px-2.5 py-1 rounded text-xs font-semibold transition border flex items-center space-x-1 ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition border flex items-center space-x-1 ${
                   simStatus.active_scenario === 'stuck_pipe'
-                    ? 'bg-rose-500/30 border-rose-500/80 text-rose-300 shadow-[0_0_10px_rgba(244,63,94,0.3)]'
+                    ? 'bg-rose-500/25 border-rose-500/80 text-rose-300 shadow-glow-danger'
                     : 'bg-rose-950/20 border-rose-800/40 text-rose-400 hover:bg-rose-900/30'
                 }`}
                 title="Simulate mechanical packoff (torque spike, zero ROP, motor stall)"
               >
-                <Anchor size={12} />
-                <span>Inject Stuck Pipe</span>
+                <Anchor size={12} className="text-rose-400" />
+                <span>Stuck Pipe</span>
               </button>
             </div>
 
@@ -1121,14 +1175,13 @@ function App() {
               <span className={`w-2 h-2 rounded-full ${simStatus.is_running ? 'bg-emerald-400 animate-ping' : 'bg-slate-600'}`}></span>
               <span className="text-[11px] font-mono text-slate-300">
                 {simStatus.active_scenario !== 'normal' ? (
-                  <span className="text-amber-400 font-bold uppercase">{simStatus.active_scenario.replace('_', ' ')} (Active)</span>
+                  <span className="text-amber-400 font-bold uppercase">{simStatus.active_scenario.replace('_', ' ')} (ACTIVE)</span>
                 ) : (
-                  <span>Baseline Steady</span>
+                  <span>Steady Baseline</span>
                 )}
               </span>
             </div>
           </div>
-
 
           <WellMap 
              activeWellId={selectedWell} 
@@ -1308,28 +1361,31 @@ function App() {
         )}
 
         {/* Right-Hand Drawer / Mobile Telemetry Tab */}
-        <aside className={`${mobileActiveTab === 'telemetry' ? 'flex w-full flex-1' : 'hidden lg:flex lg:w-[450px]'} border-l border-slate-800 bg-slate-950 flex flex-col shadow-2xl z-20 shrink-0 relative h-full min-h-0 overflow-hidden`}>
+        <aside className={`${mobileActiveTab === 'telemetry' ? 'flex w-full flex-1' : 'hidden lg:flex lg:w-[460px]'} border-l border-slate-800/80 bg-[#0c1322]/95 backdrop-blur-xl flex flex-col shadow-2xl z-20 shrink-0 relative h-full min-h-0 overflow-hidden`}>
           
           {/* Hazard Alert Banner */}
           {showAlerts && alertState.active && (
-            <div className="bg-status-danger text-white p-4 border-b-4 border-red-900 shadow-lg animate-in slide-in-from-top-4 relative">
+            <div className="bg-gradient-to-r from-rose-950 via-rose-900 to-rose-950 text-white p-4 border-b-2 border-rose-500 shadow-glow-danger animate-in slide-in-from-top-4 relative z-30">
               <button 
                 onClick={dismissAlert}
-                className="absolute top-2 right-2 text-white/70 hover:text-white transition-colors"
+                className="absolute top-3 right-3 text-white/70 hover:text-white transition-colors p-1"
               >
-                <XCircle size={20} />
+                <XCircle size={18} />
               </button>
-              <div className="flex items-center gap-3 mb-2">
-                <AlertTriangle size={24} className="animate-pulse" />
-                <h2 className="font-bold text-lg tracking-wide uppercase">Proactive Hazard Alert</h2>
+              <div className="flex items-center gap-2.5 mb-2">
+                <div className="p-1.5 rounded-lg bg-rose-500/20 border border-rose-500/40 text-rose-300 animate-pulse">
+                  <AlertTriangle size={18} />
+                </div>
+                <h2 className="font-display font-bold text-sm tracking-wide uppercase text-white">Proactive Hazard Influx Alert</h2>
               </div>
-              <div className="bg-black/20 p-3 rounded text-sm mb-3">
-                 <p className="font-medium text-red-100">
-                   Probability: <span className="text-white text-base">{(alertState.prediction.risk_probability * 100).toFixed(1)}%</span>
+              <div className="bg-black/30 p-2.5 rounded-lg text-xs mb-2.5 border border-rose-500/20">
+                 <p className="font-medium text-rose-100 flex items-center justify-between">
+                   <span>Composite Hazard Probability:</span>
+                   <span className="text-rose-300 font-mono font-bold text-sm">{(alertState.prediction.risk_probability * 100).toFixed(1)}%</span>
                  </p>
                  {alertState.prediction.top_factors && alertState.prediction.top_factors.length > 0 && (
-                   <p className="mt-1">
-                     <span className="text-red-200">Risk driven by:</span> {alertState.prediction.top_factors[0].feature.replace('_', ' ').toUpperCase()} 
+                   <p className="mt-1 text-slate-300">
+                     <span className="text-rose-300 font-medium">Risk Driver:</span> {alertState.prediction.top_factors[0].feature.replace('_', ' ').toUpperCase()} 
                      ({alertState.prediction.top_factors[0].direction === 'INCREASES_RISK' ? 'Elevated' : 'Reduced'})
                    </p>
                  )}
@@ -1337,43 +1393,51 @@ function App() {
               
               {/* RAG Context Display */}
               {ragContext ? (
-                <div className="bg-slate-900 text-slate-200 p-3 rounded text-sm border border-slate-700 shadow-inner">
-                  <div className="flex items-center gap-2 mb-2 text-status-warning">
-                    <TrendingDown size={16} />
-                    <span className="font-bold uppercase text-xs">PetrolQ</span>
+                <div className="bg-slate-900/90 text-slate-200 p-2.5 rounded-lg text-xs border border-slate-700/80 shadow-inner">
+                  <div className="flex items-center gap-1.5 mb-1.5 text-amber-400">
+                    <TrendingDown size={14} />
+                    <span className="font-bold uppercase text-[10px] tracking-wider font-mono">Institutional Memory Match</span>
                   </div>
-                  <p className="mb-2"><span className="text-slate-400">Historical Match:</span> Offset well <span className="font-mono text-xs text-blue-300">{ragContext.well_id}</span> experienced <strong className="text-white">{ragContext.event_type}</strong> at {ragContext.depth_tvd}m.</p>
-                  <p><span className="text-slate-400">Recommended Mitigation:</span> <span className="text-emerald-400 font-medium">{ragContext.mitigation_applied}</span></p>
+                  <p className="mb-1.5 text-slate-300"><span className="text-slate-400">Precedent:</span> Offset well <span className="font-mono text-cyan-300 font-bold">{ragContext.well_id}</span> experienced <strong className="text-white">{ragContext.event_type}</strong> at {ragContext.depth_tvd}m.</p>
+                  <p><span className="text-slate-400">Mitigation:</span> <span className="text-emerald-400 font-medium">{ragContext.mitigation_applied}</span></p>
                 </div>
               ) : (
-                <div className="text-sm text-red-200 animate-pulse">Fetching PetrolQ...</div>
+                <div className="text-xs text-rose-200 animate-pulse font-mono">Searching Institutional Memory Vector DB...</div>
               )}
             </div>
           )}
 
-          <div className="p-4 border-b border-slate-800 flex items-center justify-between shrink-0">
-            <h2 className="font-medium text-slate-200">Real-Time Telemetry</h2>
-            <div className="flex space-x-1">
-              <div className="w-2 h-2 rounded-full bg-status-danger mt-1"></div>
-              <div className="w-2 h-2 rounded-full bg-status-warning mt-1"></div>
+          {/* Drawer Header */}
+          <div className="p-4 border-b border-slate-800/80 flex items-center justify-between shrink-0 bg-[#0c1322]/80">
+            <div className="flex items-center space-x-2.5">
+              <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+              <h2 className="font-display font-bold text-sm tracking-wide text-slate-100 uppercase">
+                Telemetry & ML Risk Stream
+              </h2>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                WELL: {selectedWell.replace('OIL-', '')}
+              </span>
             </div>
           </div>
           
           <div className="flex-1 p-4 overflow-y-auto custom-scrollbar pb-10 space-y-4">
             
             {/* Multi-Hazard Risk Engine Gauges (SIH 2026 Mandate) */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm space-y-3">
+            <div className="glass-card rounded-2xl p-4 shadow-glass space-y-3 relative overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent" />
               <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
                 <div className="flex items-center space-x-2">
                   <Gauge size={16} className="text-cyan-400" />
-                  <h3 className="text-xs uppercase font-bold text-slate-300 tracking-wider">Multi-Hazard Risk Engine</h3>
+                  <h3 className="text-xs uppercase font-mono font-bold text-slate-200 tracking-wider">Multi-Hazard Risk Engine</h3>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <span className="text-xs text-slate-400">Composite:</span>
-                  <span className={`text-xs font-bold font-mono px-2 py-0.5 rounded ${
-                    (predictionData?.risk_probability || 0.15) >= 0.75 ? 'bg-red-500/20 text-red-400 border border-red-500/40' :
-                    (predictionData?.risk_probability || 0.15) >= 0.40 ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' :
-                    'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                  <span className="text-[11px] text-slate-400 font-mono">Composite:</span>
+                  <span className={`text-xs font-bold font-mono px-2.5 py-0.5 rounded-full transition-colors ${
+                    (predictionData?.risk_probability || 0.15) >= 0.75 ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-glow-danger' :
+                    (predictionData?.risk_probability || 0.15) >= 0.40 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-glow-amber' :
+                    'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-glow-emerald'
                   }`}>
                     {Math.round((predictionData?.risk_probability || 0.15) * 100)}% ({predictionData?.risk_level || 'LOW'})
                   </span>
@@ -1386,19 +1450,19 @@ function App() {
                 {(() => {
                   const kick = predictionData?.hazards?.gas_kick || { probability: 0.08, level: 'LOW', key_indicator: 'Flow: 100%, Pit: +0 bbl' };
                   return (
-                    <div className="p-2.5 rounded-lg bg-slate-950/70 border border-slate-800 flex flex-col justify-between">
+                    <div className="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-amber-500/30 transition flex flex-col justify-between">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px] font-semibold text-slate-300 flex items-center space-x-1">
-                          <Flame size={12} className="text-amber-400" />
+                        <span className="text-[11px] font-semibold text-slate-300 flex items-center space-x-1.5">
+                          <Flame size={13} className="text-amber-400" />
                           <span>Gas Kick</span>
                         </span>
-                        <span className={`text-[10px] font-mono font-bold ${kick.probability > 0.6 ? 'text-amber-400' : 'text-slate-400'}`}>
+                        <span className={`text-xs font-mono font-bold ${kick.probability > 0.6 ? 'text-amber-400' : 'text-slate-400'}`}>
                           {Math.round(kick.probability * 100)}%
                         </span>
                       </div>
-                      <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mb-1.5">
+                      <div className="w-full bg-slate-800/80 h-1.5 rounded-full overflow-hidden mb-1.5">
                         <div 
-                          className={`h-full transition-all duration-500 ${kick.probability > 0.7 ? 'bg-red-500' : kick.probability > 0.35 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                          className={`h-full transition-all duration-500 ${kick.probability > 0.7 ? 'bg-rose-500 shadow-glow-danger' : kick.probability > 0.35 ? 'bg-amber-500 shadow-glow-amber' : 'bg-emerald-500'}`}
                           style={{ width: `${Math.round(kick.probability * 100)}%` }}
                         />
                       </div>
@@ -1411,19 +1475,19 @@ function App() {
                 {(() => {
                   const loss = predictionData?.hazards?.lost_circulation || { probability: 0.07, level: 'LOW', key_indicator: 'Flow: 100%, Normal FG' };
                   return (
-                    <div className="p-2.5 rounded-lg bg-slate-950/70 border border-slate-800 flex flex-col justify-between">
+                    <div className="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-cyan-500/30 transition flex flex-col justify-between">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px] font-semibold text-slate-300 flex items-center space-x-1">
-                          <Droplets size={12} className="text-cyan-400" />
+                        <span className="text-[11px] font-semibold text-slate-300 flex items-center space-x-1.5">
+                          <Droplets size={13} className="text-cyan-400" />
                           <span>Lost Circ</span>
                         </span>
-                        <span className={`text-[10px] font-mono font-bold ${loss.probability > 0.6 ? 'text-cyan-400' : 'text-slate-400'}`}>
+                        <span className={`text-xs font-mono font-bold ${loss.probability > 0.6 ? 'text-cyan-400' : 'text-slate-400'}`}>
                           {Math.round(loss.probability * 100)}%
                         </span>
                       </div>
-                      <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mb-1.5">
+                      <div className="w-full bg-slate-800/80 h-1.5 rounded-full overflow-hidden mb-1.5">
                         <div 
-                          className={`h-full transition-all duration-500 ${loss.probability > 0.7 ? 'bg-red-500' : loss.probability > 0.35 ? 'bg-cyan-500' : 'bg-emerald-500'}`}
+                          className={`h-full transition-all duration-500 ${loss.probability > 0.7 ? 'bg-rose-500 shadow-glow-danger' : loss.probability > 0.35 ? 'bg-cyan-500 shadow-glow-cyan' : 'bg-emerald-500'}`}
                           style={{ width: `${Math.round(loss.probability * 100)}%` }}
                         />
                       </div>
@@ -1436,19 +1500,19 @@ function App() {
                 {(() => {
                   const stuck = predictionData?.hazards?.stuck_pipe || { probability: 0.06, level: 'LOW', key_indicator: 'Torque Normal' };
                   return (
-                    <div className="p-2.5 rounded-lg bg-slate-950/70 border border-slate-800 flex flex-col justify-between">
+                    <div className="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-rose-500/30 transition flex flex-col justify-between">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px] font-semibold text-slate-300 flex items-center space-x-1">
-                          <Anchor size={12} className="text-rose-400" />
+                        <span className="text-[11px] font-semibold text-slate-300 flex items-center space-x-1.5">
+                          <Anchor size={13} className="text-rose-400" />
                           <span>Stuck Pipe</span>
                         </span>
-                        <span className={`text-[10px] font-mono font-bold ${stuck.probability > 0.6 ? 'text-rose-400' : 'text-slate-400'}`}>
+                        <span className={`text-xs font-mono font-bold ${stuck.probability > 0.6 ? 'text-rose-400' : 'text-slate-400'}`}>
                           {Math.round(stuck.probability * 100)}%
                         </span>
                       </div>
-                      <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mb-1.5">
+                      <div className="w-full bg-slate-800/80 h-1.5 rounded-full overflow-hidden mb-1.5">
                         <div 
-                          className={`h-full transition-all duration-500 ${stuck.probability > 0.7 ? 'bg-red-500' : stuck.probability > 0.35 ? 'bg-rose-500' : 'bg-emerald-500'}`}
+                          className={`h-full transition-all duration-500 ${stuck.probability > 0.7 ? 'bg-rose-500 shadow-glow-danger' : stuck.probability > 0.35 ? 'bg-rose-400' : 'bg-emerald-500'}`}
                           style={{ width: `${Math.round(stuck.probability * 100)}%` }}
                         />
                       </div>
@@ -1461,19 +1525,19 @@ function App() {
                 {(() => {
                   const torqueH = predictionData?.hazards?.torque_drag || { probability: 0.08, level: 'LOW', key_indicator: 'Smooth Rotation' };
                   return (
-                    <div className="p-2.5 rounded-lg bg-slate-950/70 border border-slate-800 flex flex-col justify-between">
+                    <div className="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-purple-500/30 transition flex flex-col justify-between">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px] font-semibold text-slate-300 flex items-center space-x-1">
-                          <RotateCcw size={12} className="text-purple-400" />
+                        <span className="text-[11px] font-semibold text-slate-300 flex items-center space-x-1.5">
+                          <RotateCcw size={13} className="text-purple-400" />
                           <span>Torque & Drag</span>
                         </span>
-                        <span className={`text-[10px] font-mono font-bold ${torqueH.probability > 0.6 ? 'text-purple-400' : 'text-slate-400'}`}>
+                        <span className={`text-xs font-mono font-bold ${torqueH.probability > 0.6 ? 'text-purple-400' : 'text-slate-400'}`}>
                           {Math.round(torqueH.probability * 100)}%
                         </span>
                       </div>
-                      <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mb-1.5">
+                      <div className="w-full bg-slate-800/80 h-1.5 rounded-full overflow-hidden mb-1.5">
                         <div 
-                          className={`h-full transition-all duration-500 ${torqueH.probability > 0.7 ? 'bg-red-500' : torqueH.probability > 0.35 ? 'bg-purple-500' : 'bg-emerald-500'}`}
+                          className={`h-full transition-all duration-500 ${torqueH.probability > 0.7 ? 'bg-rose-500 shadow-glow-danger' : torqueH.probability > 0.35 ? 'bg-purple-500' : 'bg-emerald-500'}`}
                           style={{ width: `${Math.round(torqueH.probability * 100)}%` }}
                         />
                       </div>
@@ -1485,27 +1549,110 @@ function App() {
 
               {/* Physics Parameters Footer */}
               <div className="pt-2 border-t border-slate-800/80 grid grid-cols-3 gap-2 text-[11px] font-mono text-slate-400">
-                <div>
-                  <span className="text-slate-500 block">MSE:</span>
-                  <span className="text-white font-semibold">{predictionData?.mse_kpsi || '---'} kpsi</span>
+                <div className="bg-slate-950/50 p-2 rounded-lg border border-slate-850">
+                  <span className="text-slate-500 text-[10px] block uppercase">MSE</span>
+                  <span className="text-white font-semibold">{predictionData?.mse_kpsi || '---'} <span className="text-[9px] text-slate-400">kpsi</span></span>
                 </div>
-                <div>
-                  <span className="text-slate-500 block">d_xc:</span>
+                <div className="bg-slate-950/50 p-2 rounded-lg border border-slate-850">
+                  <span className="text-slate-500 text-[10px] block uppercase">d-exponent</span>
                   <span className="text-white font-semibold">{predictionData?.d_xc || '---'}</span>
                 </div>
-                <div>
-                  <span className="text-slate-500 block">FG Margin:</span>
+                <div className="bg-slate-950/50 p-2 rounded-lg border border-slate-850">
+                  <span className="text-slate-500 text-[10px] block uppercase">FG Margin</span>
                   <span className="text-emerald-400 font-semibold">
                     {predictionData?.fracture_margin_ppg ? `${predictionData.fracture_margin_ppg > 0 ? '+' : ''}${predictionData.fracture_margin_ppg} ppg` : '---'}
                   </span>
                 </div>
               </div>
             </div>
-            {/* Real-time Trajectory Widget */}
-            <div className="bg-slate-900 border border-slate-800 rounded p-4 mb-4">
-              <h3 className="text-xs uppercase font-bold text-slate-500 mb-3">Torque vs Depth (TVD)</h3>
 
-              <div className="h-64 w-full flex items-center justify-center rounded overflow-hidden">
+            {/* LIVE DRILLING TELEMETRY SENSOR MATRIX */}
+            <div className="glass-card rounded-2xl p-4 shadow-glass space-y-3 relative overflow-hidden">
+              <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                <div className="flex items-center space-x-2">
+                  <Activity size={15} className="text-emerald-400" />
+                  <h3 className="text-xs uppercase font-mono font-bold text-slate-200 tracking-wider">
+                    Rig Physical Telemetry
+                  </h3>
+                </div>
+                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                  Active Feed
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-center">
+                {/* WOB */}
+                <div className="bg-slate-950/60 border border-slate-800/80 p-2.5 rounded-xl">
+                  <span className="text-[10px] uppercase font-mono text-slate-400 block">WOB</span>
+                  <span className="text-base font-mono font-bold text-white">
+                    {telemetryData?.wob ? telemetryData.wob.toFixed(1) : '14.0'}
+                  </span>
+                  <span className="text-[9px] text-slate-500 font-mono block">klbs</span>
+                </div>
+
+                {/* RPM */}
+                <div className="bg-slate-950/60 border border-slate-800/80 p-2.5 rounded-xl">
+                  <span className="text-[10px] uppercase font-mono text-slate-400 block">Rotary</span>
+                  <span className="text-base font-mono font-bold text-cyan-400">
+                    {telemetryData?.rpm ? telemetryData.rpm.toFixed(0) : '105'}
+                  </span>
+                  <span className="text-[9px] text-slate-500 font-mono block">RPM</span>
+                </div>
+
+                {/* SPP */}
+                <div className="bg-slate-950/60 border border-slate-800/80 p-2.5 rounded-xl">
+                  <span className="text-[10px] uppercase font-mono text-slate-400 block">SPP</span>
+                  <span className="text-base font-mono font-bold text-white">
+                    {telemetryData?.spp_psi ? telemetryData.spp_psi.toFixed(0) : '2,800'}
+                  </span>
+                  <span className="text-[9px] text-slate-500 font-mono block">psi</span>
+                </div>
+
+                {/* Flow Out % */}
+                <div className="bg-slate-950/60 border border-slate-800/80 p-2.5 rounded-xl">
+                  <span className="text-[10px] uppercase font-mono text-slate-400 block">Flow Out</span>
+                  <span className={`text-base font-mono font-bold ${
+                    (telemetryData?.flow_out_pct || 100) > 105 ? 'text-amber-400' :
+                    (telemetryData?.flow_out_pct || 100) < 90 ? 'text-cyan-400' : 'text-emerald-400'
+                  }`}>
+                    {telemetryData?.flow_out_pct ? telemetryData.flow_out_pct.toFixed(1) : '100.0'}%
+                  </span>
+                  <span className="text-[9px] text-slate-500 font-mono block">Return</span>
+                </div>
+
+                {/* Pit Gain */}
+                <div className="bg-slate-950/60 border border-slate-800/80 p-2.5 rounded-xl">
+                  <span className="text-[10px] uppercase font-mono text-slate-400 block">Pit Delta</span>
+                  <span className={`text-base font-mono font-bold ${
+                    (telemetryData?.pit_gain_bbl || 0) > 0 ? 'text-amber-400' :
+                    (telemetryData?.pit_gain_bbl || 0) < 0 ? 'text-cyan-400' : 'text-slate-300'
+                  }`}>
+                    {telemetryData?.pit_gain_bbl !== undefined ? (telemetryData.pit_gain_bbl > 0 ? `+${telemetryData.pit_gain_bbl.toFixed(1)}` : telemetryData.pit_gain_bbl.toFixed(1)) : '+0.0'}
+                  </span>
+                  <span className="text-[9px] text-slate-500 font-mono block">bbl</span>
+                </div>
+
+                {/* ECD */}
+                <div className="bg-slate-950/60 border border-slate-800/80 p-2.5 rounded-xl">
+                  <span className="text-[10px] uppercase font-mono text-slate-400 block">ECD</span>
+                  <span className="text-base font-mono font-bold text-white">
+                    {telemetryData?.ecd ? telemetryData.ecd.toFixed(1) : '11.6'}
+                  </span>
+                  <span className="text-[9px] text-slate-500 font-mono block">ppg</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Real-time Trajectory Widget */}
+            <div className="glass-card rounded-2xl p-4 shadow-glass mb-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs uppercase font-mono font-bold text-slate-300 tracking-wider">
+                  Torque vs Depth (TVD)
+                </h3>
+                <span className="text-[10px] font-mono text-slate-400">Dynamic Trend</span>
+              </div>
+
+              <div className="h-60 w-full flex items-center justify-center rounded-xl overflow-hidden bg-[#070b14]/90 border border-slate-800/80">
                 <Plot
                   data={[
                     {
@@ -1513,27 +1660,28 @@ function App() {
                       y: trajectoryData.depth,
                       type: 'scatter',
                       mode: 'lines+markers',
-                      line: { color: showAlerts && alertState.active ? '#ef4444' : '#3b82f6', width: 2 },
-                      marker: { size: 4, color: showAlerts && alertState.active ? '#ef4444' : '#60a5fa' }
+                      line: { color: showAlerts && alertState.active ? '#f43f5e' : '#06b6d4', width: 2.5 },
+                      marker: { size: 5, color: showAlerts && alertState.active ? '#f43f5e' : '#22d3ee' }
                     }
                   ]}
                   layout={{
                     autosize: true,
-                    height: 250,
-                    margin: { t: 10, r: 10, l: 50, b: 30 },
+                    height: 235,
+                    margin: { t: 10, r: 15, l: 50, b: 35 },
                     paper_bgcolor: 'transparent',
                     plot_bgcolor: 'transparent',
+                    font: { family: 'JetBrains Mono, monospace', color: '#94a3b8', size: 10 },
                     xaxis: { 
-                      title: 'Torque (lbf-ft)', 
-                      gridcolor: '#334155',
-                      zerolinecolor: '#334155',
+                      title: { text: 'Torque (lbf-ft)', font: { size: 10 } }, 
+                      gridcolor: '#17233d',
+                      zerolinecolor: '#17233d',
                       color: '#94a3b8' 
                     },
                     yaxis: { 
-                      title: 'Depth (m)', 
+                      title: { text: 'Depth (m)', font: { size: 10 } }, 
                       autorange: 'reversed', 
-                      gridcolor: '#334155',
-                      zerolinecolor: '#334155',
+                      gridcolor: '#17233d',
+                      zerolinecolor: '#17233d',
                       color: '#94a3b8'
                     }
                   }}
@@ -1544,18 +1692,18 @@ function App() {
               </div>
             </div>
 
-            {/* Event Log */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
+            {/* Event Log & Institutional Memory */}
+            <div className="glass-card rounded-2xl p-4 shadow-glass space-y-3">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <h3 className="text-xs uppercase font-bold text-slate-400 tracking-wider">Offset Incidents & Memory</h3>
-                  <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-cyan-400 border border-slate-700">
-                    {recentEvents.length}
+                  <h3 className="text-xs uppercase font-mono font-bold text-slate-300 tracking-wider">Offset Incidents & Memory</h3>
+                  <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
+                    {recentEvents.length} Recorded
                   </span>
                 </div>
                 <button 
                   onClick={() => fetchHistory(selectedWell)}
-                  className="text-[11px] text-slate-500 hover:text-cyan-400 transition"
+                  className="text-[11px] font-mono text-slate-400 hover:text-cyan-400 transition"
                   title="Reload event log"
                 >
                   Refresh
@@ -1567,18 +1715,18 @@ function App() {
                   const isNewlyAdded = newlyIngestedIds.has(event.id);
                   const isExpanded = expandedEventId === event.id;
                   const severity = (event.severity || 'HIGH').toUpperCase();
-                  const sevColor = severity === 'CRITICAL' ? 'bg-red-500/20 text-red-400 border-red-500/40' :
-                                   severity === 'HIGH' ? 'bg-amber-500/20 text-amber-400 border-amber-500/40' :
-                                   'bg-blue-500/20 text-blue-400 border-blue-500/40';
+                  const sevColor = severity === 'CRITICAL' ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 shadow-glow-danger' :
+                                   severity === 'HIGH' ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-glow-amber' :
+                                   'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 shadow-glow-cyan';
 
                   return (
                     <div 
                       key={event.id || i} 
                       onClick={() => setExpandedEventId(isExpanded ? null : event.id)}
-                      className={`p-3 rounded-lg border transition-all cursor-pointer ${
+                      className={`p-3 rounded-xl border transition-all cursor-pointer ${
                         isNewlyAdded 
-                          ? 'bg-emerald-950/30 border-emerald-500/60 shadow-md shadow-emerald-950/40' 
-                          : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700'
+                          ? 'bg-emerald-950/30 border-emerald-500/60 shadow-glow-emerald' 
+                          : 'bg-slate-950/70 border-slate-800/90 hover:border-slate-700'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
@@ -1588,7 +1736,7 @@ function App() {
                             severity === 'CRITICAL' ? 'bg-status-danger' : 
                             severity === 'HIGH' ? 'bg-status-warning' : 'bg-status-fluid'
                           }`} />
-                          <span className="text-sm font-semibold text-slate-200">{event.event_type}</span>
+                          <span className="text-xs font-semibold text-slate-200">{event.event_type}</span>
                         </div>
                         <div className="flex items-center space-x-1.5 shrink-0">
                           {isNewlyAdded && (
@@ -1596,7 +1744,7 @@ function App() {
                               INGESTED
                             </span>
                           )}
-                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${sevColor}`}>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border ${sevColor}`}>
                             {severity}
                           </span>
                         </div>
@@ -1605,7 +1753,7 @@ function App() {
                       <div className="flex items-center justify-between mt-2 text-xs text-slate-400">
                         <span>Depth: <strong className="text-slate-300 font-mono">{event.depth_tvd}m</strong> TVD</span>
                         {event.formation && (
-                          <span className="text-slate-400 truncate max-w-[140px] text-[11px]">{event.formation}</span>
+                          <span className="text-slate-400 truncate max-w-[150px] text-[11px] font-mono">{event.formation}</span>
                         )}
                       </div>
 
@@ -1614,22 +1762,22 @@ function App() {
                         <div className="mt-3 pt-3 border-t border-slate-800/80 text-xs space-y-2 animate-in fade-in duration-150">
                           {event.root_cause && (
                             <div>
-                              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Root Cause</span>
-                              <p className="text-slate-300 mt-0.5 leading-relaxed bg-slate-900/80 p-2 rounded border border-slate-800">
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-mono">Root Cause</span>
+                              <p className="text-slate-300 mt-1 leading-relaxed bg-slate-900/90 p-2.5 rounded-lg border border-slate-800">
                                 {event.root_cause}
                               </p>
                             </div>
                           )}
                           {event.mitigation_applied && (
                             <div>
-                              <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider block">Mitigation Applied</span>
-                              <p className="text-emerald-300/90 mt-0.5 leading-relaxed bg-emerald-950/20 p-2 rounded border border-emerald-900/40">
+                              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block font-mono">Mitigation Applied</span>
+                              <p className="text-emerald-300/90 mt-1 leading-relaxed bg-emerald-950/30 p-2.5 rounded-lg border border-emerald-900/40">
                                 {event.mitigation_applied}
                               </p>
                             </div>
                           )}
                           {event.npt_hours > 0 && (
-                            <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+                            <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 font-mono">
                               <span>Non-Productive Time (NPT):</span>
                               <span className="font-bold text-amber-400 font-mono">{event.npt_hours} Hours</span>
                             </div>
@@ -1639,22 +1787,25 @@ function App() {
                     </div>
                   );
                 }) : (
-                  <div className="text-sm text-slate-500 p-4 text-center bg-slate-950/40 rounded-lg border border-slate-800/50">
+                  <div className="text-xs text-slate-400 p-4 text-center bg-slate-950/40 rounded-xl border border-slate-800/60">
                     No offset events recorded for this well yet. Upload a DDR or WCR PDF to ingest incidents.
                   </div>
                 )}
               </div>
+
+              {/* Action Buttons */}
               <button 
                 onClick={() => setIsCorrelationOpen(true)}
-                className="w-full mt-4 bg-status-active/20 hover:bg-status-active/30 text-status-active text-sm font-medium py-2 rounded transition-colors border border-status-active/30 flex items-center justify-center"
+                className="w-full mt-3 bg-gradient-to-r from-cyan-500/20 via-blue-500/20 to-cyan-500/20 hover:from-cyan-500/30 hover:to-blue-500/30 text-cyan-300 text-xs font-semibold py-2.5 rounded-xl transition border border-cyan-500/40 shadow-glow-cyan flex items-center justify-center space-x-2"
               >
-                Correlate with Offset Well
+                <Layers size={15} />
+                <span>Cross-Correlate with Offset Wells</span>
               </button>
               
               <div className="grid grid-cols-2 gap-2 mt-2">
                 <button 
                   onClick={() => setIsPPFGOpen(true)}
-                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium py-2 px-2 rounded border border-slate-700 flex items-center justify-center space-x-1 transition"
+                  className="bg-slate-900 hover:bg-slate-850 text-slate-200 text-xs font-medium py-2.5 px-2 rounded-xl border border-slate-700/80 flex items-center justify-center space-x-1.5 transition shadow-sm"
                   title="Safe Mud Weight Operating Window"
                 >
                   <Gauge size={14} className="text-emerald-400" />
@@ -1662,7 +1813,7 @@ function App() {
                 </button>
                 <button 
                   onClick={() => setIsDossierOpen(true)}
-                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium py-2 px-2 rounded border border-slate-700 flex items-center justify-center space-x-1 transition"
+                  className="bg-slate-900 hover:bg-slate-850 text-slate-200 text-xs font-medium py-2.5 px-2 rounded-xl border border-slate-700/80 flex items-center justify-center space-x-1.5 transition shadow-sm"
                   title="1-Click Pre-Spud Risk Dossier"
                 >
                   <FileText size={14} className="text-cyan-400" />
@@ -1672,10 +1823,10 @@ function App() {
 
               <button 
                 onClick={exportWellData}
-                className="w-full mt-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium py-2 rounded transition-colors border border-slate-700 flex items-center justify-center"
+                className="w-full mt-2 bg-slate-900 hover:bg-slate-850 text-slate-300 text-xs font-medium py-2.5 rounded-xl transition border border-slate-700/80 flex items-center justify-center shadow-sm"
               >
-                <Download size={16} className="mr-2" />
-                Export Well Data (CSV)
+                <Download size={14} className="mr-2 text-slate-400" />
+                Export Well Logs & Events (CSV)
               </button>
             </div>
           </div>
@@ -1683,17 +1834,20 @@ function App() {
       </main>
 
       {/* Fixed Mobile Bottom Navigation Bar (< lg) */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-950/98 backdrop-blur-xl border-t border-slate-800/80 px-2 py-1 flex items-center justify-around h-16 shadow-[0_-4px_20px_rgba(0,0,0,0.5)]">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#070b14]/95 backdrop-blur-xl border-t border-slate-800 px-2 py-1 flex items-center justify-around h-16 shadow-[0_-4px_25px_rgba(0,0,0,0.6)]">
         <button
           onClick={() => setMobileActiveTab('map')}
-          className={`flex flex-col items-center justify-center flex-1 py-1 rounded-xl transition min-h-[44px] ${
+          className={`flex flex-col items-center justify-center flex-1 py-1 rounded-xl transition min-h-[44px] relative ${
             mobileActiveTab === 'map'
               ? 'text-cyan-400 font-bold bg-cyan-500/10'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
+          {mobileActiveTab === 'map' && (
+            <span className="absolute -top-1 w-8 h-1 rounded-full bg-cyan-400 shadow-glow-cyan" />
+          )}
           <MapIcon size={18} />
-          <span className="text-[10px] mt-1 font-medium">Well Map</span>
+          <span className="text-[10px] mt-1 font-medium font-mono">Well Map</span>
         </button>
 
         <button
@@ -1704,11 +1858,14 @@ function App() {
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
+          {mobileActiveTab === 'telemetry' && (
+            <span className="absolute -top-1 w-8 h-1 rounded-full bg-cyan-400 shadow-glow-cyan" />
+          )}
           {showAlerts && alertState.active && (
             <span className="absolute top-1.5 right-4 w-2 h-2 rounded-full bg-status-danger animate-ping" />
           )}
           <Activity size={18} />
-          <span className="text-[10px] mt-1 font-medium">Telemetry</span>
+          <span className="text-[10px] mt-1 font-medium font-mono">Telemetry</span>
         </button>
 
         <button
@@ -1719,11 +1876,14 @@ function App() {
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
+          {mobileActiveTab === 'simulator' && (
+            <span className="absolute -top-1 w-8 h-1 rounded-full bg-cyan-400 shadow-glow-cyan" />
+          )}
           {simStatus.is_running && (
             <span className="absolute top-1.5 right-4 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           )}
           <Sliders size={18} />
-          <span className="text-[10px] mt-1 font-medium">Simulator</span>
+          <span className="text-[10px] mt-1 font-medium font-mono">Simulator</span>
         </button>
 
         <button
@@ -1731,7 +1891,7 @@ function App() {
           className="flex flex-col items-center justify-center flex-1 py-1 rounded-xl text-amber-400 hover:text-amber-300 transition min-h-[44px]"
         >
           <Radar size={18} />
-          <span className="text-[10px] mt-1 font-medium">Radar</span>
+          <span className="text-[10px] mt-1 font-medium font-mono">Radar</span>
         </button>
 
         <button
@@ -1739,9 +1899,10 @@ function App() {
           className="flex flex-col items-center justify-center flex-1 py-1 rounded-xl text-indigo-400 hover:text-indigo-300 transition min-h-[44px]"
         >
           <Layers size={18} />
-          <span className="text-[10px] mt-1 font-medium">Offsets</span>
+          <span className="text-[10px] mt-1 font-medium font-mono">Offsets</span>
         </button>
       </nav>
+
 
       {/* Ahead-of-the-Bit Hazard Radar Modal */}
       <LookAheadRadar 
