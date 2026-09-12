@@ -136,12 +136,35 @@ export default function WellMap({ activeWellId, onSelectWell, currentDepth, acti
         }]
     };
 
+    const osmStyle = {
+        version: 8,
+        sources: {
+            'osm-tiles': {
+                type: 'raster',
+                tiles: [
+                    'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
+                ],
+                tileSize: 256,
+                attribution: '&copy; OpenStreetMap contributors'
+            }
+        },
+        layers: [{
+            id: 'osm-tiles-layer',
+            type: 'raster',
+            source: 'osm-tiles',
+            minzoom: 0,
+            maxzoom: 19
+        }]
+    };
+
     return (
         <div className="relative w-full h-full flex-1">
             <Map
                 {...viewState}
                 onMove={evt => setViewState(evt.viewState)}
-                mapStyle={isOffline ? offlineStyle : "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"}
+                mapStyle={isOffline ? offlineStyle : osmStyle}
                 style={{ width: '100%', height: '100%' }}
             >
                 <NavigationControl position="bottom-right" />
