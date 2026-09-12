@@ -162,6 +162,7 @@ export default function WellMap({ activeWellId, onSelectWell, currentDepth, acti
 
     return (
         <div className="relative w-full h-full flex-1">
+            {console.log('CIRCLE DEBUG:', JSON.stringify(circleGeoJSON), 'radius:', radius, 'center:', searchCoords)}
             <Map
                 {...viewState}
                 onMove={evt => setViewState(evt.viewState)}
