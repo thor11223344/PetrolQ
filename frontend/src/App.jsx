@@ -42,9 +42,17 @@ import PPFGWindowModal from './components/PPFGWindowModal';
 import PreSpudDossierModal from './components/PreSpudDossierModal';
 import ContributeLessonModal from './components/ContributeLessonModal';
 
+const WELL_DEFAULT_TELEMETRY = {
+  'OIL-BAGHJAN-1': { well_id: 'OIL-BAGHJAN-1', depth_tvd: 2240.0, rop: 16.5, wob: 14.0, rpm: 105.0, torque: 13200.0, mud_weight: 11.2, ecd: 11.6, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2800.0 },
+  'OIL-BAGHJAN-4': { well_id: 'OIL-BAGHJAN-4', depth_tvd: 2380.0, rop: 18.2, wob: 15.0, rpm: 110.0, torque: 14100.0, mud_weight: 11.4, ecd: 11.8, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2950.0 },
+  'OIL-NAHARKATIYA-1': { well_id: 'OIL-NAHARKATIYA-1', depth_tvd: 2020.0, rop: 14.0, wob: 12.5, rpm: 95.0, torque: 11800.0, mud_weight: 10.8, ecd: 11.2, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2600.0 },
+  'OIL-MORAN-1': { well_id: 'OIL-MORAN-1', depth_tvd: 2550.0, rop: 15.0, wob: 13.0, rpm: 100.0, torque: 12500.0, mud_weight: 11.0, ecd: 11.4, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2750.0 },
+  'OIL-DIKOM-1': { well_id: 'OIL-DIKOM-1', depth_tvd: 2200.0, rop: 17.0, wob: 14.5, rpm: 105.0, torque: 13500.0, mud_weight: 11.3, ecd: 11.7, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2850.0 },
+};
+
 function App() {
   const [selectedWell, setSelectedWell] = useState('OIL-BAGHJAN-1');
-  const [telemetryData, setTelemetryData] = useState(null);
+  const [telemetryData, setTelemetryData] = useState(WELL_DEFAULT_TELEMETRY['OIL-BAGHJAN-1']);
   const [predictionData, setPredictionData] = useState(null);
   const [simStatus, setSimStatus] = useState({ is_running: false, active_scenario: 'normal' });
   const [simSpeed, setSimSpeed] = useState(1.0);
@@ -201,16 +209,12 @@ function App() {
               const currentTelemetry = data.data;
               const prediction = data.prediction;
               
-              setTelemetryData(currentTelemetry);
+              // Only set telemetry if initially null; client controls its own simulation progression
+              setTelemetryData(prev => prev || currentTelemetry);
               if (prediction) {
                 setPredictionData(prediction);
               }
-              if (data.scenario) {
-                setSimStatus(prev => ({
-                  is_running: data.is_running !== undefined ? data.is_running : prev.is_running,
-                  active_scenario: data.scenario
-                }));
-              }
+              // Do NOT override local client simStatus from foreign broadcasts!
               
               // Update Trajectory Data for plotting (keep last 50 points to prevent lag)
               if (currentTelemetry && currentTelemetry.depth_tvd !== undefined) {
@@ -286,6 +290,68 @@ function App() {
     };
   }, [selectedWell, fetchHistory]);
 
+  // Dedicated Client-Side Telemetry Simulation Loop (Strictly isolated to this browser tab/device)
+  useEffect(() => {
+    if (!simStatus.is_running) return;
+
+    const interval = setInterval(() => {
+      setTelemetryData(prev => {
+        const current = prev || WELL_DEFAULT_TELEMETRY[selectedWell] || WELL_DEFAULT_TELEMETRY['OIL-BAGHJAN-1'];
+        const speed = simSpeed || 1.0;
+        const stepM = ((current.rop || 16.5) / 3600.0) * 150.0 * speed;
+        let newDepth = (current.depth_tvd || 2240.0) + stepM;
+        let newRop = current.rop || 16.5;
+        let newTorque = current.torque || 13200.0;
+        let newFlowOut = current.flow_out_pct !== undefined ? current.flow_out_pct : 100.0;
+        let newPitGain = current.pit_gain_bbl !== undefined ? current.pit_gain_bbl : 0.0;
+        let newSpp = current.spp_psi || 2800.0;
+        let newMudWeight = current.mud_weight || 11.2;
+        let newEcd = current.ecd || 11.6;
+
+        if (simStatus.active_scenario === 'normal') {
+          newTorque = Math.max(11000.0, Math.min(15000.0, newTorque + (Math.random() * 300 - 150)));
+          newRop = Math.max(10.0, Math.min(22.0, newRop + (Math.random() * 0.8 - 0.4)));
+          newFlowOut = Math.max(98.0, Math.min(102.0, newFlowOut + (Math.random() * 0.6 - 0.3)));
+          newSpp = Math.max(2700.0, Math.min(2900.0, newSpp + (Math.random() * 30 - 15)));
+        } else if (simStatus.active_scenario === 'gas_kick') {
+          newPitGain += 0.3 * speed;
+          newFlowOut = Math.max(105.0, Math.min(135.0, newFlowOut + (Math.random() * 1.3 - 0.5)));
+          newSpp = Math.max(2400.0, newSpp - 10.0 * speed);
+        } else if (simStatus.active_scenario === 'lost_circulation') {
+          newPitGain -= 0.4 * speed;
+          newFlowOut = Math.max(40.0, Math.min(85.0, newFlowOut + (Math.random() * 1.3 - 0.8)));
+          newSpp = Math.max(1800.0, newSpp - 25.0 * speed);
+        } else if (simStatus.active_scenario === 'stuck_pipe') {
+          newTorque = Math.max(26000.0, Math.min(34000.0, newTorque + (Math.random() * 500 - 200)));
+          newRop = Math.max(0.5, newRop - 2.0 * speed);
+        }
+
+        const updated = {
+          ...current,
+          well_id: selectedWell,
+          depth_tvd: Math.round(newDepth * 100) / 100,
+          rop: Math.round(newRop * 100) / 100,
+          torque: Math.round(newTorque * 10) / 10,
+          flow_out_pct: Math.round(newFlowOut * 10) / 10,
+          pit_gain_bbl: Math.round(newPitGain * 10) / 10,
+          spp_psi: Math.round(newSpp * 10) / 10,
+          mud_weight: newMudWeight,
+          ecd: newEcd,
+          scenario: simStatus.active_scenario
+        };
+
+        // Query real-time ML risk prediction over WebSocket for THIS client only
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify(updated));
+        }
+
+        return updated;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [simStatus.is_running, simStatus.active_scenario, simSpeed, selectedWell]);
+
   // Proactive Depth-Proximity Lookahead Warning Engine (CORRECTION 3: Reuses /api/wells/{id}/lookahead)
   useEffect(() => {
     const checkDepthProximity = async () => {
@@ -329,65 +395,89 @@ function App() {
     checkDepthProximity();
   }, [selectedWell, telemetryData?.depth_tvd]);
 
-  // Simulator Control Handlers (CORRECTION 4: Scenario Injector drives realistic physical parameters)
-  const handleSimControl = async (action) => {
-    try {
-      const res = await axios.post(`${API_BASE}/api/simulator/control`, {
-        action,
-        well_id: selectedWell,
-        depth: telemetryData?.depth_tvd || 2240.0
-      });
-      setSimStatus(prev => ({ ...prev, is_running: res.data.is_running }));
-    } catch (err) {
-      console.error("Failed to control simulator", err);
+  // Simulator Control Handlers (Strictly isolated to this local browser session)
+  const handleSimControl = (action) => {
+    if (action === 'play') {
+      setSimStatus(prev => ({ ...prev, is_running: true }));
+    } else if (action === 'pause') {
+      setSimStatus(prev => ({ ...prev, is_running: false }));
+    } else if (action === 'reset') {
+      const base = WELL_DEFAULT_TELEMETRY[selectedWell] || WELL_DEFAULT_TELEMETRY['OIL-BAGHJAN-1'];
+      setSimStatus({ is_running: false, active_scenario: 'normal' });
+      setTelemetryData(base);
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify(base));
+      }
     }
   };
 
-  const handleSpeedChange = async (speed) => {
+  const handleSpeedChange = (speed) => {
     setSimSpeed(speed);
-    try {
-      await axios.post(`${API_BASE}/api/simulator/control`, {
-        action: 'speed',
-        speed_multiplier: speed
-      });
-    } catch (err) {
-      console.error("Failed to change speed", err);
-    }
   };
 
-  const handleSeek = async (depth) => {
-    try {
-      await axios.post(`${API_BASE}/api/simulator/control`, {
-        action: 'seek',
-        depth: depth
-      });
-    } catch (err) {
-      console.error("Failed to seek depth", err);
-    }
+  const handleSeek = (depth) => {
+    setTelemetryData(prev => {
+      const current = prev || WELL_DEFAULT_TELEMETRY[selectedWell] || WELL_DEFAULT_TELEMETRY['OIL-BAGHJAN-1'];
+      const updated = { ...current, depth_tvd: depth };
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify(updated));
+      }
+      return updated;
+    });
   };
 
-  const handleScenarioInject = async (scenario) => {
-    try {
-      const res = await axios.post(`${API_BASE}/api/simulator/scenario`, { scenario });
-      setSimStatus(prev => ({ ...prev, active_scenario: res.data.scenario }));
-    } catch (err) {
-      console.error("Failed to inject scenario", err);
-    }
+  const handleScenarioInject = (scenario) => {
+    setSimStatus(prev => ({ ...prev, active_scenario: scenario }));
+    setTelemetryData(prev => {
+      const current = prev || WELL_DEFAULT_TELEMETRY[selectedWell] || WELL_DEFAULT_TELEMETRY['OIL-BAGHJAN-1'];
+      let newFlowOut = current.flow_out_pct !== undefined ? current.flow_out_pct : 100.0;
+      let newPitGain = current.pit_gain_bbl !== undefined ? current.pit_gain_bbl : 0.0;
+      let newTorque = current.torque || 13200.0;
+      let newSpp = current.spp_psi || 2800.0;
+
+      if (scenario === 'gas_kick') {
+        newFlowOut = 118.0;
+        newPitGain = 3.5;
+        newSpp = 2650.0;
+      } else if (scenario === 'lost_circulation') {
+        newFlowOut = 62.0;
+        newPitGain = -4.2;
+        newSpp = 2100.0;
+      } else if (scenario === 'stuck_pipe') {
+        newTorque = 28500.0;
+      } else if (scenario === 'normal') {
+        newFlowOut = 100.0;
+        newPitGain = 0.0;
+        newTorque = 13200.0;
+        newSpp = 2800.0;
+      }
+
+      const updated = {
+        ...current,
+        flow_out_pct: newFlowOut,
+        pit_gain_bbl: newPitGain,
+        torque: newTorque,
+        spp_psi: newSpp,
+        scenario
+      };
+
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify(updated));
+      }
+      return updated;
+    });
   };
 
-  const handleSelectWell = async (newWellId) => {
+  const handleSelectWell = (newWellId) => {
     setSelectedWell(newWellId);
     setProximityWarning(null);
     alertActiveRef.current = false;
     lastCheckedDepthRef.current = null;
     setAlertState({ active: false, prediction: null });
-    try {
-      await axios.post(`${API_BASE}/api/simulator/control`, {
-        action: 'set_well',
-        well_id: newWellId
-      });
-    } catch (err) {
-      console.error("Failed to switch simulator well", err);
+    const base = WELL_DEFAULT_TELEMETRY[newWellId] || WELL_DEFAULT_TELEMETRY['OIL-BAGHJAN-1'];
+    setTelemetryData(base);
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(base));
     }
   };
 

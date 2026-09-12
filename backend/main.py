@@ -311,13 +311,6 @@ async def trigger_scenario(req: ScenarioRequest):
     Computes resulting risk scores from those simulated values and broadcasts to all WebSocket clients.
     """
     res = telemetry_simulator.set_scenario(req.scenario)
-    await ws_manager.broadcast({
-        "status": "success",
-        "data": res["data"],
-        "prediction": res["prediction"],
-        "scenario": res["scenario"],
-        "is_running": telemetry_simulator.is_running
-    })
     return {
         "status": "success",
         "scenario": res["scenario"],
@@ -393,13 +386,12 @@ async def websocket_telemetry(websocket: WebSocket):
                 from fastapi.concurrency import run_in_threadpool
                 prediction = await run_in_threadpool(ml_svc.predict_risk, params)
                 
-                # Centralized broadcast to ALL connected client tabs
-                await ws_manager.broadcast({
+                # Send isolated prediction response back to THIS specific client connection
+                await websocket.send_json({
                     "status": "success",
                     "data": params,
                     "prediction": prediction,
-                    "scenario": telemetry_simulator.active_scenario,
-                    "is_running": telemetry_simulator.is_running
+                    "scenario": params.get("scenario", "normal")
                 })
             except json.JSONDecodeError:
                 await websocket.send_json({"status": "error", "message": "Invalid JSON"})
