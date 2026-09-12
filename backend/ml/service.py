@@ -14,32 +14,40 @@ class HazardPredictionService:
         return cls._instance
 
     def _initialize(self):
-        """Loads artifacts into memory upon initialization."""
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        artifacts_dir = os.path.join(base_dir, 'artifacts')
-        
+        """Initializes empty placeholders. Artifacts are loaded lazily on first prediction."""
         self.model = None
         self.explainer = None
         self.metadata = {}
+
+    def _ensure_artifacts_loaded(self):
+        """Loads model artifacts from disk on first use (lazy loading)."""
+        if self.model is not None and self.metadata:
+            return
+            
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        artifacts_dir = os.path.join(base_dir, 'artifacts')
         
         # Load Model
-        model_path = os.path.join(artifacts_dir, 'lgbm_hazard_model.joblib')
-        if os.path.exists(model_path):
-            self.model = joblib.load(model_path)
-            
-        # Load Metadata
-        meta_path = os.path.join(artifacts_dir, 'model_metadata.json')
-        if os.path.exists(meta_path):
-            with open(meta_path, 'r') as f:
-                self.metadata = json.load(f)
+        if self.model is None:
+            model_path = os.path.join(artifacts_dir, 'lgbm_hazard_model.joblib')
+            if os.path.exists(model_path):
+                self.model = joblib.load(model_path)
                 
+        # Load Metadata
+        if not self.metadata:
+            meta_path = os.path.join(artifacts_dir, 'model_metadata.json')
+            if os.path.exists(meta_path):
+                with open(meta_path, 'r') as f:
+                    self.metadata = json.load(f)
+                    
         # Load SHAP Explainer
-        shap_path = os.path.join(artifacts_dir, 'shap_explainer.joblib')
-        if os.path.exists(shap_path):
-            try:
-                self.explainer = joblib.load(shap_path)
-            except Exception as e:
-                pass
+        if self.explainer is None:
+            shap_path = os.path.join(artifacts_dir, 'shap_explainer.joblib')
+            if os.path.exists(shap_path):
+                try:
+                    self.explainer = joblib.load(shap_path)
+                except Exception:
+                    pass
 
     def calculate_mse(self, wob: float, rpm: float, rop: float, torque: float, bit_diameter_in: float = 8.5) -> float:
         """
@@ -193,6 +201,7 @@ class HazardPredictionService:
         Computes 4 disaggregated hazards (Gas Kick, Lost Circulation, Stuck Pipe, Torque & Drag)
         and preserves a meaningful, backward-compatible single risk_probability.
         """
+        self._ensure_artifacts_loaded()
         if not self.model or not self.metadata:
             return {"error": "Model artifacts not loaded."}
             

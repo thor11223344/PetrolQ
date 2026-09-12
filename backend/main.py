@@ -45,14 +45,24 @@ def compute_cosine_similarity(vec1, vec2):
         return 0.0
     return float(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
 
+import threading
+
 # Initialize the ML service globally
 ml_service = None
+_ml_lock = threading.Lock()
+
+def get_ml_service():
+    global ml_service
+    if ml_service is None:
+        with _ml_lock:
+            if ml_service is None:
+                ml_service = HazardPredictionService()
+    return ml_service
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global ml_service
-    # Instantiate service on startup to load models into memory
-    ml_service = HazardPredictionService()
+    # Do NOT instantiate HazardPredictionService at startup to keep boot memory minimal for Render
     yield
     # Clean up on shutdown if necessary
 
@@ -149,12 +159,13 @@ def get_well_trajectory(well_id: str, is_active: bool = Query(False), db: Sessio
     if not well:
         raise HTTPException(status_code=404, detail="Well not found")
     
-    tvd_max = float(well.total_depth_tvd or 3500.0)
+    tvd_raw = getattr(well, "total_depth_tvd", None)
+    tvd_max = float(tvd_raw) if tvd_raw is not None else 3500.0
     db_events = db.query(SyntheticEvent).filter(
         SyntheticEvent.well_id == well_id,
         SyntheticEvent.formation.isnot(None)
     ).all()
-    return compute_realistic_trajectory(str(well_id), tvd_max, is_active=is_active, db_events=db_events)
+    return compute_realistic_trajectory(well_id, tvd_max, is_active=is_active, db_events=db_events)
 
 @app.get("/api/wells/{well_id}/anti-collision")
 def get_anti_collision(
@@ -166,7 +177,9 @@ def get_anti_collision(
     if not active_well:
         raise HTTPException(status_code=404, detail="Active well not found")
         
-    active_traj = compute_realistic_trajectory(str(well_id), float(active_well.total_depth_tvd or 3500.0), is_active=True)
+    active_tvd_raw = getattr(active_well, "total_depth_tvd", None)
+    active_tvd_max = float(active_tvd_raw) if active_tvd_raw is not None else 3500.0
+    active_traj = compute_realistic_trajectory(well_id, active_tvd_max, is_active=True)
     
     if offset_ids:
         offset_list = [oid.strip() for oid in offset_ids.split(",") if oid.strip()]
@@ -181,7 +194,9 @@ def get_anti_collision(
     for off in offsets:
         if off.well_id == well_id:
             continue
-        off_traj = compute_realistic_trajectory(str(off.well_id), float(off.total_depth_tvd or 3500.0), is_active=False)
+        off_tvd_raw = getattr(off, "total_depth_tvd", None)
+        off_tvd_max = float(off_tvd_raw) if off_tvd_raw is not None else 3500.0
+        off_traj = compute_realistic_trajectory(str(off.well_id), off_tvd_max, is_active=False)
         ac = compute_anti_collision(active_traj, off_traj)
         results.append(ac)
         
@@ -230,12 +245,13 @@ def search_events(
         # (Since pgvector extension compilation failed, we use numpy on standard Postgres Arrays)
         sim = compute_cosine_similarity(query_embedding, embedding_val)
         
+        depth_val = getattr(event, "depth_start_tvd", None)
         results.append(
             RAGSearchResponse(
                 similarity_score=float(sim),
                 well_id=str(event.well_id),
                 # Fallback to start depth if singular depth_tvd is required
-                depth_tvd=float(event.depth_start_tvd) if event.depth_start_tvd is not None else 0.0,
+                depth_tvd=float(depth_val) if depth_val is not None else 0.0,
                 event_type=str(event.event_type or ""),
                 root_cause=str(event.root_cause or ""),
                 mitigation_applied=str(event.mitigation_applied or "")
@@ -256,10 +272,9 @@ def predict_risk(telemetry: TelemetryInput):
     """
     global ml_service
     
-    if ml_service is None:
-        ml_service = HazardPredictionService()
+    ml_svc = get_ml_service()
         
-    if not ml_service:
+    if not ml_svc:
         raise HTTPException(status_code=503, detail="ML Service is not initialized.")
         
     try:
@@ -267,7 +282,7 @@ def predict_risk(telemetry: TelemetryInput):
         params = telemetry.model_dump()
         
         # Run prediction
-        prediction = ml_service.predict_risk(params)
+        prediction = ml_svc.predict_risk(params)
         
         if "error" in prediction:
             raise HTTPException(status_code=500, detail=prediction["error"])
@@ -352,9 +367,10 @@ async def websocket_telemetry(websocket: WebSocket):
     global ml_service
     
     # Send current state immediately on connect
+    ml_svc = get_ml_service()
     current_status = telemetry_simulator.get_status()
     current_params = current_status["current_params"]
-    prediction = ml_service.predict_risk(current_params) if ml_service else {}
+    prediction = ml_svc.predict_risk(current_params)
     
     try:
         await websocket.send_json({
@@ -375,20 +391,18 @@ async def websocket_telemetry(websocket: WebSocket):
                 params = json.loads(data)
                 
                 # Run prediction
-                if ml_service:
-                    from fastapi.concurrency import run_in_threadpool
-                    prediction = await run_in_threadpool(ml_service.predict_risk, params)
-                    
-                    # Centralized broadcast to ALL connected client tabs
-                    await ws_manager.broadcast({
-                        "status": "success",
-                        "data": params,
-                        "prediction": prediction,
-                        "scenario": telemetry_simulator.active_scenario,
-                        "is_running": telemetry_simulator.is_running
-                    })
-                else:
-                    await websocket.send_json({"status": "error", "message": "ML service unavailable"})
+                ml_svc = get_ml_service()
+                from fastapi.concurrency import run_in_threadpool
+                prediction = await run_in_threadpool(ml_svc.predict_risk, params)
+                
+                # Centralized broadcast to ALL connected client tabs
+                await ws_manager.broadcast({
+                    "status": "success",
+                    "data": params,
+                    "prediction": prediction,
+                    "scenario": telemetry_simulator.active_scenario,
+                    "is_running": telemetry_simulator.is_running
+                })
             except json.JSONDecodeError:
                 await websocket.send_json({"status": "error", "message": "Invalid JSON"})
             except Exception as e:

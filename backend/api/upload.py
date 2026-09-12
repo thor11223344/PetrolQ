@@ -10,7 +10,6 @@ import pandas as pd
 from database import get_db
 from sqlalchemy.orm import Session
 from models import SyntheticEvent, WellLog, WellMaster
-from nlp.ingest import ingest_report
 from nlp.config import get_embedding
 
 router = APIRouter()
@@ -54,6 +53,7 @@ async def upload_report(
             
         if is_pdf:
             # Ingest PDF report with OCR fallback
+            from nlp.ingest import ingest_report
             result = ingest_report(temp_file_path, well_id, db)
             return {
                 "status": "success",

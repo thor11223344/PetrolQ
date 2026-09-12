@@ -1,8 +1,8 @@
 import os
+from typing import Any
 import pymupdf as fitz
 import pdfplumber
 import logging
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -11,14 +11,14 @@ class DrillingReportParser:
     def __init__(self):
         pass
 
-    def extract_text_and_tables(self, pdf_path: str) -> str:
+    def extract_text_and_tables(self, pdf_path: str) -> tuple[str, bool]:
         """
         Extracts narrative text using PyMuPDF and tables using pdfplumber.
         Combines them into a single string formatted for LLM consumption.
         """
         if not os.path.exists(pdf_path):
             logger.error(f"File not found: {pdf_path}")
-            return ""
+            return "", False
 
         extracted_content = []
 
@@ -85,7 +85,7 @@ class DrillingReportParser:
             logger.error(f"Failed to parse PDF {pdf_path}: {e}")
             return "", False
 
-    def _format_table_to_markdown(self, table: list[list[str]]) -> str:
+    def _format_table_to_markdown(self, table: list[list[Any]]) -> str:
         """
         Converts a 2D list table from pdfplumber into a Markdown table string.
         """
@@ -133,6 +133,7 @@ class DrillingReportParser:
             
         try:
             # Utilize LangChain's RecursiveCharacterTextSplitter for robust logical boundary chunking
+            from langchain_text_splitters import RecursiveCharacterTextSplitter
             splitter = RecursiveCharacterTextSplitter(
                 chunk_size=max_chunk_size,
                 chunk_overlap=200,

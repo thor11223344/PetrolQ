@@ -1,5 +1,6 @@
 import os
 import sys
+from typing import Any, cast
 import pandas as pd
 from pathlib import Path
 import logging
@@ -43,10 +44,10 @@ def seed_database():
                 df_wells = df_wells.drop(columns=['surface_lat', 'surface_lon'])
             
             # Convert NaN to None for clean SQLAlchemy insertion
-            df_wells = df_wells.where(pd.notnull(df_wells), None)
+            df_wells = df_wells.replace({np.nan: None})
             
             # Bulk insert
-            wells_records = df_wells.to_dict(orient='records')
+            wells_records = cast(list[dict[str, Any]], df_wells.to_dict(orient='records'))
             session.bulk_insert_mappings(WellMaster, wells_records)
             session.commit()
             logger.info(f"Successfully inserted {len(wells_records)} rows into WellMaster.")
@@ -74,9 +75,9 @@ def seed_database():
                     chunk['timestamp'] = pd.to_datetime(chunk['timestamp'])
                 
                 # Replace NaNs with None so Postgres handles it as NULL rather than throwing Float 'NaN' errors
-                chunk = chunk.replace({np.nan: None}) if 'np' in sys.modules else chunk.where(pd.notnull(chunk), None)
+                chunk = chunk.replace({np.nan: None})
                 
-                records = chunk.to_dict(orient='records')
+                records = cast(list[dict[str, Any]], chunk.to_dict(orient='records'))
                 session.bulk_insert_mappings(model_class, records)
                 session.commit()
                 total_rows += len(records)

@@ -1,4 +1,5 @@
 import os
+import threading
 
 # LLM Configuration
 # Placeholder for Gemini API key, OpenAI API key, or a local Ollama endpoint.
@@ -7,20 +8,24 @@ LLM_ENDPOINT = os.getenv("LLM_ENDPOINT", "http://localhost:11434/v1") # Default 
 LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME", "llama3")
 
 embedding_model = None
+_embedding_lock = threading.Lock()
 
 def get_embedding(text: str) -> list[float]:
     """
-    Helper function to generate embeddings using the local model.
+    Helper function to generate embeddings using fastembed.
     Lazy-loaded on first call to prevent OOM on memory-constrained servers.
     """
     global embedding_model
     if embedding_model is None:
-        try:
-            from sentence_transformers import SentenceTransformer
-            embedding_model = SentenceTransformer("BAAI/bge-small-en-v1.5")
-        except Exception as e:
-            import logging
-            logging.getLogger(__name__).warning(f"Failed to load embedding model: {e}")
-            raise RuntimeError("Embedding model could not be initialized.") from e
+        with _embedding_lock:
+            if embedding_model is None:
+                try:
+                    from fastembed import TextEmbedding
+                    embedding_model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).warning(f"Failed to load embedding model: {e}")
+                    raise RuntimeError("Embedding model could not be initialized.") from e
             
-    return embedding_model.encode(text).tolist()
+    embeddings = list(embedding_model.embed([text]))
+    return embeddings[0].tolist()

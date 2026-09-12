@@ -12,9 +12,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy requirements
 COPY requirements.txt .
 
-# Install CPU-only torch first to save space, then remaining requirements
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
-    pip install --no-cache-dir -r requirements.txt
+# Install requirements
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy backend and data
 COPY backend/ ./backend/

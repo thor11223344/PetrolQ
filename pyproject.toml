@@ -3,6 +3,8 @@ entrypoint = "backend.main:app"
 
 [tool.pyright]
 extraPaths = ["backend"]
+venvPath = "."
+venv = "fresh_venv"
 
 [tool.pytest.ini_options]
 pythonpath = ["backend"]
