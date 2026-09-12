@@ -58,28 +58,7 @@ const offlineStyle = {
     }]
 };
 
-const osmStyle = {
-    version: 8,
-    sources: {
-        'osm-tiles': {
-            type: 'raster',
-            tiles: [
-                'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
-            ],
-            tileSize: 256,
-            attribution: '&copy; OpenStreetMap contributors'
-        }
-    },
-    layers: [{
-        id: 'osm-tiles-layer',
-        type: 'raster',
-        source: 'osm-tiles',
-        minzoom: 0,
-        maxzoom: 19
-    }]
-};
+const osmStyle = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
 
 export default function WellMap({ activeWellId, onSelectWell, currentDepth, activeScenario }) {
     const [viewState, setViewState] = useState({
