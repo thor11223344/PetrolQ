@@ -517,18 +517,18 @@ function App() {
     <div className="h-screen w-screen flex flex-col bg-[#070b14] text-slate-200 overflow-hidden font-sans">
       
       {/* Top Navigation Bar - Mission Control Bar */}
-      <header className="h-14 sm:h-15 border-b border-slate-800/80 bg-[#0c1322]/95 backdrop-blur-xl flex items-center justify-between px-3 sm:px-4 lg:px-5 z-50 shrink-0 shadow-[0_4px_25px_rgba(0,0,0,0.5)] relative w-full">
-        <div className="flex items-center space-x-2.5 sm:space-x-3 shrink-0">
-          <div className="relative flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-cyan-500/20 via-blue-500/10 to-indigo-500/10 border border-cyan-500/40 text-cyan-400 shadow-glow-cyan shrink-0">
-            <Activity size={18} className="text-cyan-400 animate-pulse-subtle" />
+      <header className="h-16 border-b border-slate-800/80 bg-[#0c1322]/95 backdrop-blur-xl flex items-center justify-between px-3 sm:px-4 lg:px-6 z-50 shrink-0 shadow-[0_4px_25px_rgba(0,0,0,0.5)] relative w-full">
+        <div className="flex items-center space-x-3 shrink-0">
+          <div className="relative flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 via-blue-500/10 to-indigo-500/10 border border-cyan-500/40 text-cyan-400 shadow-glow-cyan shrink-0">
+            <Activity size={20} className="text-cyan-400 animate-pulse-subtle" />
             <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-[#0c1322] animate-ping" />
             <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-[#0c1322]" />
           </div>
           <div className="flex items-center gap-2">
-            <h1 className="font-display text-base sm:text-lg font-bold tracking-tight text-white leading-none">
+            <h1 className="font-display text-lg sm:text-xl font-bold tracking-tight text-white leading-none">
               Petrol<span className="text-cyan-400 font-extrabold">Q</span>
             </h1>
-            <span className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-mono font-semibold bg-cyan-950/70 text-cyan-300 border border-cyan-500/30 tracking-wider">
+            <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-cyan-950/70 text-cyan-300 border border-cyan-500/30 tracking-wider">
               SUBSURFACE AI
             </span>
           </div>
@@ -556,7 +556,7 @@ function App() {
           {/* Quick Upload Icon Button */}
           <button
             onClick={() => setIsUploadModalOpen(true)}
-            className="p-2 bg-slate-900/90 hover:bg-slate-800 active:bg-slate-700 border border-slate-700/80 text-slate-300 rounded-lg transition shadow-sm"
+            className="p-2 bg-slate-900/90 hover:bg-slate-800 active:bg-slate-750 border border-slate-700/80 text-slate-300 rounded-lg transition shadow-sm"
             title="Upload Document"
           >
             <FileUp size={16} />
@@ -565,7 +565,7 @@ function App() {
           {/* Mobile Menu Toggle Button */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-2 bg-slate-900/90 hover:bg-slate-800 active:bg-slate-700 border border-slate-700/80 text-slate-200 rounded-lg transition shadow-sm"
+            className="p-2 bg-slate-900/90 hover:bg-slate-800 active:bg-slate-750 border border-slate-700/80 text-slate-200 rounded-lg transition shadow-sm"
             aria-label="Toggle Menu"
           >
             {isMobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
@@ -573,23 +573,23 @@ function App() {
         </div>
 
         {/* Desktop Navigation Toolbar (Hidden on mobile < lg) */}
-        <div className="hidden lg:flex items-center space-x-2 xl:space-x-2.5 2xl:space-x-3 shrink-0">
+        <div className="hidden lg:flex items-center justify-end flex-1 space-x-2.5 xl:space-x-3.5 2xl:space-x-4 ml-4 xl:ml-6">
           {/* Status Indicator */}
-          <div className="flex items-center space-x-1.5 bg-slate-900/80 px-2 py-1 rounded-full border border-slate-800 shadow-inner shrink-0">
-            <span className="relative flex h-2 w-2">
+          <div className="flex items-center space-x-2 bg-slate-900/90 px-3 py-1.5 rounded-full border border-slate-700/80 shadow-inner shrink-0">
+            <span className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-status-active opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-status-active"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-status-active"></span>
             </span>
-            <span className="text-[11px] font-mono text-slate-300 whitespace-nowrap">Live 1.0Hz</span>
+            <span className="text-xs font-mono font-medium text-slate-200 whitespace-nowrap">Live 1.0Hz</span>
           </div>
 
           {/* Role Toggle */}
-          <div className="flex items-center space-x-1 border-l border-slate-800/80 pl-2 xl:pl-2.5 shrink-0">
-            <span className="text-[11px] text-slate-400 font-medium hidden 2xl:inline">Role:</span>
+          <div className="flex items-center space-x-1.5 border-l border-slate-800 pl-2.5 xl:pl-3.5 shrink-0">
+            <span className="text-xs text-slate-400 font-medium hidden xl:inline">Role:</span>
             <select 
                 value={role} 
                 onChange={handleRoleChange}
-                className="bg-slate-900 border border-slate-700 text-slate-200 text-xs font-medium rounded-lg px-2 py-1 outline-none focus:border-cyan-500 transition shadow-inner cursor-pointer"
+                className="bg-slate-900 hover:bg-slate-850 border border-slate-700 text-slate-200 text-xs font-semibold rounded-lg px-3 py-1.5 outline-none focus:border-cyan-500 transition shadow-inner cursor-pointer"
             >
                 <option value="Field Engineer">Field Engineer</option>
                 <option value="Office Reviewer">Office Reviewer</option>
@@ -597,13 +597,13 @@ function App() {
           </div>
 
           {/* Active Well Selector */}
-          <div className="flex items-center space-x-1 border-l border-slate-800/80 pl-2 xl:pl-2.5 shrink-0">
-            <div className="flex items-center space-x-1.5 bg-slate-900 hover:bg-slate-850 px-2 py-1 rounded-lg transition-colors border border-slate-700 shadow-inner">
-              <Database size={13} className="text-cyan-400 shrink-0" />
+          <div className="flex items-center space-x-1 border-l border-slate-800 pl-2.5 xl:pl-3.5 shrink-0">
+            <div className="flex items-center space-x-2 bg-slate-900 hover:bg-slate-850 px-3 py-1.5 rounded-lg transition-colors border border-slate-700 shadow-inner">
+              <Database size={15} className="text-cyan-400 shrink-0" />
               <select 
                   value={selectedWell} 
                   onChange={(e) => handleSelectWell(e.target.value)}
-                  className="bg-transparent text-slate-200 text-xs font-mono font-medium outline-none cursor-pointer"
+                  className="bg-transparent text-slate-200 text-xs font-mono font-semibold outline-none cursor-pointer"
               >
                   <option value="OIL-BAGHJAN-1">BAGHJAN-1</option>
                   <option value="OIL-BAGHJAN-4">BAGHJAN-4</option>
@@ -619,103 +619,103 @@ function App() {
           </div>
 
           {/* Backend API Live Status Indicator */}
-          <div className="flex items-center border-l border-slate-800/80 pl-2 xl:pl-2.5 shrink-0">
+          <div className="flex items-center border-l border-slate-800 pl-2.5 xl:pl-3.5 shrink-0">
             {isBackendConnected ? (
               <div 
-                className="flex items-center space-x-1.5 px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-mono shadow-[0_0_10px_rgba(16,185,129,0.15)] whitespace-nowrap"
+                className="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono font-semibold shadow-[0_0_12px_rgba(16,185,129,0.18)] whitespace-nowrap"
                 title="FastAPI Backend is online"
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 <span>API Online</span>
               </div>
             ) : (
               <div 
-                className="flex items-center space-x-1.5 px-2 py-1 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-300 text-[11px] font-mono animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.2)] whitespace-nowrap"
+                className="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-300 text-xs font-mono font-semibold animate-pulse shadow-[0_0_12px_rgba(244,63,94,0.25)] whitespace-nowrap"
                 title="FastAPI is offline"
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                <span className="w-2 h-2 rounded-full bg-rose-500"></span>
                 <span>Offline</span>
               </div>
             )}
           </div>
 
           {/* Core Decision Support Modules (SIH 2026 Mandate) */}
-          <div className="flex items-center space-x-1 xl:space-x-1.5 border-l border-slate-800/80 pl-2 xl:pl-2.5 shrink-0">
+          <div className="flex items-center space-x-1.5 xl:space-x-2.5 border-l border-slate-800 pl-2.5 xl:pl-3.5 shrink-0">
             <button 
                 onClick={() => setIsRadarOpen(true)}
-                className="flex items-center space-x-1 text-xs font-semibold px-2 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition shadow-glow-amber group shrink-0"
+                className="flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 active:bg-amber-500/30 text-amber-300 border border-amber-500/35 transition-all shadow-glow-amber group shrink-0"
                 title="Ahead-of-the-Bit Hazard Radar & Impending Formations"
             >
-                <Radar size={13} className="text-amber-400 group-hover:rotate-45 transition-transform shrink-0" />
+                <Radar size={15} className="text-amber-400 group-hover:rotate-45 transition-transform shrink-0" />
                 <span>Radar</span>
             </button>
 
             <button 
                 onClick={() => setIsCorrelationOpen(true)}
-                className="flex items-center space-x-1 text-xs font-semibold px-2 py-1 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 transition shadow-[0_0_15px_-3px_rgba(99,102,241,0.25)] shrink-0"
+                className="flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 active:bg-indigo-500/30 text-indigo-300 border border-indigo-500/35 transition-all shadow-[0_0_15px_-3px_rgba(99,102,241,0.25)] shrink-0"
                 title="Cross-Well Log Correlation & Stratigraphic Programs"
             >
-                <Layers size={13} className="text-indigo-400 shrink-0" />
+                <Layers size={15} className="text-indigo-400 shrink-0" />
                 <span>Correlation</span>
             </button>
 
             <button 
                 onClick={() => setIsPPFGOpen(true)}
-                className="flex items-center space-x-1 text-xs font-semibold px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition shadow-glow-emerald shrink-0"
+                className="flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 active:bg-emerald-500/30 text-emerald-300 border border-emerald-500/35 transition-all shadow-glow-emerald shrink-0"
                 title="Pore Pressure & Fracture Gradient Safe Mud Weight Window"
             >
-                <Gauge size={13} className="text-emerald-400 shrink-0" />
-                <span>PPFG<span className="hidden 2xl:inline"> Window</span></span>
+                <Gauge size={15} className="text-emerald-400 shrink-0" />
+                <span>PPFG<span className="hidden xl:inline"> Window</span></span>
             </button>
 
             <button 
                 onClick={() => setIsDossierOpen(true)}
-                className="flex items-center space-x-1 text-xs font-semibold px-2 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 transition shadow-glow-cyan shrink-0"
+                className="flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 active:bg-cyan-500/30 text-cyan-300 border border-cyan-500/35 transition-all shadow-glow-cyan shrink-0"
                 title="1-Click Pre-Spud Offset Hazard Dossier"
             >
-                <FileText size={13} className="text-cyan-400 shrink-0" />
+                <FileText size={15} className="text-cyan-400 shrink-0" />
                 <span>Pre-Spud</span>
             </button>
 
             <button 
                 onClick={() => setIsContributeOpen(true)}
-                className="flex items-center space-x-1 text-xs font-semibold px-2 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 transition shadow-[0_0_15px_-3px_rgba(168,85,247,0.25)] shrink-0"
+                className="flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 active:bg-purple-500/30 text-purple-300 border border-purple-500/35 transition-all shadow-[0_0_15px_-3px_rgba(168,85,247,0.25)] shrink-0"
                 title="Add Field Lesson Learned to Institutional Memory"
             >
-                <Brain size={13} className="text-purple-400 shrink-0" />
+                <Brain size={15} className="text-purple-400 shrink-0" />
                 <span>+ Lesson</span>
             </button>
           </div>
 
           {/* Tools */}
-          <div className="flex items-center space-x-1.5 text-slate-400 border-l border-slate-800/80 pl-2 xl:pl-2.5 relative shrink-0">
+          <div className="flex items-center space-x-2 text-slate-300 border-l border-slate-800 pl-2.5 xl:pl-3.5 relative shrink-0">
             <button 
                 onClick={() => setIsUploadModalOpen(true)}
-                className="hover:text-white transition-all flex items-center space-x-1 text-xs font-medium bg-slate-900 hover:bg-slate-800 border border-slate-700 px-2 py-1 rounded-lg shadow-sm hover:border-cyan-500/50 shrink-0"
+                className="hover:text-white transition-all flex items-center space-x-1.5 text-xs font-semibold bg-slate-900 hover:bg-slate-800 active:bg-slate-750 border border-slate-700 hover:border-cyan-500/50 px-3.5 py-1.5 rounded-lg shadow-sm shrink-0"
                 title="Upload DDR / LAS Document"
             >
-                <FileUp size={14} className="text-cyan-400 shrink-0" />
+                <FileUp size={15} className="text-cyan-400 shrink-0" />
                 <span>Upload</span>
             </button>
-            <div className="w-px h-3.5 bg-slate-800 mx-0.5"></div>
+            <div className="w-px h-4 bg-slate-800 mx-0.5"></div>
             <button 
                 onClick={() => setIsKnowledgeSearchOpen(!isKnowledgeSearchOpen)}
-                className={`p-1.5 rounded-lg transition-colors shrink-0 ${isKnowledgeSearchOpen ? 'text-cyan-400 bg-cyan-500/10' : 'hover:text-white hover:bg-slate-850'}`}
+                className={`p-2 rounded-lg transition-colors border shrink-0 ${isKnowledgeSearchOpen ? 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30' : 'bg-slate-900/80 hover:bg-slate-800 border-slate-700/80 hover:text-white'}`}
                 title="Search Knowledge Base"
             >
-                <Search size={15} />
+                <Search size={16} />
             </button>
             <button 
                 onClick={() => setIsSettingsOpen(!isSettingsOpen)} 
-                className={`p-1.5 rounded-lg transition-colors shrink-0 ${isSettingsOpen ? 'text-cyan-400 bg-cyan-500/10' : 'hover:text-white hover:bg-slate-850'}`}
+                className={`p-2 rounded-lg transition-colors border shrink-0 ${isSettingsOpen ? 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30' : 'bg-slate-900/80 hover:bg-slate-800 border-slate-700/80 hover:text-white'}`}
                 title="System Settings"
             >
-                <Settings size={15} />
+                <Settings size={16} />
             </button>
             
             {/* Settings Dropdown */}
             {isSettingsOpen && (
-                <div className="absolute top-11 right-0 w-68 bg-slate-900/98 backdrop-blur-xl border border-slate-700 shadow-2xl rounded-xl p-4 z-50 animate-in fade-in zoom-in-95">
+                <div className="absolute top-13 right-0 w-72 bg-slate-900/98 backdrop-blur-xl border border-slate-700 shadow-2xl rounded-xl p-4 z-50 animate-in fade-in zoom-in-95">
                     <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-2.5">
                         <div className="flex items-center space-x-2">
                           <Settings size={15} className="text-cyan-400" />
