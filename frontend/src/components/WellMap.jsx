@@ -147,11 +147,22 @@ export default function WellMap({ activeWellId, onSelectWell, currentDepth, acti
         }
     }, [mapRef.current]);
 
+    const handleMapLoad = (evt) => {
+        const map = evt.target;
+        const borderLayers = ['boundary_county', 'boundary_state', 'boundary_country_outline', 'boundary_country_inner'];
+        borderLayers.forEach(layer => {
+            if (map.getLayer(layer)) {
+                map.setLayoutProperty(layer, 'visibility', 'none');
+            }
+        });
+    };
+
     return (
         <div className="relative w-full h-full flex-1">
             <Map
                 mapLib={maplibregl}
                 ref={mapRef}
+                onLoad={handleMapLoad}
                 {...viewState}
                 onMove={evt => setViewState(evt.viewState)}
                 mapStyle={isOffline ? offlineStyle : osmStyle}
