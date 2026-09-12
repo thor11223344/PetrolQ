@@ -9,7 +9,8 @@ load_dotenv()
 DATABASE_URL = os.environ.get(
     "DATABASE_URL", 
     "postgresql://postgres:YOUR_PASSWORD_HERE@localhost:5432/petrolq_nwis"
-)
+).strip()
+
 
 # Create the SQLAlchemy engine
 engine = create_engine(DATABASE_URL)
