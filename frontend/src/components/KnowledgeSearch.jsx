@@ -30,7 +30,7 @@ const KnowledgeSearch = ({ isOpen, onClose }) => {
     };
 
     return (
-        <div className="absolute top-14 right-0 w-[450px] h-[calc(100vh-3.5rem)] bg-slate-900 border-l border-slate-700 shadow-2xl z-40 flex flex-col animate-in slide-in-from-right">
+        <div className="fixed top-14 right-0 w-full sm:w-[450px] max-w-full h-[calc(100vh-3.5rem)] bg-slate-900 border-l border-slate-700 shadow-2xl z-40 flex flex-col animate-in slide-in-from-right">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-900/80 backdrop-blur">
                 <div className="flex items-center space-x-2 text-slate-200">

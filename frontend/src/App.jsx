@@ -27,7 +27,9 @@ import {
   Flame,
   Droplets,
   Anchor,
-  BarChart2
+  BarChart2,
+  Menu,
+  Sliders
 } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE, WS_BASE } from './lib/api';
@@ -78,6 +80,8 @@ function App() {
   const [isContributeOpen, setIsContributeOpen] = useState(false);
   const [role, setRole] = useState('Field Engineer');
   const [isBackendConnected, setIsBackendConnected] = useState(false);
+  const [mobileActiveTab, setMobileActiveTab] = useState('map'); // 'map' | 'telemetry' | 'simulator'
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const wsRef = useRef(null);
 
   const showAlerts = role === 'Field Engineer';
@@ -513,17 +517,56 @@ function App() {
     <div className="h-screen w-screen flex flex-col bg-slate-950 text-slate-200 overflow-hidden font-sans">
       
       {/* Top Navigation Bar */}
-      <header className="h-14 border-b border-slate-800 bg-slate-900 flex items-center justify-between px-6 z-50 shrink-0 shadow-md relative">
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center justify-center w-8 h-8 rounded bg-status-active/20 text-status-active">
+      <header className="h-14 border-b border-slate-800 bg-slate-900 flex items-center justify-between px-3 sm:px-6 z-50 shrink-0 shadow-md relative">
+        <div className="flex items-center space-x-3">
+          <div className="flex items-center justify-center w-8 h-8 rounded bg-status-active/20 text-status-active shrink-0">
             <Activity size={18} />
           </div>
-          <h1 className="text-lg font-semibold tracking-wide">
-            PetrolQ <span className="text-slate-500 font-normal ml-2">| PetrolQ Platform</span>
+          <h1 className="text-base sm:text-lg font-semibold tracking-wide truncate">
+            PetrolQ <span className="hidden sm:inline text-slate-500 font-normal ml-2">| Drilling Risk Intelligence</span>
           </h1>
         </div>
 
-        <div className="flex items-center space-x-6">
+        {/* Mobile Quick Action Bar (Visible only on mobile < lg) */}
+        <div className="flex items-center space-x-2 lg:hidden">
+          {/* Quick Target Well on Mobile */}
+          <select 
+            value={selectedWell} 
+            onChange={(e) => handleSelectWell(e.target.value)}
+            className="bg-slate-800 border border-slate-700 text-slate-200 text-xs font-medium rounded-lg px-2 py-1.5 outline-none max-w-[130px] truncate"
+          >
+            <option value="OIL-BAGHJAN-1">BAGHJAN-1</option>
+            <option value="OIL-BAGHJAN-4">BAGHJAN-4</option>
+            <option value="OIL-NAHARKATIYA-1">NAHARKATIYA-1</option>
+            <option value="OIL-MORAN-1">MORAN-1</option>
+            <option value="OIL-DIKOM-1">DIKOM-1</option>
+            <option value="OIL-TENGAKHAT-1">TENGAKHAT-1</option>
+            <option value="OIL-KOTHALONI-1">KOTHALONI-1</option>
+            <option value="OIL-HAPJAN-1">HAPJAN-1</option>
+            <option value="OIL-SHALMARI-1">SHALMARI-1</option>
+          </select>
+
+          {/* Quick Upload Icon Button */}
+          <button
+            onClick={() => setIsUploadModalOpen(true)}
+            className="p-2 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 border border-slate-700 text-slate-300 rounded-lg transition"
+            title="Upload Document"
+          >
+            <FileUp size={16} />
+          </button>
+
+          {/* Mobile Menu Toggle Button */}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="p-2 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 border border-slate-700 text-slate-200 rounded-lg transition"
+            aria-label="Toggle Menu"
+          >
+            {isMobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
+        </div>
+
+        {/* Desktop Navigation Toolbar (Hidden on mobile < lg) */}
+        <div className="hidden lg:flex items-center space-x-6">
           {/* Status Indicator */}
           <div className="flex items-center space-x-2 bg-slate-800/50 px-3 py-1.5 rounded-full border border-slate-700/50">
             <span className="relative flex h-2 w-2">
@@ -701,60 +744,198 @@ function App() {
         </div>
       </header>
 
+      {/* Mobile Slide-Down Drawer Sheet */}
+      {isMobileMenuOpen && (
+        <div className="lg:hidden fixed inset-x-0 top-14 z-40 bg-slate-900/98 backdrop-blur-xl border-b border-slate-800 shadow-2xl p-4 space-y-3 animate-in slide-in-from-top-3 max-h-[85vh] overflow-y-auto">
+          {/* Status & Role in Mobile Menu */}
+          <div className="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+            <div className="flex items-center space-x-2">
+              <span className={`w-2 h-2 rounded-full ${isBackendConnected ? 'bg-emerald-400' : 'bg-rose-500'} animate-pulse`}></span>
+              <span className="text-xs font-mono text-slate-300">{isBackendConnected ? 'FastAPI Online' : 'FastAPI Offline'}</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-xs text-slate-400">Role:</span>
+              <select 
+                value={role} 
+                onChange={handleRoleChange}
+                className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded px-2 py-1 outline-none"
+              >
+                <option value="Field Engineer">Field Engineer</option>
+                <option value="Office Reviewer">Office Reviewer</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Core Decision Support Modules (Touch targets >= 44px) */}
+          <div className="grid grid-cols-1 gap-2 pt-1">
+            <button 
+              onClick={() => { setIsRadarOpen(true); setIsMobileMenuOpen(false); }}
+              className="flex items-center space-x-3 p-3 rounded-xl bg-amber-500/10 active:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-left font-medium text-xs min-h-[44px]"
+            >
+              <Radar size={18} className="text-amber-400 shrink-0" />
+              <div>
+                <div className="font-bold text-white">Ahead-of-the-Bit Hazard Radar</div>
+                <div className="text-[10px] text-amber-300/80">+250m Lookahead Proximity Scan</div>
+              </div>
+            </button>
+
+            <button 
+              onClick={() => { setIsCorrelationOpen(true); setIsMobileMenuOpen(false); }}
+              className="flex items-center space-x-3 p-3 rounded-xl bg-indigo-500/10 active:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-left font-medium text-xs min-h-[44px]"
+            >
+              <Layers size={18} className="text-indigo-400 shrink-0" />
+              <div>
+                <div className="font-bold text-white">Cross-Well Correlation & Stratigraphy</div>
+                <div className="text-[10px] text-indigo-300/80">Casing programs & offset logs</div>
+              </div>
+            </button>
+
+            <button 
+              onClick={() => { setIsPPFGOpen(true); setIsMobileMenuOpen(false); }}
+              className="flex items-center space-x-3 p-3 rounded-xl bg-emerald-500/10 active:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-left font-medium text-xs min-h-[44px]"
+            >
+              <Gauge size={18} className="text-emerald-400 shrink-0" />
+              <div>
+                <div className="font-bold text-white">Safe Mud Weight Window (PPFG)</div>
+                <div className="text-[10px] text-emerald-300/80">Pore Pressure vs Fracture Gradient</div>
+              </div>
+            </button>
+
+            <button 
+              onClick={() => { setIsDossierOpen(true); setIsMobileMenuOpen(false); }}
+              className="flex items-center space-x-3 p-3 rounded-xl bg-cyan-500/10 active:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-left font-medium text-xs min-h-[44px]"
+            >
+              <FileText size={18} className="text-cyan-400 shrink-0" />
+              <div>
+                <div className="font-bold text-white">1-Click Pre-Spud Dossier</div>
+                <div className="text-[10px] text-cyan-300/80">Pre-spud hazard briefing</div>
+              </div>
+            </button>
+
+            <button 
+              onClick={() => { setIsContributeOpen(true); setIsMobileMenuOpen(false); }}
+              className="flex items-center space-x-3 p-3 rounded-xl bg-purple-500/10 active:bg-purple-500/20 text-purple-300 border border-purple-500/30 text-left font-medium text-xs min-h-[44px]"
+            >
+              <Brain size={18} className="text-purple-400 shrink-0" />
+              <div>
+                <div className="font-bold text-white">Add Field Lesson Learned</div>
+                <div className="text-[10px] text-purple-300/80">Institutional Memory contributor</div>
+              </div>
+            </button>
+          </div>
+
+          {/* Utility Buttons */}
+          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800">
+            <button 
+              onClick={() => { setIsKnowledgeSearchOpen(true); setIsMobileMenuOpen(false); }}
+              className="flex items-center justify-center space-x-2 py-2.5 px-3 bg-slate-800 active:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl text-xs font-semibold"
+            >
+              <Search size={14} />
+              <span>Search Memory</span>
+            </button>
+            <button 
+              onClick={() => { exportWellData(); setIsMobileMenuOpen(false); }}
+              className="flex items-center justify-center space-x-2 py-2.5 px-3 bg-slate-800 active:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl text-xs font-semibold"
+            >
+              <Download size={14} />
+              <span>Export CSV</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main Content Area */}
-      <main className="flex-1 relative flex min-h-0 overflow-hidden">
+      <main className="flex-1 relative flex flex-col lg:flex-row min-h-0 overflow-hidden pb-16 lg:pb-0">
         
         {/* Map Container */}
-        <div className="flex-1 bg-slate-900 relative overflow-hidden flex flex-col">
+        <div className={`flex-1 bg-slate-900 relative overflow-hidden flex flex-col ${mobileActiveTab === 'map' ? 'flex' : 'hidden lg:flex'}`}>
           
           {/* Proactive Depth-Proximity Lookahead Warning Banner (CORRECTION 3: Reuses /api/wells/{id}/lookahead) */}
           {proximityWarning?.active && (
-            <div className="absolute top-3 left-4 right-4 z-30 bg-gradient-to-r from-amber-950/95 via-amber-900/90 to-amber-950/95 border-2 border-amber-500/80 p-3.5 rounded-xl shadow-2xl backdrop-blur-md flex items-center justify-between gap-4 animate-in slide-in-from-top-3">
-              <div className="flex items-center space-x-3">
-                <div className="p-2.5 bg-amber-500/20 rounded-lg border border-amber-500/40 text-amber-300 animate-pulse shrink-0">
-                  <AlertTriangle size={22} />
+            <div className="absolute top-2 left-2 right-2 sm:top-3 sm:left-4 sm:right-4 z-30 bg-gradient-to-r from-amber-950/95 via-amber-900/90 to-amber-950/95 border-2 border-amber-500/80 p-3 sm:p-3.5 rounded-xl shadow-2xl backdrop-blur-md flex items-center justify-between gap-3 animate-in slide-in-from-top-3">
+              <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
+                <div className="p-2 sm:p-2.5 bg-amber-500/20 rounded-lg border border-amber-500/40 text-amber-300 animate-pulse shrink-0">
+                  <AlertTriangle size={20} />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="flex items-center space-x-2">
-                    <span className="text-[11px] font-black uppercase tracking-wider bg-amber-500 text-slate-950 px-2 py-0.5 rounded font-mono">
-                      Proactive Proximity Alert
+                    <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500 text-slate-950 px-1.5 py-0.5 rounded font-mono shrink-0">
+                      Proximity
                     </span>
-                    <span className="text-xs font-bold text-amber-200">
-                      {proximityWarning.distance_m}m Ahead: Impending Entry into {proximityWarning.formation} ({proximityWarning.tvd_top}m TVD)
+                    <span className="text-xs font-bold text-amber-200 truncate">
+                      {proximityWarning.distance_m}m Ahead: {proximityWarning.formation} ({proximityWarning.tvd_top}m)
                     </span>
                   </div>
-                  <p className="text-xs text-amber-100/90 mt-1">
+                  <p className="text-[11px] sm:text-xs text-amber-100/90 mt-0.5 truncate">
                     <strong className="text-white">Threat:</strong> {proximityWarning.primary_risk}
-                    {proximityWarning.offset_precedent && (
-                      <span className="text-amber-300 font-mono ml-2">
-                        • Precedent: {proximityWarning.offset_precedent}
-                      </span>
-                    )}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2 shrink-0">
+              <div className="flex items-center space-x-1.5 shrink-0">
                 <button
                   onClick={() => setIsRadarOpen(true)}
-                  className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center space-x-1.5 shadow-lg shadow-amber-500/30 transition cursor-pointer"
+                  className="px-2.5 sm:px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center space-x-1 shadow-lg shadow-amber-500/30 transition cursor-pointer"
                 >
-                  <Radar size={14} />
-                  <span>Inspect Ahead-of-Bit Radar</span>
+                  <Radar size={13} />
+                  <span className="hidden sm:inline">Inspect Ahead-of-Bit Radar</span>
+                  <span className="sm:hidden">Radar</span>
                 </button>
                 <button
                   onClick={() => setProximityWarning(null)}
                   className="p-1 rounded-lg text-amber-300/70 hover:text-white hover:bg-amber-900/50 transition"
                   title="Dismiss alert"
                 >
-                  <X size={16} />
+                  <X size={15} />
                 </button>
               </div>
             </div>
           )}
 
-          {/* Active Drilling Status Card overlay */}
-          <div className="absolute top-4 left-4 z-10 flex gap-4">
+          {/* Mobile Compact Drilling HUD Bar (Visible only on < sm) */}
+          <div className="absolute top-3 left-3 right-3 z-10 flex sm:hidden items-center justify-between bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-xl px-3 py-2 shadow-xl">
+            <div className="flex items-center space-x-3 text-xs">
+              <div>
+                <span className="text-[9px] text-slate-400 block font-mono uppercase">TVD</span>
+                <span className="font-bold text-white font-mono">{telemetryData ? telemetryData.depth_tvd.toFixed(1) : "---"}m</span>
+              </div>
+              <div className="w-px h-6 bg-slate-800" />
+              <div>
+                <span className="text-[9px] text-slate-400 block font-mono uppercase">ROP</span>
+                <span className="font-bold text-status-active font-mono">{telemetryData ? telemetryData.rop.toFixed(1) : "---"}</span>
+              </div>
+              <div className="w-px h-6 bg-slate-800" />
+              <div>
+                <span className="text-[9px] text-slate-400 block font-mono uppercase">Torque</span>
+                <span className={`font-bold font-mono ${showAlerts && alertState.active ? 'text-status-danger animate-pulse' : 'text-status-warning'}`}>
+                  {telemetryData ? telemetryData.torque.toFixed(0) : "---"}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center space-x-1.5">
+              <button
+                onClick={() => setIsRadarOpen(true)}
+                className="p-2 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/30 active:bg-amber-500/20"
+                title="Ahead-of-Bit Radar"
+              >
+                <Radar size={15} />
+              </button>
+              <button
+                onClick={() => handleSimControl(simStatus.is_running ? 'pause' : 'play')}
+                className={`p-2 rounded-lg font-bold text-xs transition active:scale-95 ${
+                  simStatus.is_running
+                    ? 'bg-amber-500 text-slate-950'
+                    : 'bg-emerald-500 text-slate-950'
+                }`}
+                title="Toggle simulation"
+              >
+                {simStatus.is_running ? <Pause size={15} /> : <Play size={15} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Active Drilling Status Card overlay (Hidden on < sm) */}
+          <div className="absolute top-4 left-4 z-10 hidden sm:flex gap-4">
             <div className="bg-slate-900/90 backdrop-blur border border-slate-700 p-4 rounded-lg shadow-xl min-w-[200px]">
               <h3 className="text-xs uppercase text-slate-400 font-bold mb-2">Current TVD</h3>
               <div className="text-3xl font-light text-white">
@@ -815,7 +996,8 @@ function App() {
           </div>
 
           {/* In-App Telemetry Feed Controller (CORRECTION 4: Realistic Scenario Injector) */}
-          <div className="absolute bottom-6 left-4 z-20 bg-slate-900/95 backdrop-blur-md border border-slate-700/80 p-3 rounded-xl shadow-2xl flex flex-wrap items-center gap-3">
+          {/* In-App Telemetry Feed Controller (CORRECTION 4: Realistic Scenario Injector - Desktop Only) */}
+          <div className="absolute bottom-6 left-4 z-20 bg-slate-900/95 backdrop-blur-md border border-slate-700/80 p-3 rounded-xl shadow-2xl hidden lg:flex flex-wrap items-center gap-3">
             <div className="flex items-center space-x-2 border-r border-slate-800 pr-3">
               <button
                 onClick={() => handleSimControl(simStatus.is_running ? 'pause' : 'play')}
@@ -956,8 +1138,177 @@ function App() {
           />
         </div>
 
-        {/* Right-Hand Drawer */}
-        <aside className="w-[450px] border-l border-slate-800 bg-slate-950 flex flex-col shadow-2xl z-20 shrink-0 relative h-full min-h-0 overflow-hidden">
+        {/* Dedicated Mobile Simulator Screen (Visible when mobileActiveTab === 'simulator' on < lg) */}
+        {mobileActiveTab === 'simulator' && (
+          <div className="lg:hidden flex-1 w-full bg-slate-950 p-4 overflow-y-auto space-y-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div className="flex items-center space-x-2">
+                  <Sliders size={18} className="text-cyan-400" />
+                  <h2 className="font-bold text-white text-sm">Drilling Simulator Engine</h2>
+                </div>
+                <div className="flex items-center space-x-1.5">
+                  <span className={`w-2.5 h-2.5 rounded-full ${simStatus.is_running ? 'bg-emerald-400 animate-ping' : 'bg-slate-600'}`}></span>
+                  <span className="text-xs font-mono font-bold text-slate-300">
+                    {simStatus.is_running ? 'RUNNING' : 'PAUSED'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Primary Play/Pause Controls */}
+              <div className="grid grid-cols-2 gap-3 mt-4">
+                <button
+                  onClick={() => handleSimControl(simStatus.is_running ? 'pause' : 'play')}
+                  className={`py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-center space-x-2 shadow-lg min-h-[48px] active:scale-[0.98] transition ${
+                    simStatus.is_running
+                      ? 'bg-amber-500 text-slate-950 shadow-amber-500/20'
+                      : 'bg-emerald-500 text-slate-950 shadow-emerald-500/20'
+                  }`}
+                >
+                  {simStatus.is_running ? <Pause size={18} /> : <Play size={18} />}
+                  <span>{simStatus.is_running ? 'Pause Simulator' : 'Play Simulator'}</span>
+                </button>
+
+                <button
+                  onClick={() => handleSimControl('reset')}
+                  className="py-3 px-4 rounded-xl font-bold text-sm bg-slate-800 active:bg-slate-700 text-slate-200 border border-slate-700 flex items-center justify-center space-x-2 min-h-[48px] transition"
+                >
+                  <RotateCcw size={18} />
+                  <span>Reset TVD</span>
+                </button>
+              </div>
+
+              {/* Speed Selector */}
+              <div className="mt-4 pt-3 border-t border-slate-800">
+                <div className="text-xs text-slate-400 mb-2 font-medium">Playback Speed</div>
+                <div className="grid grid-cols-3 gap-2">
+                  {[1, 2, 5].map(speed => (
+                    <button
+                      key={speed}
+                      onClick={() => handleSpeedChange(speed)}
+                      className={`py-2 rounded-xl text-xs font-bold transition min-h-[44px] ${
+                        simSpeed === speed
+                          ? 'bg-cyan-500 text-slate-900 shadow-md shadow-cyan-500/20'
+                          : 'bg-slate-800 text-slate-300 border border-slate-700'
+                      }`}
+                    >
+                      {speed}x Realtime
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Depth TVD Seek Slider */}
+              <div className="mt-4 pt-3 border-t border-slate-800">
+                <div className="flex items-center justify-between text-xs text-slate-400 mb-2 font-medium">
+                  <span>Depth Seek (TVD)</span>
+                  <span className="font-mono text-cyan-400 font-bold">
+                    {(isDraggingSeek ? seekDepth : (telemetryData?.depth_tvd || 2240)).toFixed(0)} m
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="3500"
+                  step="10"
+                  value={isDraggingSeek ? seekDepth : (telemetryData?.depth_tvd || 2240)}
+                  onPointerDown={() => setIsDraggingSeek(true)}
+                  onChange={(e) => setSeekDepth(parseFloat(e.target.value))}
+                  onPointerUp={(e) => {
+                    setIsDraggingSeek(false);
+                    handleSeek(parseFloat(e.target.value));
+                  }}
+                  className="w-full accent-cyan-500 cursor-pointer h-2.5 bg-slate-800 rounded-lg appearance-none my-2"
+                />
+                <div className="flex justify-between text-[10px] font-mono text-slate-500">
+                  <span>0m</span>
+                  <span>1,750m</span>
+                  <span>3,500m</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Scenario Injection Section */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
+              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
+                Inject Hazard Scenarios (ML Risk Engine)
+              </div>
+              <div className="grid grid-cols-1 gap-2.5">
+                <button
+                  onClick={() => handleScenarioInject('normal')}
+                  className={`p-3 rounded-xl text-left border transition min-h-[44px] flex items-center justify-between ${
+                    simStatus.active_scenario === 'normal'
+                      ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
+                      : 'bg-slate-950/60 border-slate-800 text-slate-300 active:bg-slate-800'
+                  }`}
+                >
+                  <div>
+                    <div className="font-bold text-xs">Baseline Steady-State</div>
+                    <div className="text-[11px] text-slate-400">Normal circulation, no influx or losses</div>
+                  </div>
+                  {simStatus.active_scenario === 'normal' && <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />}
+                </button>
+
+                <button
+                  onClick={() => handleScenarioInject('gas_kick')}
+                  className={`p-3 rounded-xl text-left border transition min-h-[44px] flex items-center justify-between ${
+                    simStatus.active_scenario === 'gas_kick'
+                      ? 'bg-amber-500/20 border-amber-500 text-amber-300'
+                      : 'bg-slate-950/60 border-slate-800 text-slate-300 active:bg-slate-800'
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <Flame size={18} className="text-amber-400 shrink-0" />
+                    <div>
+                      <div className="font-bold text-xs">Gas Kick (Formation Influx)</div>
+                      <div className="text-[11px] text-slate-400">+3.5 bbl pit gain, flow-out surge 118%</div>
+                    </div>
+                  </div>
+                  {simStatus.active_scenario === 'gas_kick' && <CheckCircle2 size={16} className="text-amber-400 shrink-0" />}
+                </button>
+
+                <button
+                  onClick={() => handleScenarioInject('lost_circulation')}
+                  className={`p-3 rounded-xl text-left border transition min-h-[44px] flex items-center justify-between ${
+                    simStatus.active_scenario === 'lost_circulation'
+                      ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300'
+                      : 'bg-slate-950/60 border-slate-800 text-slate-300 active:bg-slate-800'
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <Droplets size={18} className="text-cyan-400 shrink-0" />
+                    <div>
+                      <div className="font-bold text-xs">Lost Circulation (Mud Loss)</div>
+                      <div className="text-[11px] text-slate-400">-4.2 bbl pit loss, flow-out drops to 62%</div>
+                    </div>
+                  </div>
+                  {simStatus.active_scenario === 'lost_circulation' && <CheckCircle2 size={16} className="text-cyan-400 shrink-0" />}
+                </button>
+
+                <button
+                  onClick={() => handleScenarioInject('stuck_pipe')}
+                  className={`p-3 rounded-xl text-left border transition min-h-[44px] flex items-center justify-between ${
+                    simStatus.active_scenario === 'stuck_pipe'
+                      ? 'bg-rose-500/20 border-rose-500 text-rose-300'
+                      : 'bg-slate-950/60 border-slate-800 text-slate-300 active:bg-slate-800'
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <Anchor size={18} className="text-rose-400 shrink-0" />
+                    <div>
+                      <div className="font-bold text-xs">Stuck Pipe (Mechanical Packoff)</div>
+                      <div className="text-[11px] text-slate-400">Torque spike to 28,500 lbf-ft, drillstring stall</div>
+                    </div>
+                  </div>
+                  {simStatus.active_scenario === 'stuck_pipe' && <CheckCircle2 size={16} className="text-rose-400 shrink-0" />}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Right-Hand Drawer / Mobile Telemetry Tab */}
+        <aside className={`${mobileActiveTab === 'telemetry' ? 'flex w-full flex-1' : 'hidden lg:flex lg:w-[450px]'} border-l border-slate-800 bg-slate-950 flex flex-col shadow-2xl z-20 shrink-0 relative h-full min-h-0 overflow-hidden`}>
           
           {/* Hazard Alert Banner */}
           {showAlerts && alertState.active && (
@@ -1150,12 +1501,11 @@ function App() {
                 </div>
               </div>
             </div>
-
             {/* Real-time Trajectory Widget */}
             <div className="bg-slate-900 border border-slate-800 rounded p-4 mb-4">
               <h3 className="text-xs uppercase font-bold text-slate-500 mb-3">Torque vs Depth (TVD)</h3>
 
-              <div className="h-64 flex items-center justify-center rounded overflow-hidden">
+              <div className="h-64 w-full flex items-center justify-center rounded overflow-hidden">
                 <Plot
                   data={[
                     {
@@ -1168,7 +1518,7 @@ function App() {
                     }
                   ]}
                   layout={{
-                    width: 380,
+                    autosize: true,
                     height: 250,
                     margin: { t: 10, r: 10, l: 50, b: 30 },
                     paper_bgcolor: 'transparent',
@@ -1181,12 +1531,14 @@ function App() {
                     },
                     yaxis: { 
                       title: 'Depth (m)', 
-                      autorange: 'reversed',
+                      autorange: 'reversed', 
                       gridcolor: '#334155',
                       zerolinecolor: '#334155',
                       color: '#94a3b8'
                     }
                   }}
+                  useResizeHandler={true}
+                  style={{ width: '100%', height: '100%' }}
                   config={{ responsive: true, displayModeBar: false }}
                 />
               </div>
@@ -1329,6 +1681,67 @@ function App() {
           </div>
         </aside>
       </main>
+
+      {/* Fixed Mobile Bottom Navigation Bar (< lg) */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-950/98 backdrop-blur-xl border-t border-slate-800/80 px-2 py-1 flex items-center justify-around h-16 shadow-[0_-4px_20px_rgba(0,0,0,0.5)]">
+        <button
+          onClick={() => setMobileActiveTab('map')}
+          className={`flex flex-col items-center justify-center flex-1 py-1 rounded-xl transition min-h-[44px] ${
+            mobileActiveTab === 'map'
+              ? 'text-cyan-400 font-bold bg-cyan-500/10'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <MapIcon size={18} />
+          <span className="text-[10px] mt-1 font-medium">Well Map</span>
+        </button>
+
+        <button
+          onClick={() => setMobileActiveTab('telemetry')}
+          className={`flex flex-col items-center justify-center flex-1 py-1 rounded-xl transition min-h-[44px] relative ${
+            mobileActiveTab === 'telemetry'
+              ? 'text-cyan-400 font-bold bg-cyan-500/10'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          {showAlerts && alertState.active && (
+            <span className="absolute top-1.5 right-4 w-2 h-2 rounded-full bg-status-danger animate-ping" />
+          )}
+          <Activity size={18} />
+          <span className="text-[10px] mt-1 font-medium">Telemetry</span>
+        </button>
+
+        <button
+          onClick={() => setMobileActiveTab('simulator')}
+          className={`flex flex-col items-center justify-center flex-1 py-1 rounded-xl transition min-h-[44px] relative ${
+            mobileActiveTab === 'simulator'
+              ? 'text-cyan-400 font-bold bg-cyan-500/10'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          {simStatus.is_running && (
+            <span className="absolute top-1.5 right-4 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          )}
+          <Sliders size={18} />
+          <span className="text-[10px] mt-1 font-medium">Simulator</span>
+        </button>
+
+        <button
+          onClick={() => setIsRadarOpen(true)}
+          className="flex flex-col items-center justify-center flex-1 py-1 rounded-xl text-amber-400 hover:text-amber-300 transition min-h-[44px]"
+        >
+          <Radar size={18} />
+          <span className="text-[10px] mt-1 font-medium">Radar</span>
+        </button>
+
+        <button
+          onClick={() => setIsCorrelationOpen(true)}
+          className="flex flex-col items-center justify-center flex-1 py-1 rounded-xl text-indigo-400 hover:text-indigo-300 transition min-h-[44px]"
+        >
+          <Layers size={18} />
+          <span className="text-[10px] mt-1 font-medium">Offsets</span>
+        </button>
+      </nav>
 
       {/* Ahead-of-the-Bit Hazard Radar Modal */}
       <LookAheadRadar 

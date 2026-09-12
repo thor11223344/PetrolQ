@@ -52,51 +52,52 @@ const PreSpudDossierModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1' }
   const formBreakdown = dossier?.formation_hazard_breakdown || {};
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200 print:p-0 print:bg-white print:static">
-      <div className="bg-slate-900 border border-slate-700 w-full max-w-5xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[94vh] print:max-h-none print:border-none print:shadow-none print:bg-white print:text-black">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 sm:p-4 animate-in fade-in duration-200 print:p-0 print:bg-white print:static">
+      <div className="bg-slate-900 border border-slate-700 w-full max-w-5xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[96vh] sm:max-h-[94vh] print:max-h-none print:border-none print:shadow-none print:bg-white print:text-black">
         
         {/* Header - Screen only */}
-        <div className="px-6 py-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center print:hidden">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 text-cyan-400">
-              <FileText size={22} />
+        <div className="px-3 sm:px-6 py-3 sm:py-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center gap-2 print:hidden">
+          <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+            <div className="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/20 text-cyan-400 shrink-0">
+              <FileText size={20} />
             </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <h2 className="text-lg font-bold text-white tracking-wide">
-                  Pre-Spud Offset Well Risk Dossier
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <h2 className="text-sm sm:text-lg font-bold text-white tracking-wide truncate">
+                  Pre-Spud Offset Dossier
                 </h2>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-950 border border-cyan-800 text-cyan-300 font-mono">
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-cyan-950 border border-cyan-800 text-cyan-300 font-mono">
                   {activeWellId}
                 </span>
-                <span className="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                  OFFICIAL ENGINEERING REPORT
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold hidden sm:inline">
+                  OFFICIAL DOSSIER
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-[11px] sm:text-xs text-slate-400 hidden sm:block">
                 Automated multi-source historical offset intelligence compiled for drilling superintendents
               </p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
             <button 
               onClick={handlePrint}
-              className="px-3.5 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs flex items-center space-x-1.5 transition shadow-lg shadow-cyan-500/20"
+              className="px-2.5 sm:px-3.5 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs flex items-center space-x-1 sm:space-x-1.5 transition shadow-lg shadow-cyan-500/20 min-h-[36px]"
             >
-              <Printer size={15} />
-              <span>Print / Save PDF</span>
+              <Printer size={14} />
+              <span className="hidden sm:inline">Print / Save PDF</span>
+              <span className="sm:hidden">Print</span>
             </button>
             <button 
               onClick={fetchDossier}
-              className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition"
+              className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition min-h-[36px] min-w-[36px] flex items-center justify-center"
               title="Reload Dossier"
             >
-              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
             </button>
             <button 
               onClick={onClose}
-              className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition"
+              className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition min-h-[36px] min-w-[36px] flex items-center justify-center"
             >
               <X size={18} />
             </button>
@@ -104,10 +105,10 @@ const PreSpudDossierModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1' }
         </div>
 
         {/* Printable Document Scroll Area */}
-        <div className="flex-1 overflow-y-auto p-8 space-y-6 print:overflow-visible print:p-0">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-8 space-y-4 sm:space-y-6 print:overflow-visible print:p-0">
           
           {/* Institutional Document Header */}
-          <div className="border-b-2 border-slate-700 pb-5 print:border-black">
+          <div className="border-b-2 border-slate-700 pb-4 sm:pb-5 print:border-black">
             <div className="flex justify-between items-start">
               <div>
                 <span className="text-xs font-mono font-bold tracking-widest text-cyan-400 uppercase block print:text-slate-600">

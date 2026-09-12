@@ -79,25 +79,25 @@ const ContributeLessonModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1'
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 sm:p-4 animate-in fade-in duration-200">
+      <div className="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[96vh] sm:max-h-[92vh]">
         
         {/* Header */}
-        <div className="px-6 py-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-purple-500/10 rounded-lg border border-purple-500/20 text-purple-400">
-              <Brain size={22} />
+        <div className="px-3 sm:px-6 py-3 sm:py-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center gap-2">
+          <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+            <div className="p-2 bg-purple-500/10 rounded-lg border border-purple-500/20 text-purple-400 shrink-0">
+              <Brain size={20} />
             </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <h2 className="text-lg font-bold text-white tracking-wide">
-                  Contribute Field Lesson Learned
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <h2 className="text-sm sm:text-lg font-bold text-white tracking-wide truncate">
+                  Contribute Field Lesson
                 </h2>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-950 border border-cyan-800 text-cyan-300 font-mono">
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-cyan-950 border border-cyan-800 text-cyan-300 font-mono">
                   {activeWellId}
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-[11px] sm:text-xs text-slate-400 hidden sm:block">
                 Log real-time operational experience directly into the institutional vector knowledge base
               </p>
             </div>
@@ -105,14 +105,14 @@ const ContributeLessonModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1'
 
           <button 
             onClick={onClose}
-            className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition"
+            className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition min-h-[36px] min-w-[36px] flex items-center justify-center"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1">
+        <div className="p-3 sm:p-6 overflow-y-auto flex-1">
           {result ? (
             <div className="py-8 px-4 text-center space-y-4 animate-in zoom-in-95 duration-200">
               <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full flex items-center justify-center mx-auto">

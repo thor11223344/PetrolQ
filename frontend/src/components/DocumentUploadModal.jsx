@@ -129,31 +129,31 @@ const DocumentUploadModal = ({
     const isLas = file?.name?.toLowerCase().endsWith('.las');
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in">
-            <div className="bg-slate-900 border border-slate-700 w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-2 sm:p-4 animate-in fade-in">
+            <div className="bg-slate-900 border border-slate-700 w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 flex flex-col max-h-[96vh] sm:max-h-[90vh]">
                 
                 {/* Header */}
-                <div className="flex justify-between items-center px-6 py-4 border-b border-slate-800 bg-slate-950">
-                    <div className="flex items-center space-x-2.5">
-                        <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
-                            <UploadCloud size={20} />
+                <div className="flex justify-between items-center px-3 sm:px-6 py-3 sm:py-4 border-b border-slate-800 bg-slate-950 gap-2">
+                    <div className="flex items-center space-x-2 sm:space-x-2.5 min-w-0">
+                        <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 shrink-0">
+                            <UploadCloud size={18} />
                         </div>
-                        <div>
-                            <h2 className="text-base font-bold text-white">
-                                Ingest Drilling Report or LAS Well Log
+                        <div className="min-w-0">
+                            <h2 className="text-sm sm:text-base font-bold text-white truncate">
+                                Ingest Drilling Report / LAS Log
                             </h2>
-                            <p className="text-xs text-slate-400">
+                            <p className="text-[11px] sm:text-xs text-slate-400 hidden sm:block">
                                 AI OCR entity extraction for WCRs/DDRs and Log ASCII Standard (.las) curves
                             </p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="text-slate-400 hover:text-white transition">
-                        <X size={20} />
+                    <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-white transition rounded-lg hover:bg-slate-800 min-h-[36px] min-w-[36px] flex items-center justify-center">
+                        <X size={18} />
                     </button>
                 </div>
                 
                 {/* Body */}
-                <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                <div className="p-3 sm:p-6 overflow-y-auto flex-1 space-y-3 sm:space-y-4">
                     
                     {!uploadResult ? (
                         <>

@@ -184,61 +184,61 @@ const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell }) => {
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-slate-900 border border-slate-700 w-full max-w-6xl h-[92vh] rounded-xl shadow-2xl overflow-hidden flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 sm:p-4 animate-in fade-in duration-200">
+            <div className="bg-slate-900 border border-slate-700 w-full max-w-6xl h-[96vh] sm:h-[92vh] rounded-xl shadow-2xl overflow-hidden flex flex-col">
                 
                 {/* Header with Navigation Tabs */}
-                <div className="px-6 py-3.5 bg-slate-950 border-b border-slate-800 flex flex-wrap justify-between items-center gap-4">
-                    <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20 text-indigo-400">
-                            <Layers size={20} />
+                <div className="px-3 sm:px-6 py-2.5 sm:py-3.5 bg-slate-950 border-b border-slate-800 flex flex-wrap justify-between items-center gap-3">
+                    <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+                        <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20 text-indigo-400 shrink-0">
+                            <Layers size={18} />
                         </div>
-                        <div>
-                            <div className="flex items-center space-x-2">
-                                <h3 className="text-base font-bold text-white tracking-wide">
-                                    Offset Well Correlation & Geological Synthesis
+                        <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                                <h3 className="text-sm sm:text-base font-bold text-white tracking-wide truncate">
+                                    Offset Well Correlation
                                 </h3>
-                                <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-950 border border-cyan-800 text-cyan-300 font-mono">
+                                <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-cyan-950 border border-cyan-800 text-cyan-300 font-mono">
                                     {activeWell}
                                 </span>
                             </div>
-                            <p className="text-xs text-slate-400">
+                            <p className="text-[11px] sm:text-xs text-slate-400 hidden sm:block">
                                 Cross-well geological matching, casing program design, and stratigraphic fence correlation
                             </p>
                         </div>
                     </div>
 
                     {/* Tab Switcher */}
-                    <div className="flex items-center bg-slate-900 p-1 rounded-lg border border-slate-800 space-x-1">
+                    <div className="flex items-center bg-slate-900 p-1 rounded-lg border border-slate-800 space-x-1 overflow-x-auto max-w-full">
                         <button
                             onClick={() => setActiveTab('dtw')}
-                            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${
+                            className={`whitespace-nowrap px-2.5 sm:px-3 py-1 rounded-md text-[11px] sm:text-xs font-semibold transition ${
                                 activeTab === 'dtw' 
                                     ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20' 
                                     : 'text-slate-400 hover:text-white'
                             }`}
                         >
-                            DTW Log Correlation
+                            DTW Correlation
                         </button>
                         <button
                             onClick={() => setActiveTab('casing')}
-                            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${
+                            className={`whitespace-nowrap px-2.5 sm:px-3 py-1 rounded-md text-[11px] sm:text-xs font-semibold transition ${
                                 activeTab === 'casing' 
                                     ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20' 
                                     : 'text-slate-400 hover:text-white'
                             }`}
                         >
-                            Casing & Cement Programs
+                            Casing & Cement
                         </button>
                         <button
                             onClick={() => setActiveTab('cross_section')}
-                            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${
+                            className={`whitespace-nowrap px-2.5 sm:px-3 py-1 rounded-md text-[11px] sm:text-xs font-semibold transition ${
                                 activeTab === 'cross_section' 
                                     ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20' 
                                     : 'text-slate-400 hover:text-white'
                             }`}
                         >
-                            Stratigraphic Cross-Section (3 Wells)
+                            Stratigraphic Section
                         </button>
                     </div>
 
@@ -247,14 +247,15 @@ const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell }) => {
                             <>
                                 <button
                                     onClick={() => setIsAligned(!isAligned)}
-                                    className={`px-3 py-1.5 rounded text-xs font-medium border transition flex items-center space-x-1.5 ${
+                                    className={`px-2 sm:px-3 py-1.5 rounded text-[11px] sm:text-xs font-medium border transition flex items-center space-x-1 sm:space-x-1.5 ${
                                         isAligned 
                                             ? 'bg-cyan-950 border-cyan-500/60 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.3)]' 
                                             : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'
                                     }`}
                                 >
                                     <Columns size={13} />
-                                    <span>{isAligned ? 'Warped Depth (Aligned)' : 'Raw Measured Depth'}</span>
+                                    <span className="hidden sm:inline">{isAligned ? 'Warped Depth (Aligned)' : 'Raw Measured Depth'}</span>
+                                    <span className="sm:hidden">{isAligned ? 'Warped' : 'Raw MD'}</span>
                                 </button>
                                 <button
                                     onClick={() => setShowHelp(!showHelp)}

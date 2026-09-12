@@ -102,70 +102,71 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
   const riskLabel = isHighRisk ? 'CRITICAL AHEAD' : (isModerateRisk ? 'ELEVATED HAZARD' : 'SAFE CORRIDOR');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-slate-900 border border-slate-700 w-full max-w-5xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 sm:p-4 animate-in fade-in duration-200">
+      <div className="bg-slate-900 border border-slate-700 w-full max-w-5xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[96vh] sm:max-h-[92vh]">
         
         {/* Header */}
-        <div className="px-6 py-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
-          <div className="flex items-center space-x-3">
-            <div className={`p-2 rounded-lg border transition-all ${loading ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300 ring-2 ring-cyan-500/30' : 'bg-amber-500/10 border-amber-500/20 text-amber-400'}`}>
-              <Radar size={22} className={loading ? 'animate-spin' : ''} />
+        <div className="px-3 sm:px-6 py-3 sm:py-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center gap-2">
+          <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+            <div className={`p-2 rounded-lg border transition-all shrink-0 ${loading ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300 ring-2 ring-cyan-500/30' : 'bg-amber-500/10 border-amber-500/20 text-amber-400'}`}>
+              <Radar size={20} className={loading ? 'animate-spin' : ''} />
             </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <h2 className="text-lg font-bold text-white tracking-wide">
-                  Ahead-of-the-Bit Hazard Radar
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <h2 className="text-sm sm:text-lg font-bold text-white tracking-wide truncate">
+                  Ahead-of-the-Bit Radar
                 </h2>
                 
                 {/* Active Well Selector */}
                 <select
                   value={targetWellId}
                   onChange={(e) => handleWellChange(e.target.value)}
-                  className="bg-slate-800 border border-slate-700 text-cyan-300 text-xs font-mono font-bold rounded-lg px-2.5 py-1 outline-none hover:border-cyan-500 focus:border-cyan-400 cursor-pointer transition"
+                  className="bg-slate-800 border border-slate-700 text-cyan-300 text-xs font-mono font-bold rounded-lg px-2 py-1 outline-none hover:border-cyan-500 focus:border-cyan-400 cursor-pointer transition max-w-[140px] truncate"
                   title="Switch Target Well for Offset Radar Analysis"
                 >
-                  <option value="OIL-BAGHJAN-1">OIL-BAGHJAN-1 (Baghjan Field)</option>
-                  <option value="OIL-BAGHJAN-4">OIL-BAGHJAN-4 (Baghjan Field)</option>
-                  <option value="OIL-NAHARKATIYA-1">OIL-NAHARKATIYA-1 (Naharkatiya Field)</option>
-                  <option value="OIL-MORAN-1">OIL-MORAN-1 (Moran Field)</option>
-                  <option value="OIL-DIKOM-1">OIL-DIKOM-1 (Dikom Field)</option>
-                  <option value="OIL-TENGAKHAT-1">OIL-TENGAKHAT-1 (Tengakhat Field)</option>
-                  <option value="OIL-KOTHALONI-1">OIL-KOTHALONI-1 (Kothaloni Field)</option>
-                  <option value="OIL-HAPJAN-1">OIL-HAPJAN-1 (Hapjan Field)</option>
-                  <option value="OIL-SHALMARI-1">OIL-SHALMARI-1 (Shalmari Field)</option>
+                  <option value="OIL-BAGHJAN-1">BAGHJAN-1</option>
+                  <option value="OIL-BAGHJAN-4">BAGHJAN-4</option>
+                  <option value="OIL-NAHARKATIYA-1">NAHARKATIYA-1</option>
+                  <option value="OIL-MORAN-1">MORAN-1</option>
+                  <option value="OIL-DIKOM-1">DIKOM-1</option>
+                  <option value="OIL-TENGAKHAT-1">TENGAKHAT-1</option>
+                  <option value="OIL-KOTHALONI-1">KOTHALONI-1</option>
+                  <option value="OIL-HAPJAN-1">HAPJAN-1</option>
+                  <option value="OIL-SHALMARI-1">SHALMARI-1</option>
                 </select>
 
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 font-mono">
-                  Bit TVD: {Math.round(simulatedDepth)}m
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 font-mono">
+                  {Math.round(simulatedDepth)}m
                 </span>
                 {scanNotice && (
-                  <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-medium animate-in fade-in duration-200">
-                    ✓ Scan Updated
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-medium">
+                    ✓ Updated
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-[11px] sm:text-xs text-slate-400 hidden sm:block">
                 Proactive offset well correlation scanning {windowMeters}m ahead of the current bit position
                 {lastScanned && <span className="ml-2 font-mono text-slate-500">• Last scan: {lastScanned}</span>}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 shrink-0">
             {/* Prominent Refresh Button */}
             <button 
               onClick={() => fetchLookAhead()}
               disabled={loading}
-              className="px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 hover:text-white font-medium text-xs flex items-center space-x-1.5 transition shadow-sm disabled:opacity-50"
+              className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 hover:text-white font-medium text-xs flex items-center space-x-1.5 transition shadow-sm disabled:opacity-50 min-h-[36px]"
               title="Trigger active radar horizon sweep"
             >
-              <RefreshCw size={14} className={loading ? 'animate-spin text-cyan-400' : ''} />
-              <span>{loading ? 'Scanning...' : 'Re-scan Radar'}</span>
+              <RefreshCw size={13} className={loading ? 'animate-spin text-cyan-400' : ''} />
+              <span className="hidden sm:inline">{loading ? 'Scanning...' : 'Re-scan Radar'}</span>
+              <span className="sm:hidden">{loading ? '...' : 'Scan'}</span>
             </button>
 
             <button 
               onClick={onClose}
-              className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition"
+              className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition min-h-[36px] min-w-[36px] flex items-center justify-center"
             >
               <X size={18} />
             </button>
@@ -173,7 +174,7 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
         </div>
 
         {/* Controls Bar */}
-        <div className="px-6 py-3 bg-slate-950/60 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4 text-xs">
+        <div className="px-3 sm:px-6 py-2.5 sm:py-3 bg-slate-950/60 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2 text-slate-300">
               <Sliders size={14} className="text-cyan-400" />
@@ -233,7 +234,7 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
         </div>
 
         {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4 sm:space-y-6">
           
           {/* Top Row: Predictive Horizon Status Card */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

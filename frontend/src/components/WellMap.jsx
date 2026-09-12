@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Target, AlertTriangle, Box } from 'lucide-react';
+import { Target, AlertTriangle, Box, ChevronDown, ChevronUp } from 'lucide-react';
 import Map, { Marker, NavigationControl, Source, Layer } from 'react-map-gl/maplibre';
 import * as maplibregl from 'maplibre-gl';
 import axios from 'axios';
@@ -70,6 +70,7 @@ export default function WellMap({ activeWellId, onSelectWell, currentDepth, acti
 
     const [radius, setRadius] = useState(50.0);
     const [wells, setWells] = useState([]);
+    const [isCollapsed, setIsCollapsed] = useState(false);
     
     // Draggable state for the search box
     const [position, setPosition] = useState({ x: 24, y: 150 }); // Start a bit lower to avoid App.jsx status cards
@@ -233,57 +234,68 @@ export default function WellMap({ activeWellId, onSelectWell, currentDepth, acti
                 })}
             </Map>
 
-            {/* Floating Control Card (Draggable) */}
+            {/* Floating Control Card (Draggable / Mobile Responsive) */}
             <div 
-                className={`absolute w-80 bg-slate-900/90 backdrop-blur-md border border-slate-700 shadow-2xl rounded-lg p-4 z-10 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-                style={{ top: position.y, left: position.x, touchAction: 'none' }}
+                className={`absolute w-80 max-w-[calc(100vw-32px)] bg-slate-900/95 backdrop-blur-md border border-slate-700 shadow-2xl rounded-xl p-3 sm:p-4 z-10 transition-all ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                style={{ top: Math.max(60, position.y), left: Math.max(12, position.x), touchAction: 'none' }}
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
                 onPointerCancel={handlePointerUp}
             >
-                <div className="flex items-center justify-between mb-4 pointer-events-none">
-                    <h3 className="font-semibold text-slate-200 flex items-center">
+                <div className="flex items-center justify-between mb-1 sm:mb-3">
+                    <h3 className="font-semibold text-slate-200 flex items-center text-xs sm:text-sm">
                         <Target size={16} className="mr-2 text-status-fluid" />
                         Offset Search
                     </h3>
-                    <div className="bg-slate-800 px-2 py-1 rounded text-xs font-medium text-slate-300 border border-slate-700">
-                        Found {wells.length} Wells
+                    <div className="flex items-center space-x-1.5">
+                        <span className="bg-slate-800 px-2 py-0.5 rounded text-[11px] font-medium text-slate-300 border border-slate-700">
+                            {wells.length} Wells
+                        </span>
+                        <button
+                            onClick={() => setIsCollapsed(!isCollapsed)}
+                            className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                            title={isCollapsed ? "Expand Search Controls" : "Collapse Search Controls"}
+                        >
+                            {isCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                        </button>
                     </div>
                 </div>
 
-                <div className="space-y-4">
-                    <div>
-                        <div className="flex justify-between text-xs text-slate-400 mb-1">
-                            <span>Search Radius</span>
-                            <span>{radius.toFixed(1)} km</span>
+                {!isCollapsed && (
+                    <div className="space-y-3 sm:space-y-4 pt-1">
+                        <div>
+                            <div className="flex justify-between text-xs text-slate-400 mb-1">
+                                <span>Search Radius</span>
+                                <span>{radius.toFixed(1)} km</span>
+                            </div>
+                            <input 
+                                type="range" 
+                                min="5.0" 
+                                max="200.0" 
+                                step="5.0" 
+                                value={radius}
+                                onChange={(e) => setRadius(parseFloat(e.target.value))}
+                                className="w-full accent-status-fluid bg-slate-800 rounded-lg appearance-none cursor-pointer h-2"
+                            />
                         </div>
-                        <input 
-                            type="range" 
-                            min="5.0" 
-                            max="200.0" 
-                            step="5.0" 
-                            value={radius}
-                            onChange={(e) => setRadius(parseFloat(e.target.value))}
-                            className="w-full accent-status-fluid bg-slate-800 rounded-lg appearance-none cursor-pointer h-1.5"
-                        />
-                    </div>
 
-                    <button 
-                        onClick={setAsActiveRig}
-                        className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium py-2 rounded transition-colors border border-slate-700 flex items-center justify-center"
-                    >
-                        Set Selected as Active Rig Location
-                    </button>
-                    
-                    <button 
-                        onClick={() => setIs3DViewerOpen(true)}
-                        className="w-full bg-status-fluid/20 hover:bg-status-fluid/30 text-status-fluid text-sm font-medium py-2 rounded transition-colors border border-status-fluid/30 flex items-center justify-center mt-2"
-                    >
-                        <Box size={16} className="mr-2" />
-                        View 3D Subsurface
-                    </button>
-                </div>
+                        <button 
+                            onClick={setAsActiveRig}
+                            className="w-full bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-200 text-xs sm:text-sm font-medium py-2 sm:py-2.5 rounded-lg transition-colors border border-slate-700 flex items-center justify-center min-h-[44px]"
+                        >
+                            Set Selected as Active Rig
+                        </button>
+                        
+                        <button 
+                            onClick={() => setIs3DViewerOpen(true)}
+                            className="w-full bg-status-fluid/20 hover:bg-status-fluid/30 active:bg-status-fluid/40 text-status-fluid text-xs sm:text-sm font-medium py-2 sm:py-2.5 rounded-lg transition-colors border border-status-fluid/30 flex items-center justify-center min-h-[44px]"
+                        >
+                            <Box size={16} className="mr-2" />
+                            View 3D Subsurface
+                        </button>
+                    </div>
+                )}
             </div>
 
             <Trajectory3DViewer 
