@@ -170,8 +170,8 @@ export default function WellMap({ activeWellId, onSelectWell, currentDepth, acti
             >
                 <NavigationControl position="bottom-right" />
 
-                {/* Radius Polygon */}
-                <Source id="radius-source" type="geojson" data={circleGeoJSON}>
+                {/* Radius Polygon - Fill */}
+                <Source id="radius-source-fill" type="geojson" data={circleGeoJSON}>
                     <Layer 
                         id="radius-fill" 
                         type="fill" 
@@ -180,6 +180,10 @@ export default function WellMap({ activeWellId, onSelectWell, currentDepth, acti
                             'fill-opacity': 0.35
                         }} 
                     />
+                </Source>
+
+                {/* Radius Polygon - Line */}
+                <Source id="radius-source-line" type="geojson" data={circleGeoJSON}>
                     <Layer 
                         id="radius-line" 
                         type="line" 
