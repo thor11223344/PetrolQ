@@ -160,10 +160,18 @@ export default function WellMap({ activeWellId, onSelectWell, currentDepth, acti
         }
     };
 
+    const mapRef = React.useRef(null);
+    useEffect(() => {
+        if (mapRef.current) {
+            window.debugMap = mapRef.current.getMap();
+        }
+    }, [mapRef.current]);
+
     return (
         <div className="relative w-full h-full flex-1">
             {console.log('CIRCLE DEBUG:', JSON.stringify(circleGeoJSON), 'radius:', radius, 'center:', searchCoords)}
             <Map
+                ref={mapRef}
                 {...viewState}
                 onMove={evt => setViewState(evt.viewState)}
                 mapStyle={isOffline ? offlineStyle : osmStyle}
