@@ -6,14 +6,16 @@
 
 ## 1. Executive Technology Summary
 
-PetrolQ is built as an **offline-first, enterprise-grade AI decision-support platform** for upstream oil & gas drilling operations. The architecture is engineered to run seamlessly in high-security, low-connectivity field environments (such as offshore platforms or remote onshore drilling rigs in Upper Assam) without requiring cloud lock-in or external third-party API dependencies.
+PetrolQ is built as an **offline-first, enterprise-grade AI decision-support platform** for upstream oil & gas drilling operations, deployed seamlessly both as a **local field appliance** (for offshore rigs and remote Assam operations) and as a **high-availability cloud platform** (Vercel + Render + Supabase).
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                             CLIENT PRESENTATION LAYER                       │
-│      React 19  │  Vite 8  │  Tailwind CSS  │  MapLibre GL  │  Plotly 3D     │
+│    React 19  │  Vite 8  │  Tailwind CSS  │  Carto Dark Matter  │  Plotly 3D │
+│    Space Grotesk  │  Inter  │  JetBrains Mono  │  Mobile Responsive Navbar  │
+│    Client-Isolated Simulation Engine (Local Telemetry State Sandbox)        │
 └──────────────────────────────────────┬──────────────────────────────────────┘
-                                       │ HTTP / WebSockets
+                                       │ HTTP / WebSockets (Vercel / Render / Local)
 ┌──────────────────────────────────────▼──────────────────────────────────────┐
 │                              APPLICATION BACKEND                            │
 │           FastAPI (Async ASGI)  │  Uvicorn  │  Pydantic Schemas             │
@@ -24,10 +26,10 @@ PetrolQ is built as an **offline-first, enterprise-grade AI decision-support pla
 │                          DOCUMENT & NLP EXTRACTION                          │
 │   PyMuPDF  │  pdfplumber  │  Tesseract OCR  │  bge-small-en-v1.5 Vectors    │
 └──────────────────────────────────────┬──────────────────────────────────────┘
-                                       │ SQL / Spatial Queries
+                                       │ SQL / Spatial Queries (Port 5432 / SSL)
 ┌──────────────────────────────────────▼──────────────────────────────────────┐
 │                               PERSISTENCE LAYER                             │
-│       PostgreSQL Database  │  PostGIS (Spatial)  │  SQLAlchemy ORM          │
+│       Supabase / Local PostgreSQL  │  PostGIS (Spatial)  │  SQLAlchemy ORM  │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -87,9 +89,10 @@ PetrolQ is built as an **offline-first, enterprise-grade AI decision-support pla
 
 ## 4. Database & Geospatial Technologies
 
-### 1. PostgreSQL
-* **Role:** Primary relational and spatial database.
+### 1. PostgreSQL & Supabase Cloud
+* **Role:** Primary relational, spatial, and vector database.
 * **How & Where Used:**
+  * Operates locally on port 5432 for offline rig deployments and in cloud production via **Supabase PostgreSQL** (`db.cefcwirsqpcaykkodctx.supabase.co`).
   * Stores master well attributes, time-series drilling parameters, high-resolution well log curves, and historical drilling incidents.
 
 ### 2. PostGIS (`geoalchemy2`, `shapely`)
@@ -98,11 +101,11 @@ PetrolQ is built as an **offline-first, enterprise-grade AI decision-support pla
   * Stores wellhead geographic coordinates as PostGIS `POINT(longitude, latitude)` geometry with SRID 4326 (WGS84).
   * Powers the nearby well radius query, instantly finding all offset wells within a given radius in kilometers without brute-force scanning.
 
-### 3. PostgreSQL Dense Vector Arrays
+### 3. PostgreSQL Dense Vector Storage
 * **Role:** In-database vector storage for institutional memory.
 * **How & Where Used:**
   * Stores dense embedding vectors directly alongside historical drilling incidents in the `synthetic_event` table.
-  * Eliminates external third-party vector database dependencies (like Pinecone or Qdrant) so the entire platform remains 100% self-contained and local.
+  * Eliminates external third-party vector database dependencies (like Pinecone or Qdrant) so the entire platform remains 100% self-contained, whether running locally or on Supabase.
 
 ---
 
@@ -169,46 +172,73 @@ PetrolQ is built as an **offline-first, enterprise-grade AI decision-support pla
 
 ---
 
-## 7. Frontend User Interface & 3D Visualization
+## 7. Frontend User Interface, Typography & Geospatial Visualization
 
-### 1. React 19 (`react`, `react-dom`)
-* **Role:** Core reactive frontend architecture.
+### 1. React 19 & Vite v8 (`react`, `react-dom`, `vite`)
+* **Role:** Core reactive frontend architecture and instant build tooling.
 * **How & Where Used:**
-  * Manages modular state across gauges, map views, 3D canvases, modals, and real-time WebSocket feeds in `frontend/src/App.jsx`.
+  * Manages modular reactive state across gauges, map views, 3D canvases, modals, and real-time WebSocket feeds in `frontend/src/App.jsx`.
+  * Optimized Rollup chunking and lightning-fast HMR for both local offline use and cloud deployments (Vercel).
 
-### 2. Vite v8 (`vite`)
-* **Role:** Frontend tooling and build engine.
+### 2. Multi-Tier Typography Design System (Google Fonts)
+* **Role:** Mission-control visual hierarchy and data legibility.
 * **How & Where Used:**
-  * Bundles and serves the React application with Instant Hot Module Replacement (HMR) and optimized Rollup chunking (`npm run build`).
+  * **`Space Grotesk`**: High-tech display typography for branding, section titles, and modal headers.
+  * **`Inter`**: Clean, neutral ergonomic typography for UI controls, navigation labels, and incident descriptions.
+  * **`JetBrains Mono`**: Industrial monospace typeface for precision numerical telemetry, sensor readouts (WOB, RPM, SPP, ROP, TVD), coordinates, and status logs.
 
-### 3. Tailwind CSS (`tailwindcss`, `postcss`, `autoprefixer`)
-* **Role:** Utility-first CSS styling engine.
+### 3. Tailwind CSS & Glassmorphism Theme System
+* **Role:** Industrial dark-mode aesthetic and ergonomic rig-floor styling.
 * **How & Where Used:**
-  * Powers the industrial high-tech dark mode palette (`slate-950`, `slate-900`, `cyan-400`, `amber-500`, `red-500`).
-  * Delivers responsive, high-contrast visual ergonomics tailored for rig-floor control cabins.
+  * Custom styled in `frontend/src/index.css` with `.glass-panel`, `.glass-card`, and glowing phosphor status badges (`cyan-400`, `emerald-400`, `amber-400`, `rose-400`).
+  * Seamless dark palette (`#090d16` background) engineered to prevent eye fatigue in dark rig control rooms while maintaining high contrast.
 
-### 4. Plotly.js & React-Plotly (`react-plotly.js`, `plotly.js-dist-min`)
-* **Role:** GPU-accelerated WebGL 3D visualization.
+### 4. Carto Dark Matter Geospatial Engine (MapLibre GL)
+* **Role:** High-performance, failure-free dark geospatial mapping.
+* **How & Where Used:**
+  * Implemented in `frontend/src/components/WellMap.jsx`.
+  * Uses **Carto Dark Matter** raster tiles (`https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png`) with an automatic OpenStreetMap fallback.
+  * Completely eliminates Web Worker worker-loader crashes and CORS restrictions on cloud hosting (Vercel).
+  * Smoothly renders Upper Assam basin wellheads with clean borders, avoiding disputed international boundary anomalies.
+
+### 5. Mobile-First Ergonomic Architecture & Bottom Navigation
+* **Role:** Full touch-first responsiveness for rig engineers using smartphones and tablets.
+* **How & Where Used:**
+  * Responsive layout switching with dedicated mobile viewports (`@media (max-width: 1024px)`).
+  * **Fixed Frosted Glass Bottom Navigation Bar**: One-touch tab switching between `Well Map`, `Telemetry`, `Simulator`, `Radar`, and `Offsets`.
+  * **Mobile Simulator Screen**: Large touch targets, 1x/2x/5x speed pills, full-width TVD depth scrubber, and scenario injectors designed for one-handed rig floor operation.
+  * **Mobile Floating HUD**: Top-anchored real-time telemetry strip showing Bit Depth, ROP, and Risk status over the map.
+
+### 6. Rig Physical Telemetry Matrix
+* **Role:** Live physical sensor readouts for real-world drilling mechanics.
+* **How & Where Used:**
+  * Displays 6 dedicated physical sensors in `App.jsx`:
+    * **Weight on Bit (WOB)** in klbf
+    * **Rotary Speed (RPM)**
+    * **Standpipe Pressure (SPP)** in psi
+    * **Flow Out %**
+    * **Pit Volume Delta ($\Delta$)** in bbl
+    * **Dynamic ECD** in ppg
+  * Features reactive alert pulse animations when sensors breach safe operating corridors.
+
+### 7. Tactical Cyber-Console Simulator Controls
+* **Role:** Client-side isolated drilling simulation controller.
+* **How & Where Used:**
+  * Docked directly below the interactive map on desktop and as a dedicated screen on mobile.
+  * Houses simulation status LED, playback buttons (Play, Pause, Step +1m, Reset), speed multipliers (1x, 2x, 5x), real-time TVD seek track with drill bit marker, and physical hazard scenario injectors (Normal, Gas Kick, Lost Circulation, Stuck Pipe).
+
+### 8. Plotly.js & React-Plotly (`react-plotly.js`, `plotly.js-dist-min`)
+* **Role:** GPU-accelerated WebGL 3D subsurface visualization.
 * **How & Where Used:**
   * Implemented in `frontend/src/components/Trajectory3DViewer.jsx`.
   * Renders 3D wellbore paths, casing shoes, surface planes, 3D hydrocarbon reservoir lenses, and geological strata.
   * Engineered with custom user-interaction guards (`isInteractingRef`) and constant `uirevision` to maintain 60 FPS smooth camera rotation and zoom during active live streaming.
 
-### 5. MapLibre GL & React-Map-GL (`maplibre-gl`, `react-map-gl`)
-* **Role:** Open-source vector tile mapping engine.
+### 9. Lucide React (`lucide-react`) & Axios (`axios`)
+* **Role:** Modern UI vector iconography & promise-based HTTP transport.
 * **How & Where Used:**
-  * Implemented in `frontend/src/components/WellMap.jsx`.
-  * Renders the interactive geospatial map showing oilfield wellheads, surface coordinates, and the interactive radius circle.
-
-### 6. Lucide React (`lucide-react`)
-* **Role:** Modern UI vector iconography.
-* **How & Where Used:**
-  * Supplies clear visual icons across the dashboard (Drill bit, Compass, Radar, Shield Alert, Layers, Database, File Upload).
-
-### 7. Axios (`axios`)
-* **Role:** Promise-based HTTP client.
-* **How & Where Used:**
-  * Handles asynchronous API calls from the React frontend to FastAPI endpoints.
+  * Supplies crisp visual icons across desktop and mobile navigation.
+  * Manages asynchronous REST requests to FastAPI endpoints with centralized base URL configuration (`frontend/src/lib/api.js`).
 
 ---
 
@@ -243,15 +273,18 @@ PetrolQ is built as an **offline-first, enterprise-grade AI decision-support pla
 
 | Layer | Technology | Primary Purpose in Presentation |
 | :--- | :--- | :--- |
-| **Languages** | Python 3.10+, JavaScript, SQL | Full-stack oilfield engineering platform |
-| **API Server** | FastAPI, Uvicorn | High-speed async REST API + real-time WebSockets |
-| **Database** | PostgreSQL + PostGIS | Geospatial wellhead queries & vector incident storage |
+| **Languages** | Python 3.10+, JavaScript (ES2022+), SQL | Full-stack oilfield engineering & physics platform |
+| **Cloud Hosting** | Vercel (Frontend), Render (Backend), Supabase (DB) | Live production cloud infrastructure with zero cold-starts |
+| **API Server** | FastAPI, Uvicorn, Pydantic | High-speed async REST API + real-time WebSockets |
+| **Database** | Supabase / Local PostgreSQL + PostGIS | Geospatial wellhead queries & vector incident storage |
 | **Machine Learning** | LightGBM, Scikit-Learn, SHAP | Real-time hazard classification with explainable AI |
 | **NLP & Vectors** | `bge-small-en-v1.5`, PyMuPDF, `pdfplumber` | Automated DDR report parsing & semantic RAG search |
 | **Drilling Physics** | Eaton Method, FastDTW, SciPy, LASIO | Pore pressure estimation & well log curve alignment |
-| **Frontend UI** | React 19, Vite, Tailwind CSS | Industrial dark-mode rig control room dashboard |
+| **Frontend UI** | React 19, Vite 8, Tailwind CSS | Industrial cyber-console dark mode rig dashboard |
+| **Typography** | Space Grotesk, Inter, JetBrains Mono | Multi-tier display, UI, and precision telemetry typography |
 | **3D Visualization** | Plotly.js, WebGL | Interactive 3D subsurface trajectories & anti-collision radar |
-| **GIS Mapping** | MapLibre GL, React-Map-GL | Dynamic 5–50km nearby well proximity search |
+| **GIS Mapping** | Carto Dark Matter, MapLibre GL, OSM fallback | Zero-crash, high-contrast dark raster tile mapping |
+| **Simulation State**| Client-Isolated React Session Engine | Prevents cross-device interference (mobile vs desktop) |
 | **Testing** | Pytest, Pytest-Asyncio | 100% pass rate automated test verification |
 | **Datasets** | Assam-Arakan Digital Twin, Volve/FORCE | Physically calibrated, lightweight (99 KB) self-contained data |
 
@@ -259,7 +292,7 @@ PetrolQ is built as an **offline-first, enterprise-grade AI decision-support pla
 
 ## 11. System Resilience & Anti-Crash Architecture (Why PetrolQ Won't Crash)
 
-In mission-critical oil & gas environments and high-stakes hackathon presentations, software crashes, UI freezes, and disconnected screens are catastrophic. PetrolQ is architected with **5 layers of defensive, self-healing engineering safeguards** to guarantee 100% uptime and seamless performance:
+In mission-critical oil & gas environments and high-stakes hackathon presentations, software crashes, UI freezes, and disconnected screens are catastrophic. PetrolQ is architected with **7 layers of defensive, self-healing engineering safeguards** to guarantee 100% uptime and seamless performance:
 
 ### 1. The "Traffic Cop" Protection (Throttling & Debouncing)
 * **The Vulnerability:** Live drilling simulators stream telemetry updates every second. If the frontend bombarded the backend with heavy database queries on every tick, the browser network stack would choke, queue hundreds of requests, and freeze the tab with a *"Page Unresponsive"* browser crash.
@@ -293,4 +326,18 @@ In mission-critical oil & gas environments and high-stakes hackathon presentatio
   * **100% Offline-First Architecture:** The database (PostgreSQL + PostGIS), embedding models (`BAAI/bge-small-en-v1.5`), ML classifiers (LightGBM), and document parsers run **completely locally** on the host machine. The platform operates flawlessly without internet access.
   * **Graceful Degradation for AI Extraction:** If the local LLM (e.g., Ollama) is not running or crashes, the backend doesn't crash or drop the document. It performs a 150ms socket check and seamlessly degrades to a deterministic, rule-based Regular Expression (Regex) domain parser. It automatically hunts for oilfield keywords (e.g., "lost circulation"), extracts formations, depths, and NPT hours, ensuring uninterrupted document ingestion with zero AI reliance.
   * **Strict Type and Null Safety:** Every database query, API serializer, and frontend component includes fallback defaults (e.g., `event.depth_start_tvd || 0.0`, `upcoming_formations?.[0] || {}`). Missing historical data produces clean, user-friendly empty states instead of fatal runtime exceptions.
+
+### 6. The "Isolated Session Sandbox" (Client Simulation Decoupling)
+* **The Vulnerability:** In multi-device demonstration environments (e.g. an evaluator testing on a mobile phone while the presenter uses a laptop), shared server-side simulation state causes chaotic race conditions where playing, scrubbing, or injecting a hazard on one device hijacks and interrupts the other device.
+* **Our Defensive Solution:**
+  * **Client-Side Simulation Isolation:** Simulation tick loops, playback status (play/pause/reset), playback speed (1x/2x/5x), depth scrubbing, and scenario selection are managed strictly within the client's local React state.
+  * **Zero Cross-Device Interference:** An evaluator on mobile can freely explore gas kicks or stuck pipe scenarios without disrupting the desktop presentation or other users on the network.
+  * **Independent ML & Physics Ingestion:** Every client independently queries and receives real-time ML risk predictions and physics computations for its active simulated bit depth.
+
+### 7. The "Bulletproof Raster Map Engine" (Zero Web Worker / CORS Failures)
+* **The Vulnerability:** MapLibre/Mapbox vector tile engines rely on complex Web Workers, external font glyph PBFs, and remote vector schemas that frequently fail on cloud hosting platforms (like Vercel) due to Cross-Origin Resource Sharing (CORS) rules, Content Security Policies (CSP), or missing worker-loader configurations, leaving users with blank white maps.
+* **Our Defensive Solution:**
+  * **Carto Dark Matter Raster Tiles:** The map engine renders high-performance raster tiles (`https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png`) with an automatic OpenStreetMap tile fallback.
+  * **Zero Worker Overhead:** Operates reliably across any browser, mobile device, or cloud CDN without Web Worker initialization errors or CORS blocking.
+  * **Dark Theme Visual Integration:** Seamlessly matches the industrial mission-control color scheme while accurately rendering Assam oilfield boundaries without geopolitical anomalies.
 

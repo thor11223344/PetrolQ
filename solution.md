@@ -8,6 +8,11 @@
 * **Organization / Sponsoring Body:** Oil India Limited (OIL), Ministry of Petroleum and Natural Gas
 * **Theme / Category:** Smart India Hackathon — Smart Automation / Clean & Green Energy / AI Decision Support
 * **Core Mandate:** Develop an AI/ML-enabled, standalone decision-support platform that acts as an **institutional memory** alongside existing real-time rig monitoring systems. The system must transform scattered historical records into active, proactive operational intelligence to eliminate drilling hazards and minimize Non-Productive Time (NPT).
+* **Live Deployment Environments:**
+  * **Production Web Application (Vercel):** [`https://petrol-q.vercel.app`](https://petrol-q.vercel.app)
+  * **Production Backend API (Render):** [`https://petrolq.onrender.com`](https://petrolq.onrender.com)
+  * **Production Cloud Database:** Supabase PostgreSQL with PostGIS spatial extensions
+  * **Local Offline Rig Appliance:** 100% offline-first execution via `start.bat` on `localhost:5173` / `localhost:8000`
 
 ---
 
@@ -35,15 +40,17 @@ Below is the breakdown of each challenge explicitly stated in the problem statem
 > *"Problem Statement Requirement: Display nearby wells on a geospatial map relative to the active well within a user-defined radius."*
 
 #### The Solution We Built:
-* **Interactive GIS Map with Dynamic Radius Search:**
-  * Uses vector spatial mapping with real coordinates from the Assam-Arakan oilfields (`Baghjan`, `Naharkatiya`, `Dikom`, `Moran`, etc.).
-  * Powered by **PostGIS** spatial indexing to instantly calculate geospatial distances between the active rig and all surrounding wellheads.
-  * Includes a real-time radius slider (from 5 km up to 50 km) that dynamically renders an interactive geographical radius circle and pinpoints offset wells within range.
-  * Allows one-click switching to re-center the operational rig at any selected wellhead.
+* **Interactive Carto Dark Matter GIS Map with Dynamic Radius Search:**
+  * Uses **Carto Dark Matter** high-performance raster tiles (`https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png`) with an automatic OpenStreetMap tile fallback.
+  * Completely immune to Web Worker worker-loader crashes, CSP, or CORS failures on cloud platforms (Vercel).
+  * Accurately displays the Assam-Arakan oilfields (`Baghjan`, `Naharkatiya`, `Dikom`, `Moran`, `Tengakhat`, `Kothaloni`, `Hapjan`, `Shalmari`) with clean borders avoiding disputed geopolitical boundary artifacts.
+  * Powered by **PostGIS** spatial indexing (`ST_DWithin`, `ST_Distance`, SRID 4326) to calculate geodesic distances between the active well and all offset wellheads in sub-milliseconds.
+  * Dynamic radius search slider (5 km to 50 km) that renders an interactive geospatial radius circle and real-time offset counter.
+  * One-click re-centering to shift the platform's operational focus to any offset well.
 
 #### How to Use It in the Webapp:
-1. Open the web application (`http://localhost:5173`).
-2. Look at the **Interactive Field Map** located at the bottom-left of the main dashboard.
+1. Open the web application ([`https://petrol-q.vercel.app`](https://petrol-q.vercel.app) or `http://localhost:5173`).
+2. Look at the **Interactive Field Map** located at the bottom-left on desktop (or tap the **Well Map** tab on mobile).
 3. Use the floating **Radius Search Card**:
    * Drag the **Search Radius Slider** (e.g., set to 15 km, 25 km, or 50 km).
    * Notice the circular zone expands and contracts on the map, updating the nearby well counter.
@@ -138,23 +145,38 @@ Below is the breakdown of each challenge explicitly stated in the problem statem
 
 #### The Solution We Built:
 * **Multi-Parameter Physics & ML Risk Classification Engine:**
-  * Listens to high-frequency telemetry streams over WebSockets (ROP, WOB, RPM, Torque, Flow Out, Pit Gain, Standpipe Pressure, Mud Weight, ECD).
-  * Uses an integrated predictive service that combines physical threshold bounds with trained machine learning classifiers to categorize real-time risk into **NORMAL**, **ELEVATED**, **HIGH**, or **CRITICAL**.
-  * Features a **Scenario Injector** supporting 4 distinct physical simulation states:
-    1. **Normal Drilling:** Stable baseline parameters.
-    2. **Gas Kick:** Sudden pit volume gain, flow-out surge, and standpipe pressure fluctuations.
-    3. **Lost Circulation:** Sudden pit volume loss and drop in return flow percentage.
-    4. **Stuck Pipe:** Overpull, sudden RPM drop, and sharp torque spikes.
-  * When a high-risk scenario triggers, the system raises an emergency red banner and automatically pulls the most relevant historical mitigation from institutional memory.
+  * Evaluates high-frequency rig telemetry streams over WebSockets and local sensor models.
+  * Integrates trained LightGBM gradient-boosted decision trees with empirical physics metrics (Teale Mechanical Specific Energy, Bingham $d_{xc}$, and Eaton PPFG) to categorize risk into **NORMAL**, **ELEVATED**, **HIGH**, or **CRITICAL**.
+  * **Dedicated Rig Physical Telemetry Stream Matrix:**
+    * Displays 6 mission-critical physical drilling parameters in dedicated HUD cards:
+      1. **Weight on Bit (WOB)** in klbf
+      2. **Rotary Speed (RPM)**
+      3. **Standpipe Pressure (SPP)** in psi
+      4. **Flow Out %**
+      5. **Pit Volume Delta ($\Delta$)** in bbl
+      6. **Dynamic ECD** in ppg
+    * Employs reactive visual alert pulses when parameters breach safe operating bounds.
+  * **Tactical Cyber-Console Simulator Controls:**
+    * Docked directly beneath the map on desktop (and as a dedicated full screen on mobile).
+    * Features status LED, playback buttons (`Play`, `Pause`, `Step +1m`, `Reset`), speed multipliers (`1x`, `2x`, `5x`), and a real-time TVD drill bit seek track.
+    * Features a **Scenario Injector** supporting 4 distinct physical simulation states:
+      1. **Normal Drilling:** Stable baseline parameters.
+      2. **Gas Kick:** Sudden pit volume gain, flow-out surge, and standpipe pressure fluctuations.
+      3. **Lost Circulation:** Sudden pit volume loss and drop in return flow percentage.
+      4. **Stuck Pipe:** Overpull, sudden RPM drop, and sharp torque spikes.
+  * **Client-Side Simulation Isolation (No Cross-Device Interference):**
+    * Simulation tick loops, playback status, depth seeking, and scenario selection run strictly within the client's local React session memory.
+    * Multiple engineers can test simultaneously (e.g., an evaluator on a mobile phone and a presenter on a laptop) with **zero screen hijacking or cross-talk**, while each device independently queries real-time ML risk predictions for its active simulated depth.
 
 #### How to Use It in the Webapp:
-1. In the **Simulation Control Bar**, find the **"Inject Scenario"** dropdown (currently set to *"Normal"*).
+1. In the **Tactical Cyber-Console** docked under the map (or the **Simulator** tab on mobile), find the **"Inject Scenario"** controls (set to *"Normal"*).
 2. Change the scenario to **"Gas Kick"**:
    * Watch the **Pit Gain** and **Flow Out** meters immediately spike.
    * A prominent **High-Risk Alert Banner** flashes in red at the top of the right drawer.
-   * The system automatically generates real-time AI mitigation advice tailored to well control.
+   * The system automatically pulls real-time AI mitigation advice tailored to well control.
 3. Try switching to **"Stuck Pipe"** or **"Lost Circulation"** to see how the dials, mechanical indicators, and AI recommendations adapt to each physical condition.
-4. Switch back to **"Normal"** or click **"Dismiss"** to clear the emergency state.
+4. Use the **1x / 2x / 5x** speed buttons to accelerate virtual drilling, or drag the **TVD Scrubber** to jump to any depth.
+5. Switch back to **"Normal"** or click **"Dismiss"** to clear the emergency state.
 
 ---
 
@@ -239,27 +261,52 @@ Below is the breakdown of each challenge explicitly stated in the problem statem
 
 ---
 
+### Problem 11: Field Usability & Mobile Rig-Floor Accessibility
+> *"Problem Statement Requirement: Provide an accessible, responsive user interface operational across control rooms, rig doghouses, and mobile handheld devices."*
+
+#### The Solution We Built:
+* **Mobile-First Ergonomic Architecture & Touch Experience:**
+  * Tailored for engineers on the rig floor carrying smartphones or tablets in portrait or landscape orientations (`@media (max-width: 1024px)`).
+  * **Compact Mobile Top Bar**: Includes quick active well switcher and one-touch document upload modal trigger.
+  * **Mobile Floating HUD**: Docked over the top of the map showing real-time TVD Bit Depth, ROP, and operational Risk status.
+  * **Frosted Glass Bottom Navigation Bar**: One-touch thumb switching between 5 primary operational views:
+    1. **Well Map:** Full-screen geospatial oilfield map with radius slider and interactive wellheads.
+    2. **Telemetry:** Complete 6-parameter physical telemetry sensor matrix (WOB, RPM, SPP, Flow %, Pit Delta, ECD).
+    3. **Simulator:** Dedicated touch-first cyber-console with oversized playback buttons, speed selector pills, full-width TVD track, and hazard scenario buttons.
+    4. **Radar:** Lookahead hazard corridor and impending formation boundary tracker.
+    5. **Offsets:** Slide-up drawer displaying offset well intelligence and historical incident cards.
+
+#### How to Use It on Mobile:
+1. Open [`https://petrol-q.vercel.app`](https://petrol-q.vercel.app) in any mobile browser (Chrome, Safari, Firefox).
+2. Use the **Bottom Navigation Bar** to glide between Map, Telemetry, Simulator, Radar, and Offsets.
+3. In the **Simulator** tab, tap **Play** (`▶`), toggle speeds (1x / 2x / 5x), or tap any scenario pill (Gas Kick, Lost Circulation, Stuck Pipe) to experience real-time rig physics right on your phone.
+
+---
+
 ## 4. Summary Table: Problem vs. Solution
 
 | Problem Mentioned in Problem Statement | Solution Implemented in PetrolQ | Where to Access in Webapp |
 | :--- | :--- | :--- |
-| **1. No geospatial map of nearby wells** | PostGIS-powered interactive GIS map with dynamic 5–50km radius circle | Bottom-left **Interactive Field Map** & radius slider |
-| **2. Trapped knowledge in PDF drilling reports** | AI OCR & NLP incident extraction pipeline | Top bar &rarr; **"Ingest Document"** modal |
+| **1. No geospatial map of nearby wells** | Carto Dark Matter raster GIS map with dynamic 5–50km radius circle & PostGIS spatial indexing | Desktop: Bottom-left map / Mobile: **Well Map** tab |
+| **2. Trapped knowledge in PDF drilling reports** | AI OCR & NLP incident extraction pipeline (`pdfplumber` + regex fallback) | Top bar &rarr; **"Ingest Document"** modal |
 | **3. Manual, slow searching through archives** | Semantic Vector RAG Search (`bge-small` + cosine similarity) | Top bar &rarr; **"Knowledge Search"** |
 | **4. Lack of cross-well geological correlation** | Multi-well side-by-side well log & drilling parameter correlation matrix | Top bar &rarr; **"Correlations"** modal |
-| **5. No early warning before hitting hazards** | Proactive 50m Lookahead & Hazard Corridor banner | Automatic trigger during playback or depth seek |
-| **6. Real-time hazard detection & classification** | ML + physics classifier with 4-scenario physical injection (Kick, Stuck, Loss) | Top-left **Simulation Controller** (`Play`, `Inject Scenario`) |
+| **5. No early warning before hitting hazards** | Proactive 50m Lookahead & Hazard Corridor banner | Desktop header &rarr; Mobile: **Radar** tab |
+| **6. Real-time hazard detection & classification** | ML + physics classifier with 6 physical sensors, Cyber-Console, and isolated client sessions | Docked under map &rarr; Mobile: **Simulator** tab |
 | **7. Overpressure and mud weight estimation** | Real-time Eaton Pore Pressure & Fracture Gradient (PPFG) window | Top bar &rarr; **"PPFG Window"** |
 | **8. Multi-well collision & crowded pad risk** | 3D Subsurface Trajectory Visualizer & Anti-Collision Radar | Map card &rarr; **"View 3D Subsurface"** |
 | **9. Time-consuming pre-spud planning** | One-click Automated Pre-Spud Offset Intelligence Dossier | Top bar &rarr; **"Pre-Spud Dossier"** |
 | **10. Cluttered UI for different personas** | Field Engineer vs. Office Reviewer role-based operational layouts | Top bar &rarr; **Role Selector** dropdown |
+| **11. Inconvenient rig-floor mobile access** | Touch-first mobile shell with fixed frosted bottom navigation & mobile simulator | Open on any smartphone / tablet viewport |
 
 ---
 
 ## 5. Verification & Codebase Integrity
 
-All solutions described in this document are **100% real, fully implemented, and functional in this repository**:
-* **Backend:** FastAPI application running on Python 3.10+ with PostgreSQL/PostGIS.
-* **Frontend:** Modern, high-performance React + Vite web dashboard styled with Tailwind CSS.
-* **Data:** Self-contained seed datasets (~99 KB total in `data/processed/`) ready to initialize with zero external downloads.
-* **Interactive 3D Engine:** Hardware-accelerated WebGL 3D trajectory viewer with smooth camera persistence during active live streaming.
+All solutions described in this document are **100% real, fully implemented, and deployed**:
+* **Live Production Cloud Application:** Available at [`https://petrol-q.vercel.app`](https://petrol-q.vercel.app).
+* **Live Backend API & ML Inferences:** Operating on Render at [`https://petrolq.onrender.com`](https://petrolq.onrender.com).
+* **Production Database:** Supabase PostgreSQL with PostGIS geometry and dense vector storage.
+* **100% Offline Mode:** Can run as a completely local rig appliance via `start.bat` on Windows or `npm run dev`.
+* **Multi-Device Isolation:** Tested across simultaneous mobile and desktop sessions with zero cross-talk or UI interference.
+* **Failure-Free Basemap:** Verified on Carto Dark Matter raster tiles with zero Web Worker or CORS errors.
