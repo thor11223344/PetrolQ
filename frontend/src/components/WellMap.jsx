@@ -175,17 +175,16 @@ export default function WellMap({ activeWellId, onSelectWell, currentDepth, acti
                         id="radius-fill" 
                         type="fill" 
                         paint={{
-                            'fill-color': '#06B6D4',
-                            'fill-opacity': 0.15
+                            'fill-color': '#0284C7',
+                            'fill-opacity': 0.35
                         }} 
                     />
                     <Layer 
                         id="radius-line" 
                         type="line" 
                         paint={{
-                            'line-color': '#06B6D4',
-                            'line-width': 2,
-                            'line-dasharray': [2, 2]
+                            'line-color': '#1E3A8A',
+                            'line-width': 3
                         }} 
                     />
                 </Source>
