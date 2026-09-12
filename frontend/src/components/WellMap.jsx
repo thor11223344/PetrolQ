@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Target, AlertTriangle, Box } from 'lucide-react';
 import Map, { Marker, NavigationControl, Source, Layer } from 'react-map-gl/maplibre';
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 import axios from 'axios';
 import { API_BASE } from '../lib/api';
 import 'maplibre-gl/dist/maplibre-gl.css';
