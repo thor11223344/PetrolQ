@@ -37,6 +37,49 @@ function createGeoJSONCircle(center, radiusInKm, points = 64) {
     };
 }
 
+const isOffline = import.meta.env.VITE_OFFLINE_MODE === 'true';
+
+const offlineStyle = {
+    version: 8,
+    sources: {
+        'offline-tiles': {
+            type: 'raster',
+            tiles: [`${API_BASE}/tiles/{z}/{x}/{y}.png`],
+            tileSize: 256
+        }
+    },
+    layers: [{
+        id: 'offline-tiles-layer',
+        type: 'raster',
+        source: 'offline-tiles',
+        minzoom: 0,
+        maxzoom: 22
+    }]
+};
+
+const osmStyle = {
+    version: 8,
+    sources: {
+        'osm-tiles': {
+            type: 'raster',
+            tiles: [
+                'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
+            ],
+            tileSize: 256,
+            attribution: '&copy; OpenStreetMap contributors'
+        }
+    },
+    layers: [{
+        id: 'osm-tiles-layer',
+        type: 'raster',
+        source: 'osm-tiles',
+        minzoom: 0,
+        maxzoom: 19
+    }]
+};
+
 export default function WellMap({ activeWellId, onSelectWell, currentDepth, activeScenario }) {
     const [viewState, setViewState] = useState({
         longitude: 95.185,
@@ -115,48 +158,6 @@ export default function WellMap({ activeWellId, onSelectWell, currentDepth, acti
         if (e.target.hasPointerCapture(e.pointerId)) {
             e.target.releasePointerCapture(e.pointerId);
         }
-    };
-
-    const isOffline = import.meta.env.VITE_OFFLINE_MODE === 'true';
-    const offlineStyle = {
-        version: 8,
-        sources: {
-            'offline-tiles': {
-                type: 'raster',
-                tiles: [`${API_BASE}/tiles/{z}/{x}/{y}.png`],
-                tileSize: 256
-            }
-        },
-        layers: [{
-            id: 'offline-tiles-layer',
-            type: 'raster',
-            source: 'offline-tiles',
-            minzoom: 0,
-            maxzoom: 22
-        }]
-    };
-
-    const osmStyle = {
-        version: 8,
-        sources: {
-            'osm-tiles': {
-                type: 'raster',
-                tiles: [
-                    'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
-                ],
-                tileSize: 256,
-                attribution: '&copy; OpenStreetMap contributors'
-            }
-        },
-        layers: [{
-            id: 'osm-tiles-layer',
-            type: 'raster',
-            source: 'osm-tiles',
-            minzoom: 0,
-            maxzoom: 19
-        }]
     };
 
     return (
