@@ -21,7 +21,9 @@ def get_embedding(text: str) -> list[float]:
             if embedding_model is None:
                 try:
                     from fastembed import TextEmbedding
-                    embedding_model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
+                    cache_dir = os.path.join(os.getcwd(), "temp_uploads", "fastembed_cache")
+                    os.makedirs(cache_dir, exist_ok=True)
+                    embedding_model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5", cache_dir=cache_dir)
                 except Exception as e:
                     import logging
                     logging.getLogger(__name__).warning(f"Failed to load embedding model: {e}")
