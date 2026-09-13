@@ -30,7 +30,8 @@ import {
   BarChart2,
   Menu,
   Sliders,
-  ShieldCheck
+  ShieldCheck,
+  Info
 } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE, WS_BASE } from './lib/api';
