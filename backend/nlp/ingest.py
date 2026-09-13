@@ -39,12 +39,43 @@ def ingest_report(pdf_path: str, well_id: str, db_session: Session):
     incidents = extract_incidents_from_chunks(chunks)
     logger.info(f"Extracted {len(incidents)} total incidents from the document.")
     
-    # 4. Process each incident
+    # 4. Process each incident and run LLM Guardrails Validator
+    import os
+    from guardrails.guardrails_service import GuardrailsService
+
+    # Base deterministic evidence context from PDF metadata
+    pdf_filename = os.path.basename(pdf_path)
+    deterministic_evidence = {
+        "confidence": "medium",
+        "citations": [{"source_file": pdf_filename, "source_page": 1}],
+        "recommended_actions": [ev.mitigation_applied for ev in incidents if ev.mitigation_applied]
+    }
+
     events_to_insert = []
     extracted_summary = []
+    guardrail_violations = []
+
     for event in incidents:
+        # Validate individual incident recommendation against unsafe physical control / prompt injection
+        llm_candidate = {
+            "confidence": "medium",
+            "citations": [{"source_file": pdf_filename, "source_page": 1}],
+            "recommendations": [event.mitigation_applied] if event.mitigation_applied else [],
+            "summary": event.root_cause or "",
+            "reasoning": event.event_type or ""
+        }
+        val_result = GuardrailsService.validate(deterministic_evidence, llm_candidate)
+        
+        mitigation_final = event.mitigation_applied
+        if not val_result["allowed"]:
+            logger.warning(f"Guardrail violation blocked during extraction: {val_result['violations']}")
+            guardrail_violations.extend(val_result["violations"])
+            # Apply safe validated response fallback
+            fallback_rec = val_result["validated_response"].get("recommendations", [])
+            mitigation_final = fallback_rec[0] if fallback_rec else "Advisory intervention: manual drilling crew assessment required."
+
         # Construct dense context string for optimal semantic search
-        context_str = f"{event.event_type} in {event.formation} at {event.depth_tvd}m TVD. Root cause: {event.root_cause}. Mitigation: {event.mitigation_applied}"
+        context_str = f"{event.event_type} in {event.formation} at {event.depth_tvd}m TVD. Root cause: {event.root_cause}. Mitigation: {mitigation_final}"
         
         # Generate vector embedding
         try:
@@ -63,7 +94,7 @@ def ingest_report(pdf_path: str, well_id: str, db_session: Session):
             event_type=event.event_type,
             severity=event.severity,
             root_cause=event.root_cause,
-            mitigation_applied=event.mitigation_applied,
+            mitigation_applied=mitigation_final,
             npt_hours=event.npt_hours,
             embedding=embedding
         )
@@ -74,8 +105,9 @@ def ingest_report(pdf_path: str, well_id: str, db_session: Session):
             "depth_tvd": event.depth_tvd,
             "severity": event.severity,
             "root_cause": event.root_cause,
-            "mitigation_applied": event.mitigation_applied,
-            "npt_hours": event.npt_hours
+            "mitigation_applied": mitigation_final,
+            "npt_hours": event.npt_hours,
+            "guardrail_verified": val_result["allowed"]
         })
         
     # 5. Insert and commit to PostgreSQL
@@ -95,7 +127,9 @@ def ingest_report(pdf_path: str, well_id: str, db_session: Session):
         "status": "success",
         "ocr_triggered": ocr_triggered,
         "extracted_count": len(events_to_insert),
-        "events": extracted_summary
+        "events": extracted_summary,
+        "guardrail_verified": len(guardrail_violations) == 0,
+        "guardrail_violations": guardrail_violations
     }
 
 if __name__ == "__main__":

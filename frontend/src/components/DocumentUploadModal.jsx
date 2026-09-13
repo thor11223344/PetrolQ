@@ -11,7 +11,8 @@ import {
   Eye, 
   Sparkles, 
   FileSpreadsheet,
-  AlertTriangle
+  AlertTriangle,
+  ShieldCheck
 } from 'lucide-react';
 
 const DocumentUploadModal = ({ 
@@ -275,11 +276,19 @@ const DocumentUploadModal = ({
                             {/* Extracted Incidents Table for PDF */}
                             {uploadResult.events && uploadResult.events.length > 0 && (
                                 <div>
-                                    <div className="flex items-center space-x-2 mb-2">
-                                        <Eye size={16} className="text-cyan-400" />
-                                        <h5 className="text-xs font-bold uppercase text-slate-300 tracking-wider">
-                                            AI-Extracted Operational Incidents ({uploadResult.events.length})
-                                        </h5>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center space-x-2">
+                                            <Eye size={16} className="text-cyan-400" />
+                                            <h5 className="text-xs font-bold uppercase text-slate-300 tracking-wider">
+                                                AI-Extracted Operational Incidents ({uploadResult.events.length})
+                                            </h5>
+                                        </div>
+                                        {uploadResult.guardrail_verified !== false && (
+                                            <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 shadow-inner">
+                                                <ShieldCheck size={11} className="text-emerald-400" />
+                                                <span>✓ Guardrail Verified</span>
+                                            </span>
+                                        )}
                                     </div>
 
                                     <div className="overflow-x-auto border border-slate-800 rounded-lg max-h-60 overflow-y-auto">

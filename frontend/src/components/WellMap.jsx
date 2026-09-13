@@ -38,6 +38,17 @@ function createGeoJSONCircle(center, radiusInKm, points = 64) {
     };
 }
 
+function getCircleBoundingBox(center, radiusInKm) {
+    const coords = { latitude: center[1], longitude: center[0] };
+    const km = radiusInKm;
+    const distanceX = km / (111.320 * Math.cos(coords.latitude * Math.PI / 180));
+    const distanceY = km / 110.574;
+    return [
+        [coords.longitude - distanceX, coords.latitude - distanceY], // southwest [minLon, minLat]
+        [coords.longitude + distanceX, coords.latitude + distanceY]  // northeast [maxLon, maxLat]
+    ];
+}
+
 const isOffline = import.meta.env.VITE_OFFLINE_MODE === 'true';
 
 const offlineStyle = {
@@ -60,7 +71,14 @@ const offlineStyle = {
 
 const osmStyle = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
 
-export default function WellMap({ activeWellId, onSelectWell, currentDepth, activeScenario }) {
+export default function WellMap({ 
+    activeWellId, 
+    onSelectWell, 
+    currentDepth, 
+    activeScenario,
+    is3DViewerOpen: external3DOpen,
+    setIs3DViewerOpen: setExternal3DOpen
+}) {
     const [viewState, setViewState] = useState({
         longitude: 95.185,
         latitude: 27.415,
@@ -76,7 +94,9 @@ export default function WellMap({ activeWellId, onSelectWell, currentDepth, acti
     const [position, setPosition] = useState({ x: 24, y: 150 }); // Start a bit lower to avoid App.jsx status cards
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-    const [is3DViewerOpen, setIs3DViewerOpen] = useState(false);
+    const [internal3DOpen, setInternal3DOpen] = useState(false);
+    const is3DViewerOpen = external3DOpen !== undefined ? external3DOpen : internal3DOpen;
+    const setIs3DViewerOpen = setExternal3DOpen || setInternal3DOpen;
 
     // The coordinates the radius search is centered around
     const [searchCoords, setSearchCoords] = useState({ lat: 27.415, lon: 95.185 });
@@ -104,18 +124,47 @@ export default function WellMap({ activeWellId, onSelectWell, currentDepth, acti
         return createGeoJSONCircle([searchCoords.lon, searchCoords.lat], radius);
     }, [searchCoords, radius]);
 
+    const fitCircleBounds = React.useCallback((coords = searchCoords, r = radius, duration = 400) => {
+        const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
+        if (!map) return;
+        const bounds = getCircleBoundingBox([coords.lon, coords.lat], r);
+        try {
+            map.fitBounds(bounds, {
+                padding: 60,
+                duration,
+                maxZoom: 15
+            });
+        } catch (err) {
+            console.warn("fitBounds failed:", err);
+        }
+    }, [searchCoords, radius]);
+
+    // Automatically fit map view to the circle bounds whenever searchCoords or radius changes
+    useEffect(() => {
+        const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
+        if (!map) return;
+
+        const bounds = getCircleBoundingBox([searchCoords.lon, searchCoords.lat], radius);
+        try {
+            map.fitBounds(bounds, {
+                padding: 60,
+                duration: 400,
+                maxZoom: 15
+            });
+        } catch (err) {
+            console.warn("fitBounds failed:", err);
+        }
+    }, [searchCoords.lat, searchCoords.lon, radius]);
+
     const setAsActiveRig = () => {
         const active = wells.find(w => w.well_id === activeWellId);
         if (active && active.surface_location) {
-            setSearchCoords({
+            const newCoords = {
                 lat: active.surface_location.lat,
                 lon: active.surface_location.lon
-            });
-            setViewState(prev => ({
-                ...prev,
-                longitude: active.surface_location.lon,
-                latitude: active.surface_location.lat
-            }));
+            };
+            setSearchCoords(newCoords);
+            fitCircleBounds(newCoords, radius, 600);
         }
     };
 
@@ -144,7 +193,7 @@ export default function WellMap({ activeWellId, onSelectWell, currentDepth, acti
     const mapRef = React.useRef(null);
     useEffect(() => {
         if (mapRef.current) {
-            window.debugMap = mapRef.current.getMap();
+            window.debugMap = mapRef.current.getMap ? mapRef.current.getMap() : mapRef.current;
         }
     }, [mapRef.current]);
 
@@ -156,6 +205,13 @@ export default function WellMap({ activeWellId, onSelectWell, currentDepth, acti
                 map.setLayoutProperty(layer, 'visibility', 'none');
             }
         });
+        // Initial fit to ensure default 50km radius circle is fully visible with padding
+        const bounds = getCircleBoundingBox([searchCoords.lon, searchCoords.lat], radius);
+        try {
+            map.fitBounds(bounds, { padding: 60, duration: 400, maxZoom: 15 });
+        } catch (err) {
+            console.warn("fitBounds on load failed:", err);
+        }
     };
 
     return (
@@ -166,6 +222,7 @@ export default function WellMap({ activeWellId, onSelectWell, currentDepth, acti
                 onLoad={handleMapLoad}
                 {...viewState}
                 onMove={evt => setViewState(evt.viewState)}
+                onMoveEnd={evt => setViewState(evt.viewState)}
                 mapStyle={isOffline ? offlineStyle : osmStyle}
                 style={{ width: '100%', height: '100%' }}
             >

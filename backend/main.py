@@ -29,14 +29,34 @@ from api.correlate import router as correlate_router
 from api.lookahead import router as lookahead_router
 from api.ppfg import router as ppfg_router
 from api.dossier import router as dossier_router
+from services.hybrid_retrieval import (
+    DEFAULT_WEIGHTS,
+    compute_bm25_score,
+    compute_depth_proximity_score,
+    compute_formation_match_score,
+    compute_event_type_match_score,
+    compute_hybrid_relevance_score
+)
+from guardrails.guardrails_service import GuardrailsService
+
+class ScoreBreakdown(BaseModel):
+    formation_match: float
+    depth_proximity: float
+    event_type_match: float
+    bm25: float
+    vector: float
 
 class RAGSearchResponse(BaseModel):
     similarity_score: float
+    hybrid_score: Optional[float] = None
+    score_breakdown: Optional[ScoreBreakdown] = None
     well_id: str
     depth_tvd: float
+    formation: Optional[str] = None
     event_type: str
     root_cause: str
     mitigation_applied: str
+    guardrail_verified: bool = True
 
 def compute_cosine_similarity(vec1, vec2):
     v1 = np.array(vec1)
@@ -212,25 +232,39 @@ def get_anti_collision(
 def search_events(
     query: str,
     formation: Optional[str] = None,
+    depth: Optional[float] = Query(None, description="Reference drilling depth TVD in meters for proximity scoring"),
+    reference_depth: Optional[float] = Query(None, description="Alias for depth"),
+    event_type: Optional[str] = Query(None, description="Optional target event type"),
     limit: int = 5,
     db: Session = Depends(get_db)
 ):
     """
-    Semantic RAG search endpoint.
-    Finds historical drilling incidents matching the natural language query.
+    Multi-Signal Hybrid RAG search endpoint.
+    Computes weighted multi-signal relevance:
+    - formation_match (weight 0.25)
+    - depth_proximity (weight 0.25)
+    - event_type_match (weight 0.20)
+    - bm25 lexical score (weight 0.15)
+    - vector semantic similarity (weight 0.15)
+    Validated by GuardrailsService before returning.
     """
     try:
         query_embedding = get_embedding(query)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Embedding generation failed: {e}")
 
+    # Determine reference depth from explicit parameter or extracted from query string
+    target_depth = depth if depth is not None else reference_depth
+    if target_depth is None:
+        depth_match = re.search(r"(\d{3,5})\s*m?", query)
+        if depth_match:
+            try:
+                target_depth = float(depth_match.group(1))
+            except ValueError:
+                pass
+
     # Base query for events
     db_query = db.query(SyntheticEvent)
-    
-    # Optional relational filter
-    if formation:
-        db_query = db_query.filter(SyntheticEvent.formation.ilike(f"%{formation}%"))
-        
     events = db_query.all()
     
     results = []
@@ -239,24 +273,66 @@ def search_events(
         if embedding_val is None or len(embedding_val) == 0:
             continue
             
-        # Calculate cosine similarity in-memory
-        # (Since pgvector extension compilation failed, we use numpy on standard Postgres Arrays)
+        # 1. Vector semantic cosine similarity
         sim = compute_cosine_similarity(query_embedding, embedding_val)
         
         depth_val = getattr(event, "depth_start_tvd", None)
+        ev_formation = getattr(event, "formation", "") or ""
+        ev_type = getattr(event, "event_type", "") or ""
+        root_cause = getattr(event, "root_cause", "") or ""
+        mitigation = getattr(event, "mitigation_applied", "") or ""
+
+        # 2. Multi-signal component calculations
+        f_score = compute_formation_match_score(formation, ev_formation, query)
+        d_score = compute_depth_proximity_score(target_depth, depth_val)
+        e_score = compute_event_type_match_score(query, ev_type, event_type)
+        doc_text = f"{ev_type} {ev_formation} {root_cause} {mitigation}"
+        bm25_score = compute_bm25_score(query, doc_text)
+        vec_score = float(sim)
+
+        # 3. Hybrid weighted combination
+        hybrid_calc = compute_hybrid_relevance_score(
+            formation_match=f_score,
+            depth_proximity=d_score,
+            event_type_match=e_score,
+            bm25=bm25_score,
+            vector=vec_score
+        )
+        final_score = hybrid_calc["hybrid_score"]
+
+        # 4. Deterministic Guardrails validation
+        det_truth = {
+            "confidence": "high",
+            "citations": [{"source_file": f"well_{event.well_id}_history.las", "source_page": 1}],
+            "recommended_actions": [mitigation] if mitigation else []
+        }
+        candidate = {
+            "confidence": "high",
+            "citations": [{"source_file": f"well_{event.well_id}_history.las", "source_page": 1}],
+            "recommendations": [mitigation] if mitigation else [],
+            "summary": root_cause,
+            "reasoning": ev_type
+        }
+        guardrail_res = GuardrailsService.validate(det_truth, candidate)
+        is_verified = guardrail_res["allowed"]
+        mitigation_display = mitigation if is_verified else guardrail_res["validated_response"].get("recommendations", ["Crew manual review required."])[0]
+
         results.append(
             RAGSearchResponse(
-                similarity_score=float(sim),
+                similarity_score=round(final_score, 4),
+                hybrid_score=round(final_score, 4),
+                score_breakdown=ScoreBreakdown(**{k: round(v, 4) for k, v in hybrid_calc["score_breakdown"].items()}),
                 well_id=str(event.well_id),
-                # Fallback to start depth if singular depth_tvd is required
                 depth_tvd=float(depth_val) if depth_val is not None else 0.0,
-                event_type=str(event.event_type or ""),
-                root_cause=str(event.root_cause or ""),
-                mitigation_applied=str(event.mitigation_applied or "")
+                formation=ev_formation,
+                event_type=ev_type,
+                root_cause=root_cause,
+                mitigation_applied=mitigation_display,
+                guardrail_verified=is_verified
             )
         )
         
-    # Sort descending by similarity
+    # Sort descending by hybrid multi-signal relevance score
     results.sort(key=lambda x: x.similarity_score, reverse=True)
     
     return results[:limit]

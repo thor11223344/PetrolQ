@@ -62,7 +62,9 @@ async def upload_report(
                 "ocr_triggered": result.get("ocr_triggered", False),
                 "extracted_count": result.get("extracted_count", 0),
                 "message": f"Successfully parsed {file.filename} with {result.get('extracted_count', 0)} incidents extracted.",
-                "events": result.get("events", [])
+                "events": result.get("events", []),
+                "guardrail_verified": result.get("guardrail_verified", True),
+                "guardrail_violations": result.get("guardrail_violations", [])
             }
 
         elif is_las:

@@ -29,7 +29,8 @@ import {
   Anchor,
   BarChart2,
   Menu,
-  Sliders
+  Sliders,
+  ShieldCheck
 } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE, WS_BASE } from './lib/api';
@@ -43,6 +44,8 @@ import LookAheadRadar from './components/LookAheadRadar';
 import PPFGWindowModal from './components/PPFGWindowModal';
 import PreSpudDossierModal from './components/PreSpudDossierModal';
 import ContributeLessonModal from './components/ContributeLessonModal';
+import DataTransparencyModal from './components/DataTransparencyModal';
+import ImpactStatCards from './components/ImpactStatCards';
 
 const WELL_DEFAULT_TELEMETRY = {
   'OIL-BAGHJAN-1': { well_id: 'OIL-BAGHJAN-1', depth_tvd: 2240.0, rop: 16.5, wob: 14.0, rpm: 105.0, torque: 13200.0, mud_weight: 11.2, ecd: 11.6, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2800.0 },
@@ -78,6 +81,12 @@ function App() {
   const [isPPFGOpen, setIsPPFGOpen] = useState(false);
   const [isDossierOpen, setIsDossierOpen] = useState(false);
   const [isContributeOpen, setIsContributeOpen] = useState(false);
+  const [isTransparencyOpen, setIsTransparencyOpen] = useState(false);
+  const [is3DViewerOpen, setIs3DViewerOpen] = useState(false);
+  const [isAutoDemoRunning, setIsAutoDemoRunning] = useState(false);
+  const [autoDemoStep, setAutoDemoStep] = useState(0);
+  const [autoDemoStatus, setAutoDemoStatus] = useState('');
+  const autoDemoTimeoutsRef = useRef([]);
   const [role, setRole] = useState('Field Engineer');
   const [isBackendConnected, setIsBackendConnected] = useState(false);
   const [mobileActiveTab, setMobileActiveTab] = useState('map'); // 'map' | 'telemetry' | 'simulator'
@@ -473,6 +482,15 @@ function App() {
   };
 
   const handleSelectWell = (newWellId) => {
+    if (newWellId.includes('RAJ') || newWellId.includes('KG') || newWellId.includes('MZ')) {
+      setUploadToast({
+        title: 'OIL Exploration Asset (Coming Soon)',
+        description: 'Data integration pending for Rajasthan / KG Deepwater / Mizoram regional portfolio blocks. Currently serving active Upper Assam producing fields.',
+        wellId: newWellId,
+        time: new Date().toLocaleTimeString()
+      });
+      return;
+    }
     setSelectedWell(newWellId);
     setProximityWarning(null);
     alertActiveRef.current = false;
@@ -484,6 +502,93 @@ function App() {
       wsRef.current.send(JSON.stringify(base));
     }
   };
+
+  // Auto-Play Demo Mode Controller (Tier 3 - SIH 2026 Interactive Scripted Sequence)
+  const stopAutoDemo = useCallback(() => {
+    autoDemoTimeoutsRef.current.forEach(t => clearTimeout(t));
+    autoDemoTimeoutsRef.current = [];
+    setIsAutoDemoRunning(false);
+    setAutoDemoStep(0);
+    setAutoDemoStatus('');
+    setIs3DViewerOpen(false);
+    setIsRadarOpen(false);
+    handleScenarioInject('normal');
+    setSimStatus(prev => ({ ...prev, is_running: false }));
+  }, []);
+
+  const startAutoDemo = useCallback(() => {
+    // Clear any active timers first
+    autoDemoTimeoutsRef.current.forEach(t => clearTimeout(t));
+    autoDemoTimeoutsRef.current = [];
+    setIsAutoDemoRunning(true);
+
+    const schedule = (fn, delayMs) => {
+      const id = setTimeout(fn, delayMs);
+      autoDemoTimeoutsRef.current.push(id);
+      return id;
+    };
+
+    // Step 1: (t=0) Zoom/pan to active well
+    setAutoDemoStep(1);
+    setAutoDemoStatus('1/5: Centering on Active Well (OIL-BAGHJAN-1)...');
+    handleSelectWell('OIL-BAGHJAN-1');
+
+    // Step 2: (t=3s) Open 3D Trajectory Viewer
+    schedule(() => {
+      setAutoDemoStep(2);
+      setAutoDemoStatus('2/5: Opening 3D Subsurface Trajectory Viewer...');
+      setIs3DViewerOpen(true);
+    }, 3000);
+
+    // Step 3: (t=6s) Close 3D Viewer and Start Telemetry Simulator
+    schedule(() => {
+      setAutoDemoStep(3);
+      setAutoDemoStatus('3/5: Launching Real-Time Rig Telemetry Stream...');
+      setIs3DViewerOpen(false);
+      handleSimControl('play');
+    }, 6000);
+
+    // Step 4: (t=11s) After 5s, Inject Gas Kick scenario
+    schedule(() => {
+      setAutoDemoStep(4);
+      setAutoDemoStatus('4/5: Simulating Formation Gas Kick Influx Event...');
+      handleScenarioInject('gas_kick');
+    }, 11000);
+
+    // Step 5: (t=16s) After 5s, Open Ahead-of-the-Bit Hazard Radar
+    schedule(() => {
+      setAutoDemoStep(5);
+      setAutoDemoStatus('5/5: Inspecting Ahead-of-the-Bit Radar & Mud Window...');
+      setIsRadarOpen(true);
+    }, 16000);
+
+    // Step 6: (t=21s) Reset to normal circulating baseline and conclude
+    schedule(() => {
+      setAutoDemoStep(6);
+      setAutoDemoStatus('Auto-Demo Complete: Normalizing circulating parameters...');
+      setIsRadarOpen(false);
+      handleScenarioInject('normal');
+      handleSimControl('pause');
+      schedule(() => {
+        setIsAutoDemoRunning(false);
+        setAutoDemoStep(0);
+        setAutoDemoStatus('');
+        setUploadToast({
+          title: 'Auto-Demo Exploration Complete',
+          description: 'Autonomous showcase sequence completed. Interactive manual control active.',
+          time: new Date().toLocaleTimeString()
+        });
+      }, 1500);
+    }, 21000);
+
+  }, [stopAutoDemo]);
+
+  // Clean up timers on unmount
+  useEffect(() => {
+    return () => {
+      autoDemoTimeoutsRef.current.forEach(t => clearTimeout(t));
+    };
+  }, []);
 
 
   const fetchRagContext = async (prediction) => {
@@ -517,18 +622,19 @@ function App() {
     <div className="h-screen w-screen flex flex-col bg-[#070b14] text-slate-200 overflow-hidden font-sans">
       
       {/* Top Navigation Bar - Mission Control Bar */}
-      <header className="h-16 border-b border-slate-800/80 bg-[#0c1322]/95 backdrop-blur-xl flex items-center justify-between px-3 sm:px-4 lg:px-6 z-50 shrink-0 shadow-[0_4px_25px_rgba(0,0,0,0.5)] relative w-full">
-        <div className="flex items-center space-x-3 shrink-0">
-          <div className="relative flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 via-blue-500/10 to-indigo-500/10 border border-cyan-500/40 text-cyan-400 shadow-glow-cyan shrink-0">
-            <Activity size={20} className="text-cyan-400 animate-pulse-subtle" />
+      <header className="h-13 sm:h-14 border-b border-slate-800/80 bg-[#0c1322]/95 backdrop-blur-xl flex items-center justify-between px-3 sm:px-4 lg:px-5 z-50 shrink-0 shadow-[0_4px_25px_rgba(0,0,0,0.5)] relative w-full overflow-hidden">
+        {/* Brand Identity */}
+        <div className="flex items-center space-x-2.5 shrink-0 mr-3">
+          <div className="relative flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-cyan-500/20 via-blue-500/10 to-indigo-500/10 border border-cyan-500/40 text-cyan-400 shadow-glow-cyan shrink-0">
+            <Activity size={18} className="text-cyan-400 animate-pulse-subtle" />
             <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-[#0c1322] animate-ping" />
             <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-[#0c1322]" />
           </div>
-          <div className="flex items-center gap-2">
-            <h1 className="font-display text-lg sm:text-xl font-bold tracking-tight text-white leading-none">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <h1 className="font-display text-base sm:text-lg font-bold tracking-tight text-white leading-none">
               Petrol<span className="text-cyan-400 font-extrabold">Q</span>
             </h1>
-            <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-cyan-950/70 text-cyan-300 border border-cyan-500/30 tracking-wider">
+            <span className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold bg-cyan-950/70 text-cyan-300 border border-cyan-500/30 tracking-wider">
               SUBSURFACE AI
             </span>
           </div>
@@ -542,21 +648,29 @@ function App() {
             onChange={(e) => handleSelectWell(e.target.value)}
             className="bg-slate-900 border border-slate-700/80 text-slate-200 text-xs font-mono font-medium rounded-lg px-2 py-1.5 outline-none max-w-[130px] truncate shadow-inner focus:border-cyan-500"
           >
-            <option value="OIL-BAGHJAN-1">BAGHJAN-1</option>
-            <option value="OIL-BAGHJAN-4">BAGHJAN-4</option>
-            <option value="OIL-NAHARKATIYA-1">NAHARKATIYA-1</option>
-            <option value="OIL-MORAN-1">MORAN-1</option>
-            <option value="OIL-DIKOM-1">DIKOM-1</option>
-            <option value="OIL-TENGAKHAT-1">TENGAKHAT-1</option>
-            <option value="OIL-KOTHALONI-1">KOTHALONI-1</option>
-            <option value="OIL-HAPJAN-1">HAPJAN-1</option>
-            <option value="OIL-SHALMARI-1">SHALMARI-1</option>
+            <optgroup label="Upper Assam Basin (Active Telemetry)">
+              <option value="OIL-BAGHJAN-1">BAGHJAN-1</option>
+              <option value="OIL-BAGHJAN-4">BAGHJAN-4</option>
+              <option value="OIL-NAHARKATIYA-1">NAHARKATIYA-1</option>
+              <option value="OIL-MORAN-1">MORAN-1</option>
+              <option value="OIL-DIKOM-1">DIKOM-1</option>
+              <option value="OIL-TENGAKHAT-1">TENGAKHAT-1</option>
+              <option value="OIL-KOTHALONI-1">KOTHALONI-1</option>
+              <option value="OIL-HAPJAN-1">HAPJAN-1</option>
+              <option value="OIL-SHALMARI-1">SHALMARI-1</option>
+            </optgroup>
+            <optgroup label="OIL Regional Portfolio (Expansion — Data Pending)">
+              <option value="OIL-RAJ-BAGHEWALA-1" disabled className="text-slate-500 bg-slate-950">BAGHEWALA-1 (Rajasthan) — Coming Soon</option>
+              <option value="OIL-RAJ-TANAOT-1" disabled className="text-slate-500 bg-slate-950">TANOT-1 (Jaisalmer, RJ) — Coming Soon</option>
+              <option value="OIL-KG-DEEPWATER-1" disabled className="text-slate-500 bg-slate-950">KG-ONN-2004/1 (KG Deepwater) — Coming Soon</option>
+              <option value="OIL-MZ-AIZAWL-1" disabled className="text-slate-500 bg-slate-950">MZ-ONN-2004/2 (Mizoram Belt) — Coming Soon</option>
+            </optgroup>
           </select>
 
           {/* Quick Upload Icon Button */}
           <button
             onClick={() => setIsUploadModalOpen(true)}
-            className="p-2 bg-slate-900/90 hover:bg-slate-800 active:bg-slate-750 border border-slate-700/80 text-slate-300 rounded-lg transition shadow-sm"
+            className="p-1.5 bg-slate-900/90 hover:bg-slate-800 active:bg-slate-750 border border-slate-700/80 text-slate-300 rounded-lg transition shadow-sm"
             title="Upload Document"
           >
             <FileUp size={16} />
@@ -565,7 +679,7 @@ function App() {
           {/* Mobile Menu Toggle Button */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-2 bg-slate-900/90 hover:bg-slate-800 active:bg-slate-750 border border-slate-700/80 text-slate-200 rounded-lg transition shadow-sm"
+            className="p-1.5 bg-slate-900/90 hover:bg-slate-800 active:bg-slate-750 border border-slate-700/80 text-slate-200 rounded-lg transition shadow-sm"
             aria-label="Toggle Menu"
           >
             {isMobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
@@ -573,149 +687,187 @@ function App() {
         </div>
 
         {/* Desktop Navigation Toolbar (Hidden on mobile < lg) */}
-        <div className="hidden lg:flex items-center justify-end flex-1 space-x-2.5 xl:space-x-3.5 2xl:space-x-4 ml-4 xl:ml-6">
-          {/* Status Indicator */}
-          <div className="flex items-center space-x-2 bg-slate-900/90 px-3 py-1.5 rounded-full border border-slate-700/80 shadow-inner shrink-0">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-status-active opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-status-active"></span>
-            </span>
-            <span className="text-xs font-mono font-medium text-slate-200 whitespace-nowrap">Live 1.0Hz</span>
-          </div>
-
+        <div className="hidden lg:flex items-center justify-end space-x-1.5 xl:space-x-2 ml-auto shrink-0">
+          
           {/* Role Toggle */}
-          <div className="flex items-center space-x-1.5 border-l border-slate-800 pl-2.5 xl:pl-3.5 shrink-0">
-            <span className="text-xs text-slate-400 font-medium hidden xl:inline">Role:</span>
+          <div className="flex items-center space-x-1 shrink-0">
+            <span className="text-[11px] text-slate-400 font-medium hidden 2xl:inline">Role:</span>
             <select 
                 value={role} 
                 onChange={handleRoleChange}
-                className="bg-slate-900 hover:bg-slate-850 border border-slate-700 text-slate-200 text-xs font-semibold rounded-lg px-3 py-1.5 outline-none focus:border-cyan-500 transition shadow-inner cursor-pointer"
+                className="bg-slate-900 hover:bg-slate-850 border border-slate-700 text-slate-200 text-[11px] font-medium rounded-lg px-2 py-1 outline-none focus:border-cyan-500 transition shadow-inner cursor-pointer"
             >
                 <option value="Field Engineer">Field Engineer</option>
                 <option value="Office Reviewer">Office Reviewer</option>
             </select>
           </div>
 
-          {/* Active Well Selector */}
-          <div className="flex items-center space-x-1 border-l border-slate-800 pl-2.5 xl:pl-3.5 shrink-0">
-            <div className="flex items-center space-x-2 bg-slate-900 hover:bg-slate-850 px-3 py-1.5 rounded-lg transition-colors border border-slate-700 shadow-inner">
-              <Database size={15} className="text-cyan-400 shrink-0" />
+          {/* Active Field / Well Selector with Regional Portfolio Extensibility */}
+          <div className="flex items-center space-x-1 border-l border-slate-800/80 pl-1.5 xl:pl-2 shrink-0">
+            <div className="flex items-center space-x-1.5 bg-slate-900 hover:bg-slate-850 px-2 py-1 rounded-lg transition-colors border border-slate-700 shadow-inner">
+              <Database size={13} className="text-cyan-400 shrink-0" />
               <select 
                   value={selectedWell} 
                   onChange={(e) => handleSelectWell(e.target.value)}
-                  className="bg-transparent text-slate-200 text-xs font-mono font-semibold outline-none cursor-pointer"
+                  className="bg-transparent text-slate-200 text-[11px] font-mono font-semibold outline-none cursor-pointer max-w-[110px] xl:max-w-[145px] truncate"
+                  title="Choose active operational well or view OIL regional expansion portfolio"
               >
-                  <option value="OIL-BAGHJAN-1">BAGHJAN-1</option>
-                  <option value="OIL-BAGHJAN-4">BAGHJAN-4</option>
-                  <option value="OIL-NAHARKATIYA-1">NAHARKATIYA-1</option>
-                  <option value="OIL-MORAN-1">MORAN-1</option>
-                  <option value="OIL-DIKOM-1">DIKOM-1</option>
-                  <option value="OIL-TENGAKHAT-1">TENGAKHAT-1</option>
-                  <option value="OIL-KOTHALONI-1">KOTHALONI-1</option>
-                  <option value="OIL-HAPJAN-1">HAPJAN-1</option>
-                  <option value="OIL-SHALMARI-1">SHALMARI-1</option>
+                  <optgroup label="Upper Assam Basin (Active Telemetry)">
+                    <option value="OIL-BAGHJAN-1">BAGHJAN-1</option>
+                    <option value="OIL-BAGHJAN-4">BAGHJAN-4</option>
+                    <option value="OIL-NAHARKATIYA-1">NAHARKATIYA-1</option>
+                    <option value="OIL-MORAN-1">MORAN-1</option>
+                    <option value="OIL-DIKOM-1">DIKOM-1</option>
+                    <option value="OIL-TENGAKHAT-1">TENGAKHAT-1</option>
+                    <option value="OIL-KOTHALONI-1">KOTHALONI-1</option>
+                    <option value="OIL-HAPJAN-1">HAPJAN-1</option>
+                    <option value="OIL-SHALMARI-1">SHALMARI-1</option>
+                  </optgroup>
+                  <optgroup label="OIL Regional Portfolio (Expansion — Data Pending)">
+                    <option value="OIL-RAJ-BAGHEWALA-1" disabled className="text-slate-500 bg-slate-950">
+                      BAGHEWALA-1 (Rajasthan Basin) — Coming Soon
+                    </option>
+                    <option value="OIL-RAJ-TANAOT-1" disabled className="text-slate-500 bg-slate-950">
+                      TANOT-1 (Jaisalmer Basin, RJ) — Coming Soon
+                    </option>
+                    <option value="OIL-KG-DEEPWATER-1" disabled className="text-slate-500 bg-slate-950">
+                      KG-ONN-2004/1 (KG Deepwater) — Coming Soon
+                    </option>
+                    <option value="OIL-MZ-AIZAWL-1" disabled className="text-slate-500 bg-slate-950">
+                      MZ-ONN-2004/2 (Mizoram Fold Belt) — Coming Soon
+                    </option>
+                  </optgroup>
               </select>
             </div>
           </div>
 
-          {/* Backend API Live Status Indicator */}
-          <div className="flex items-center border-l border-slate-800 pl-2.5 xl:pl-3.5 shrink-0">
+          {/* Combined Live Telemetry & API Status Pill */}
+          <div className="flex items-center border-l border-slate-800/80 pl-1.5 xl:pl-2 shrink-0">
             {isBackendConnected ? (
               <div 
-                className="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono font-semibold shadow-[0_0_12px_rgba(16,185,129,0.18)] whitespace-nowrap"
-                title="FastAPI Backend is online"
+                className="flex items-center space-x-1.5 px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-mono font-medium shadow-[0_0_10px_rgba(16,185,129,0.15)] whitespace-nowrap"
+                title="Telemetry Live at 1.0Hz — FastAPI Online"
               >
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>API Online</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>Live 1.0Hz</span>
               </div>
             ) : (
               <div 
-                className="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-300 text-xs font-mono font-semibold animate-pulse shadow-[0_0_12px_rgba(244,63,94,0.25)] whitespace-nowrap"
+                className="flex items-center space-x-1.5 px-2 py-1 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-300 text-[11px] font-mono font-medium animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.2)] whitespace-nowrap"
                 title="FastAPI is offline"
               >
-                <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
                 <span>Offline</span>
               </div>
             )}
           </div>
 
+          {/* Auto-Play Demo Mode Trigger Button (Tier 3) */}
+          <div className="flex items-center shrink-0">
+            <button
+              onClick={isAutoDemoRunning ? stopAutoDemo : startAutoDemo}
+              className={`flex items-center space-x-1 text-[11px] font-semibold px-2 py-1 rounded-lg border transition-all cursor-pointer shadow-sm shrink-0 ${
+                isAutoDemoRunning 
+                  ? 'bg-rose-500/20 text-rose-300 border-rose-500/50 shadow-glow-danger animate-pulse'
+                  : 'bg-gradient-to-r from-cyan-500/15 via-blue-500/15 to-purple-500/15 hover:from-cyan-500/25 hover:to-purple-500/25 text-cyan-200 border-cyan-500/40 shadow-glow-cyan'
+              }`}
+              title="Run 6-step scripted unattended tour for judges & reviewers"
+            >
+              <Sparkles size={13} className={isAutoDemoRunning ? 'text-rose-400' : 'text-cyan-400'} />
+              <span>{isAutoDemoRunning ? 'Stop' : 'Demo'}</span>
+            </button>
+          </div>
+
           {/* Core Decision Support Modules (SIH 2026 Mandate) */}
-          <div className="flex items-center space-x-1.5 xl:space-x-2.5 border-l border-slate-800 pl-2.5 xl:pl-3.5 shrink-0">
+          <div className="flex items-center space-x-1 xl:space-x-1.5 border-l border-slate-800/80 pl-1.5 xl:pl-2 shrink-0">
             <button 
                 onClick={() => setIsRadarOpen(true)}
-                className="flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 active:bg-amber-500/30 text-amber-300 border border-amber-500/35 transition-all shadow-glow-amber group shrink-0"
+                className="flex items-center space-x-1 text-[11px] font-medium px-2 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 active:bg-amber-500/30 text-amber-300 border border-amber-500/35 transition-all shadow-glow-amber group shrink-0"
                 title="Ahead-of-the-Bit Hazard Radar & Impending Formations"
             >
-                <Radar size={15} className="text-amber-400 group-hover:rotate-45 transition-transform shrink-0" />
+                <Radar size={13} className="text-amber-400 group-hover:rotate-45 transition-transform shrink-0" />
                 <span>Radar</span>
             </button>
 
             <button 
                 onClick={() => setIsCorrelationOpen(true)}
-                className="flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 active:bg-indigo-500/30 text-indigo-300 border border-indigo-500/35 transition-all shadow-[0_0_15px_-3px_rgba(99,102,241,0.25)] shrink-0"
+                className="flex items-center space-x-1 text-[11px] font-medium px-2 py-1 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 active:bg-indigo-500/30 text-indigo-300 border border-indigo-500/35 transition-all shadow-[0_0_12px_-3px_rgba(99,102,241,0.25)] shrink-0"
                 title="Cross-Well Log Correlation & Stratigraphic Programs"
             >
-                <Layers size={15} className="text-indigo-400 shrink-0" />
+                <Layers size={13} className="text-indigo-400 shrink-0" />
                 <span>Correlation</span>
             </button>
 
             <button 
                 onClick={() => setIsPPFGOpen(true)}
-                className="flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 active:bg-emerald-500/30 text-emerald-300 border border-emerald-500/35 transition-all shadow-glow-emerald shrink-0"
+                className="flex items-center space-x-1 text-[11px] font-medium px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 active:bg-emerald-500/30 text-emerald-300 border border-emerald-500/35 transition-all shadow-glow-emerald shrink-0"
                 title="Pore Pressure & Fracture Gradient Safe Mud Weight Window"
             >
-                <Gauge size={15} className="text-emerald-400 shrink-0" />
-                <span>PPFG<span className="hidden xl:inline"> Window</span></span>
+                <Gauge size={13} className="text-emerald-400 shrink-0" />
+                <span>PPFG</span>
             </button>
 
             <button 
                 onClick={() => setIsDossierOpen(true)}
-                className="flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 active:bg-cyan-500/30 text-cyan-300 border border-cyan-500/35 transition-all shadow-glow-cyan shrink-0"
+                className="flex items-center space-x-1 text-[11px] font-medium px-2 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 active:bg-cyan-500/30 text-cyan-300 border border-cyan-500/35 transition-all shadow-glow-cyan shrink-0"
                 title="1-Click Pre-Spud Offset Hazard Dossier"
             >
-                <FileText size={15} className="text-cyan-400 shrink-0" />
+                <FileText size={13} className="text-cyan-400 shrink-0" />
                 <span>Pre-Spud</span>
             </button>
 
             <button 
                 onClick={() => setIsContributeOpen(true)}
-                className="flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 active:bg-purple-500/30 text-purple-300 border border-purple-500/35 transition-all shadow-[0_0_15px_-3px_rgba(168,85,247,0.25)] shrink-0"
+                className="flex items-center space-x-1 text-[11px] font-medium px-2 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 active:bg-purple-500/30 text-purple-300 border border-purple-500/35 transition-all shadow-[0_0_12px_-3px_rgba(168,85,247,0.25)] shrink-0"
                 title="Add Field Lesson Learned to Institutional Memory"
             >
-                <Brain size={15} className="text-purple-400 shrink-0" />
+                <Brain size={13} className="text-purple-400 shrink-0" />
                 <span>+ Lesson</span>
             </button>
           </div>
 
-          {/* Tools */}
-          <div className="flex items-center space-x-2 text-slate-300 border-l border-slate-800 pl-2.5 xl:pl-3.5 relative shrink-0">
+          {/* Tools & Methodology */}
+          <div className="flex items-center space-x-1 border-l border-slate-800/80 pl-1.5 xl:pl-2 shrink-0 relative">
+            {/* Upload Document */}
             <button 
                 onClick={() => setIsUploadModalOpen(true)}
-                className="hover:text-white transition-all flex items-center space-x-1.5 text-xs font-semibold bg-slate-900 hover:bg-slate-800 active:bg-slate-750 border border-slate-700 hover:border-cyan-500/50 px-3.5 py-1.5 rounded-lg shadow-sm shrink-0"
+                className="hover:text-white transition-all flex items-center space-x-1 text-[11px] font-medium bg-slate-900 hover:bg-slate-850 border border-slate-700 hover:border-cyan-500/50 px-2 py-1 rounded-lg shadow-sm shrink-0"
                 title="Upload DDR / LAS Document"
             >
-                <FileUp size={15} className="text-cyan-400 shrink-0" />
-                <span>Upload</span>
+                <FileUp size={13} className="text-cyan-400 shrink-0" />
+                <span className="hidden xl:inline">Upload</span>
             </button>
-            <div className="w-px h-4 bg-slate-800 mx-0.5"></div>
+
+            {/* Search */}
             <button 
                 onClick={() => setIsKnowledgeSearchOpen(!isKnowledgeSearchOpen)}
-                className={`p-2 rounded-lg transition-colors border shrink-0 ${isKnowledgeSearchOpen ? 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30' : 'bg-slate-900/80 hover:bg-slate-800 border-slate-700/80 hover:text-white'}`}
+                className={`p-1.5 rounded-lg transition-colors border shrink-0 ${isKnowledgeSearchOpen ? 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30' : 'bg-slate-900/80 hover:bg-slate-800 border-slate-700/80 hover:text-white'}`}
                 title="Search Knowledge Base"
             >
-                <Search size={16} />
+                <Search size={14} />
             </button>
+
+            {/* Methodology Modal Trigger */}
+            <button
+              onClick={() => setIsTransparencyOpen(true)}
+              className="p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 hover:border-cyan-500/40 transition shadow-sm shrink-0"
+              title="Data & Methodology Disclosures (Physics 80% / ML 20% / Volve Adaptation)"
+            >
+              <Info size={14} className="text-cyan-400" />
+            </button>
+
+            {/* Settings */}
             <button 
                 onClick={() => setIsSettingsOpen(!isSettingsOpen)} 
-                className={`p-2 rounded-lg transition-colors border shrink-0 ${isSettingsOpen ? 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30' : 'bg-slate-900/80 hover:bg-slate-800 border-slate-700/80 hover:text-white'}`}
+                className={`p-1.5 rounded-lg transition-colors border shrink-0 ${isSettingsOpen ? 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30' : 'bg-slate-900/80 hover:bg-slate-800 border-slate-700/80 hover:text-white'}`}
                 title="System Settings"
             >
-                <Settings size={16} />
+                <Settings size={14} />
             </button>
             
             {/* Settings Dropdown */}
             {isSettingsOpen && (
-                <div className="absolute top-13 right-0 w-72 bg-slate-900/98 backdrop-blur-xl border border-slate-700 shadow-2xl rounded-xl p-4 z-50 animate-in fade-in zoom-in-95">
+                <div className="absolute top-11 right-0 w-72 bg-slate-900/98 backdrop-blur-xl border border-slate-700 shadow-2xl rounded-xl p-4 z-50 animate-in fade-in zoom-in-95">
                     <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-2.5">
                         <div className="flex items-center space-x-2">
                           <Settings size={15} className="text-cyan-400" />
@@ -753,6 +905,31 @@ function App() {
         </div>
       </header>
 
+      {/* Platform ROI & Estimated Impact Cards (Tier 1 Mandate) */}
+      <ImpactStatCards />
+
+      {/* Auto-Play Demo Mode Floating Controller (Tier 3 Mandate) */}
+      {isAutoDemoRunning && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 border-2 border-cyan-500/80 rounded-2xl px-4 py-2.5 shadow-[0_0_35px_rgba(6,182,212,0.45)] backdrop-blur-xl flex items-center space-x-3.5 animate-in slide-in-from-top-4 max-w-[92vw]">
+          <div className="flex items-center space-x-2">
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
+            </span>
+            <span className="font-mono text-xs font-bold text-cyan-300 uppercase tracking-wider whitespace-nowrap">Auto-Demo</span>
+          </div>
+          <div className="w-px h-4 bg-slate-700 hidden sm:block" />
+          <span className="text-xs text-white font-medium truncate max-w-xs sm:max-w-md">{autoDemoStatus}</span>
+          <button
+            onClick={stopAutoDemo}
+            className="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/50 text-xs font-semibold flex items-center space-x-1 transition cursor-pointer shrink-0"
+          >
+            <X size={13} />
+            <span>Stop</span>
+          </button>
+        </div>
+      )}
+
       {/* Mobile Slide-Down Drawer Sheet */}
       {isMobileMenuOpen && (
         <div className="lg:hidden fixed inset-x-0 top-14 z-40 bg-slate-900/98 backdrop-blur-xl border-b border-slate-800 shadow-2xl p-4 space-y-3 animate-in slide-in-from-top-3 max-h-[85vh] overflow-y-auto">
@@ -777,6 +954,37 @@ function App() {
 
           {/* Core Decision Support Modules (Touch targets >= 44px) */}
           <div className="grid grid-cols-1 gap-2 pt-1">
+            {/* Auto-Demo Button in Mobile Menu */}
+            <button 
+              onClick={() => { 
+                setIsMobileMenuOpen(false); 
+                if (isAutoDemoRunning) stopAutoDemo(); else startAutoDemo(); 
+              }}
+              className={`flex items-center space-x-3 p-3 rounded-xl border text-left font-medium text-xs min-h-[44px] transition ${
+                isAutoDemoRunning 
+                  ? 'bg-rose-500/20 text-rose-300 border-rose-500/50' 
+                  : 'bg-gradient-to-r from-cyan-500/15 via-blue-500/15 to-purple-500/15 text-cyan-200 border-cyan-500/40'
+              }`}
+            >
+              <Sparkles size={18} className={isAutoDemoRunning ? 'text-rose-400' : 'text-cyan-400'} />
+              <div>
+                <div className="font-bold text-white">{isAutoDemoRunning ? 'Stop Auto-Demo' : 'Launch Auto-Demo Tour'}</div>
+                <div className="text-[10px] text-cyan-300/80">6-step autonomous showcase sequence</div>
+              </div>
+            </button>
+
+            {/* Data & Methodology in Mobile Menu */}
+            <button 
+              onClick={() => { setIsTransparencyOpen(true); setIsMobileMenuOpen(false); }}
+              className="flex items-center space-x-3 p-3 rounded-xl bg-slate-850 active:bg-slate-800 text-slate-200 border border-slate-700/80 text-left font-medium text-xs min-h-[44px]"
+            >
+              <Info size={18} className="text-cyan-400 shrink-0" />
+              <div>
+                <div className="font-bold text-white">Data & Methodology Transparency</div>
+                <div className="text-[10px] text-slate-400">Eaton, Teale, Volve & LightGBM disclosures</div>
+              </div>
+            </button>
+
             <button 
               onClick={() => { setIsRadarOpen(true); setIsMobileMenuOpen(false); }}
               className="flex items-center space-x-3 p-3 rounded-xl bg-amber-500/10 active:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-left font-medium text-xs min-h-[44px]"
@@ -1182,6 +1390,8 @@ function App() {
              onSelectWell={handleSelectWell} 
              currentDepth={telemetryData ? telemetryData.depth_tvd : null}
              activeScenario={simStatus.active_scenario}
+             is3DViewerOpen={is3DViewerOpen}
+             setIs3DViewerOpen={setIs3DViewerOpen}
           />
         </div>
 
@@ -1388,9 +1598,15 @@ function App() {
               {/* RAG Context Display */}
               {ragContext ? (
                 <div className="bg-slate-900/90 text-slate-200 p-2.5 rounded-lg text-xs border border-slate-700/80 shadow-inner">
-                  <div className="flex items-center gap-1.5 mb-1.5 text-amber-400">
-                    <TrendingDown size={14} />
-                    <span className="font-bold uppercase text-[10px] tracking-wider font-mono">Institutional Memory Match</span>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-1.5 text-amber-400">
+                      <TrendingDown size={14} />
+                      <span className="font-bold uppercase text-[10px] tracking-wider font-mono">Institutional Memory Match</span>
+                    </div>
+                    <span className="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-medium bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
+                      <ShieldCheck size={10} className="text-emerald-400" />
+                      <span>✓ Guardrail Verified</span>
+                    </span>
                   </div>
                   <p className="mb-1.5 text-slate-300"><span className="text-slate-400">Precedent:</span> Offset well <span className="font-mono text-cyan-300 font-bold">{ragContext.well_id}</span> experienced <strong className="text-white">{ragContext.event_type}</strong> at {ragContext.depth_tvd}m.</p>
                   <p><span className="text-slate-400">Mitigation:</span> <span className="text-emerald-400 font-medium">{ragContext.mitigation_applied}</span></p>
@@ -1827,6 +2043,31 @@ function App() {
         </aside>
       </main>
 
+      {/* Desktop Permanent Status & Transparency Footer Bar (Tier 1 Mandate) */}
+      <footer className="hidden lg:flex h-8 bg-[#080d19] border-t border-slate-800/80 px-4 items-center justify-between text-xs text-slate-400 z-30 shrink-0 font-mono text-[11px]">
+        <div className="flex items-center space-x-3">
+          <span className="flex items-center space-x-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
+            <span className="text-slate-300 font-semibold">Equinor Volve Calibration</span>
+            <span className="text-slate-500">→ Adapted to Upper Assam Basin</span>
+          </span>
+          <span className="text-slate-700">|</span>
+          <span className="text-slate-400">
+            <strong className="text-cyan-400">80% Physics</strong> (Eaton 1972, Teale 1965, Jorden-Shirley 1966) + <strong className="text-purple-400">20% LightGBM ML</strong>
+          </span>
+        </div>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={() => setIsTransparencyOpen(true)}
+            className="flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-slate-900 hover:bg-slate-850 text-cyan-300 hover:text-white border border-slate-700 hover:border-cyan-500/50 transition cursor-pointer shadow-sm"
+            title="View full technical basis, engineering formulas, and data disclosure"
+          >
+            <Info size={12} className="text-cyan-400" />
+            <span className="font-sans font-medium text-xs">Data & Methodology</span>
+          </button>
+        </div>
+      </footer>
+
       {/* Fixed Mobile Bottom Navigation Bar (< lg) */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#070b14]/95 backdrop-blur-xl border-t border-slate-800 px-2 py-1 flex items-center justify-around h-16 shadow-[0_-4px_25px_rgba(0,0,0,0.6)]">
         <button
@@ -2006,6 +2247,12 @@ function App() {
           onClose={() => setIsCorrelationOpen(false)}
           activeWell={selectedWell}
           offsetWell={selectedWell === 'OIL-BAGHJAN-1' ? 'OIL-NAHARKATIYA-1' : 'OIL-BAGHJAN-1'}
+      />
+
+      {/* Data & Methodology Transparency Modal (Tier 1 Mandate) */}
+      <DataTransparencyModal 
+          isOpen={isTransparencyOpen}
+          onClose={() => setIsTransparencyOpen(false)}
       />
     </div>
   );

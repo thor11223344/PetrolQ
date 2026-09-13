@@ -67,6 +67,19 @@ def get_ppfg_safe_window(
     pp_raw = sigma_v - (sigma_v - p_hyd) * (dt_ratio ** eaton_n)
     pp_curve = [round(float(p), 2) for p in pp_raw]
 
+    # Compute uncertainty bounds (±5% to ±8%) around Eaton pore pressure curve
+    # Reflects confidence range given synthetic sonic-log input:
+    # Narrower (±5.0%) in normal hydrostatic compaction regime (<1200m)
+    # Wider (up to ±8.0%) where synthetic Δtobs deviates from normal trend (2200-2800m overpressure zone)
+    pp_lower = []
+    pp_upper = []
+    for i, z in enumerate(depths_tvd):
+        dev = max(0.0, float((dt_obs[i] - dt_n[i]) / dt_n[i]))
+        unc_pct = 0.05 + min(0.03, dev * 0.18)  # 5.0% to 8.0%
+        p_val = pp_raw[i]
+        pp_lower.append(round(float(p_val * (1.0 - unc_pct)), 2))
+        pp_upper.append(round(float(p_val * (1.0 + unc_pct)), 2))
+
     # 4. Eaton Fracture Gradient Equation:
     # FG(z) = Pp(z) + [ν(z) / (1 - ν(z))] * [σv(z) - Pp(z)]
     # ν(z) = 0.25 + 0.15 * (z / 3500)
@@ -134,10 +147,19 @@ def get_ppfg_safe_window(
         "tvd_max": tvd_max,
         "depths_tvd": [round(float(d), 1) for d in depths_tvd],
         "pore_pressure_ppg": pp_curve,
+        "pore_pressure_lower_ppg": pp_lower,
+        "pore_pressure_upper_ppg": pp_upper,
         "fracture_gradient_ppg": fg_curve,
         # Convert to specific gravity (sg) as well (ppg / 8.33)
         "pore_pressure_sg": [round(p / 8.33, 3) for p in pp_curve],
+        "pore_pressure_lower_sg": [round(p / 8.33, 3) for p in pp_lower],
+        "pore_pressure_upper_sg": [round(p / 8.33, 3) for p in pp_upper],
         "fracture_gradient_sg": [round(f / 8.33, 3) for f in fg_curve],
+        "uncertainty_metadata": {
+            "band_percentage": "±5.0% to ±8.0%",
+            "basis": "Synthetic sonic log calibration proxy divergence",
+            "description": "Uncertainty band reflects confidence range from using synthetic sonic-log proxy calibrated to regional overpressure signatures rather than real acoustic wireline logs. Band widens to ±8% in the Barail overpressure transition (2200–2800m) and narrows to ±5% in the hydrostatic interval."
+        },
         "casing_shoes": casing_shoes,
         "formations": formations,
         "eaton_metadata": {

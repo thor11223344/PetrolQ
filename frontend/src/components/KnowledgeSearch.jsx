@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { API_BASE } from '../lib/api';
-import { Search, X, BookOpen, ChevronRight, Loader2 } from 'lucide-react';
+import { Search, X, BookOpen, ChevronRight, Loader2, ShieldCheck } from 'lucide-react';
 
 const KnowledgeSearch = ({ isOpen, onClose }) => {
     const [query, setQuery] = useState('');
@@ -79,8 +79,16 @@ const KnowledgeSearch = ({ isOpen, onClose }) => {
                                         </span>
                                         <h3 className="text-sm font-semibold text-slate-200">{result.event_type}</h3>
                                     </div>
-                                    <div className="text-xs font-mono text-status-fluid bg-status-fluid/10 px-2 py-1 rounded">
-                                        {(result.similarity_score * 100).toFixed(0)}% Match
+                                    <div className="flex flex-col items-end gap-1.5">
+                                        <div className="text-xs font-mono text-cyan-400 bg-cyan-950/60 border border-cyan-500/30 px-2 py-0.5 rounded font-bold shadow-inner">
+                                            {((result.hybrid_score ?? result.similarity_score) * 100).toFixed(0)}% Match
+                                        </div>
+                                        {result.guardrail_verified && (
+                                            <span className="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
+                                                <ShieldCheck size={11} className="text-emerald-400" />
+                                                <span>✓ Guardrail Verified</span>
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                                 
@@ -98,6 +106,38 @@ const KnowledgeSearch = ({ isOpen, onClose }) => {
                                         <p className="text-sm text-emerald-400 font-medium">{result.mitigation_applied}</p>
                                     </div>
                                 </div>
+
+                                {/* Multi-Signal Hybrid Retrieval Score Breakdown (Feature 2) */}
+                                {result.score_breakdown && (
+                                    <div className="mt-3 pt-2.5 border-t border-slate-800/80">
+                                        <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 mb-1.5">
+                                            <span className="font-semibold uppercase tracking-wider text-slate-400">Multi-Signal Relevance Breakdown</span>
+                                            <span className="text-cyan-400 font-bold">{((result.hybrid_score ?? result.similarity_score) * 100).toFixed(1)}% Total</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-[10px] font-mono">
+                                            <div className="bg-slate-950/80 px-2 py-1 rounded border border-slate-800 flex justify-between">
+                                                <span className="text-slate-400">Formation (25%):</span>
+                                                <strong className="text-cyan-300">{(result.score_breakdown.formation_match * 100).toFixed(0)}%</strong>
+                                            </div>
+                                            <div className="bg-slate-950/80 px-2 py-1 rounded border border-slate-800 flex justify-between">
+                                                <span className="text-slate-400">Depth (25%):</span>
+                                                <strong className="text-emerald-300">{(result.score_breakdown.depth_proximity * 100).toFixed(0)}%</strong>
+                                            </div>
+                                            <div className="bg-slate-950/80 px-2 py-1 rounded border border-slate-800 flex justify-between">
+                                                <span className="text-slate-400">Type (20%):</span>
+                                                <strong className="text-amber-300">{(result.score_breakdown.event_type_match * 100).toFixed(0)}%</strong>
+                                            </div>
+                                            <div className="bg-slate-950/80 px-2 py-1 rounded border border-slate-800 flex justify-between">
+                                                <span className="text-slate-400">BM25 (15%):</span>
+                                                <strong className="text-purple-300">{(result.score_breakdown.bm25 * 100).toFixed(0)}%</strong>
+                                            </div>
+                                            <div className="bg-slate-950/80 px-2 py-1 rounded border border-slate-800 flex justify-between">
+                                                <span className="text-slate-400">Vector (15%):</span>
+                                                <strong className="text-blue-300">{(result.score_breakdown.vector * 100).toFixed(0)}%</strong>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>

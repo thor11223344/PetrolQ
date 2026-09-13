@@ -1,0 +1,287 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 680" width="100%" height="100%" style="background:#070b14; font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <defs>
+    <!-- Gradients -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#070b14"/>
+      <stop offset="50%" stop-color="#0c1322"/>
+      <stop offset="100%" stop-color="#070b14"/>
+    </linearGradient>
+
+    <linearGradient id="ertmacGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#059669"/>
+      <stop offset="100%" stop-color="#10b981"/>
+    </linearGradient>
+
+    <linearGradient id="simGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+
+    <linearGradient id="ingestGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0891b2"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+
+    <linearGradient id="engineGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#9333ea"/>
+    </linearGradient>
+
+    <linearGradient id="clientGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d97706"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+
+    <filter id="glowCyan" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+
+    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.65"/>
+    </filter>
+
+    <!-- Arrow markers -->
+    <marker id="arrowCyan" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#06b6d4"/>
+    </marker>
+    <marker id="arrowGreen" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#10b981"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#38bdf8"/>
+    </marker>
+    <marker id="arrowPurple" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#c084fc"/>
+    </marker>
+  </defs>
+
+  <!-- Background Base -->
+  <rect width="1200" height="680" fill="url(#bgGrad)"/>
+  
+  <!-- Subtle Grid Lines -->
+  <g stroke="#1e293b" stroke-width="0.5" opacity="0.3">
+    <line x1="100" y1="0" x2="100" y2="680"/>
+    <line x1="300" y1="0" x2="300" y2="680"/>
+    <line x1="500" y1="0" x2="500" y2="680"/>
+    <line x1="700" y1="0" x2="700" y2="680"/>
+    <line x1="900" y1="0" x2="900" y2="680"/>
+    <line x1="1100" y1="0" x2="1100" y2="680"/>
+    <line x1="0" y1="120" x2="1200" y2="120"/>
+    <line x1="0" y1="260" x2="1200" y2="260"/>
+    <line x1="0" y1="400" x2="1200" y2="400"/>
+    <line x1="0" y1="540" x2="1200" y2="540"/>
+  </g>
+
+  <!-- HEADER -->
+  <g transform="translate(60, 45)">
+    <rect x="0" y="0" width="1080" height="70" rx="12" fill="#0f172a" stroke="#1e293b" stroke-width="1.5" filter="url(#cardShadow)"/>
+    <circle cx="35" cy="35" r="14" fill="#06b6d4" opacity="0.2"/>
+    <circle cx="35" cy="35" r="6" fill="#06b6d4"/>
+    <text x="65" y="32" fill="#ffffff" font-size="18" font-weight="800" letter-spacing="0.5">OIL INDIA eRTMAC INTEGRATION ARCHITECTURE</text>
+    <text x="65" y="52" fill="#94a3b8" font-size="12" font-family="'JetBrains Mono', monospace">Zero-Code Modification Telemetry Plug &amp; Play • Data-Source-Agnostic Interface</text>
+    <rect x="910" y="20" width="145" height="30" rx="15" fill="#059669" opacity="0.2" stroke="#10b981" stroke-width="1"/>
+    <text x="982" y="39" fill="#34d399" font-size="11" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">PRODUCTION READY</text>
+  </g>
+
+  <!-- COLUMN 1: PLUG-AND-PLAY DUAL INPUT LAYER (INTERCHANGEABLE) -->
+  <g transform="translate(60, 145)">
+    <!-- Container Box for Interchangeable Feeds -->
+    <rect x="0" y="0" width="250" height="470" rx="16" fill="#0b1120" stroke="#334155" stroke-width="1.5" stroke-dasharray="6,4" filter="url(#cardShadow)"/>
+    <rect x="15" y="-12" width="220" height="24" rx="6" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+    <text x="125" y="4" fill="#cbd5e1" font-size="10" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">INTERCHANGEABLE INPUT FEEDS</text>
+
+    <!-- 1A: REAL OIL eRTMAC FEED (Active Rig Telemetry) -->
+    <g transform="translate(15, 25)">
+      <rect x="0" y="0" width="220" height="190" rx="12" fill="#062e24" stroke="#10b981" stroke-width="2" filter="url(#cardShadow)"/>
+      <rect x="12" y="12" width="30" height="30" rx="8" fill="url(#ertmacGrad)"/>
+      <text x="27" y="32" fill="#ffffff" font-size="14" font-weight="900" text-anchor="middle">⚡</text>
+      
+      <text x="50" y="27" fill="#34d399" font-size="12" font-weight="800">eRTMAC Live Feed</text>
+      <text x="50" y="42" fill="#a7f3d0" font-size="10" font-family="'JetBrains Mono', monospace">REAL OIL INDIA DATA</text>
+      
+      <line x1="12" y1="55" x2="208" y2="55" stroke="#047857" stroke-width="1"/>
+      
+      <text x="14" y="75" fill="#e2e8f0" font-size="11" font-weight="600">• WITSML / OPC-UA TCP</text>
+      <text x="14" y="95" fill="#94a3b8" font-size="10">• Real-Time WOB, RPM, ROP</text>
+      <text x="14" y="112" fill="#94a3b8" font-size="10">• Torque, SPP, Mud Weight</text>
+      <text x="14" y="129" fill="#94a3b8" font-size="10">• Flow-Out %, Pit Volumes</text>
+      <text x="14" y="146" fill="#94a3b8" font-size="10">• Rig PWD / Annular ECD</text>
+
+      <rect x="14" y="158" width="192" height="22" rx="6" fill="#047857" opacity="0.4"/>
+      <text x="110" y="173" fill="#6ee7b7" font-size="9" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">1.0 Hz Real Rig Stream</text>
+    </g>
+
+    <!-- Interchangeable Dual-Arrow Indicator -->
+    <g transform="translate(125, 235)">
+      <circle cx="0" cy="0" r="15" fill="#1e293b" stroke="#06b6d4" stroke-width="1.5"/>
+      <text x="0" y="4" fill="#38bdf8" font-size="11" font-weight="800" text-anchor="middle">⇄</text>
+    </g>
+
+    <!-- 1B: TELEMETRY SIMULATOR (Demonstration / Benchmarking) -->
+    <g transform="translate(15, 255)">
+      <rect x="0" y="0" width="220" height="190" rx="12" fill="#08203d" stroke="#0284c7" stroke-width="1.5" filter="url(#cardShadow)"/>
+      <rect x="12" y="12" width="30" height="30" rx="8" fill="url(#simGrad)"/>
+      <text x="27" y="32" fill="#ffffff" font-size="14" font-weight="900" text-anchor="middle">⚙</text>
+      
+      <text x="50" y="27" fill="#38bdf8" font-size="12" font-weight="800">Telemetry Simulator</text>
+      <text x="50" y="42" fill="#93c5fd" font-size="10" font-family="'JetBrains Mono', monospace">TEST &amp; INFLUX SCENARIOS</text>
+      
+      <line x1="12" y1="55" x2="208" y2="55" stroke="#0369a1" stroke-width="1"/>
+      
+      <text x="14" y="75" fill="#e2e8f0" font-size="11" font-weight="600">• Stochastic Volve Proxy</text>
+      <text x="14" y="95" fill="#94a3b8" font-size="10">• Gas Kick Influx Injector</text>
+      <text x="14" y="112" fill="#94a3b8" font-size="10">• Lost Circulation Generator</text>
+      <text x="14" y="129" fill="#94a3b8" font-size="10">• Mechanical Stuck Pipe Packoff</text>
+      <text x="14" y="146" fill="#94a3b8" font-size="10">• TVD Depth Progression (0-3500m)</text>
+
+      <rect x="14" y="158" width="192" height="22" rx="6" fill="#0369a1" opacity="0.4"/>
+      <text x="110" y="173" fill="#7dd3fc" font-size="9" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">1.0 Hz Synthetic Engine</text>
+    </g>
+  </g>
+
+  <!-- CONNECTOR 1: Input Layer to WebSocket Layer -->
+  <path d="M 295 240 L 375 350" fill="none" stroke="#10b981" stroke-width="2.5" stroke-dasharray="4,3" marker-end="url(#arrowGreen)"/>
+  <path d="M 295 470 L 375 375" fill="none" stroke="#0284c7" stroke-width="2.5" stroke-dasharray="4,3" marker-end="url(#arrowBlue)"/>
+
+  <!-- COLUMN 2: WEBSOCKET INGESTION LAYER -->
+  <g transform="translate(380, 185)">
+    <rect x="0" y="0" width="200" height="360" rx="16" fill="#082538" stroke="#06b6d4" stroke-width="2" filter="url(#cardShadow)"/>
+    
+    <rect x="15" y="15" width="32" height="32" rx="8" fill="url(#ingestGrad)"/>
+    <text x="31" y="37" fill="#ffffff" font-size="16" text-anchor="middle">📡</text>
+    
+    <text x="58" y="30" fill="#22d3ee" font-size="13" font-weight="800">WebSocket</text>
+    <text x="58" y="46" fill="#ffffff" font-size="13" font-weight="800">Ingestion Layer</text>
+    <text x="15" y="70" fill="#67e8f9" font-size="9" font-family="'JetBrains Mono', monospace">STANDARDIZED JSON PROTOCOL</text>
+
+    <line x1="15" y1="80" x2="185" y2="80" stroke="#0e7490" stroke-width="1.5"/>
+
+    <!-- Key traits -->
+    <g transform="translate(15, 95)">
+      <rect x="0" y="0" width="170" height="52" rx="8" fill="#042f2e" stroke="#14b8a6" stroke-width="1"/>
+      <text x="10" y="20" fill="#2dd4bf" font-size="10" font-weight="700">Uniform Telemetry Schema</text>
+      <text x="10" y="36" fill="#99f6e4" font-size="9" font-family="'JetBrains Mono', monospace">JSON: wob, rpm, rop, torque,</text>
+      <text x="10" y="48" fill="#99f6e4" font-size="9" font-family="'JetBrains Mono', monospace">mud_weight, ecd, pit_gain</text>
+    </g>
+
+    <g transform="translate(15, 160)">
+      <rect x="0" y="0" width="170" height="45" rx="8" fill="#0c4a6e" stroke="#0284c7" stroke-width="1"/>
+      <text x="10" y="18" fill="#38bdf8" font-size="10" font-weight="700">Zero Code Switching</text>
+      <text x="10" y="34" fill="#bae6fd" font-size="9">Simulator &amp; Rig feed share identical WS endpoint</text>
+    </g>
+
+    <g transform="translate(15, 218)">
+      <rect x="0" y="0" width="170" height="45" rx="8" fill="#1e1b4b" stroke="#6366f1" stroke-width="1"/>
+      <text x="10" y="18" fill="#a5b4fc" font-size="10" font-weight="700">Async Broadcast Pool</text>
+      <text x="10" y="34" fill="#c7d2fe" font-size="9">Non-blocking fan-out to all connected engineering clients</text>
+    </g>
+
+    <rect x="15" y="315" width="170" height="24" rx="6" fill="#083344" stroke="#0e7490" stroke-width="1"/>
+    <text x="100" y="331" fill="#38bdf8" font-size="9" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">FastAPI Endpoint: /api/ws</text>
+  </g>
+
+  <!-- CONNECTOR 2: Ingestion to Hazard Prediction Engine -->
+  <path d="M 585 365 L 640 365" fill="none" stroke="#06b6d4" stroke-width="3" marker-end="url(#arrowCyan)"/>
+
+  <!-- COLUMN 3: HAZARD PREDICTION ENGINE -->
+  <g transform="translate(645, 165)">
+    <rect x="0" y="0" width="240" height="400" rx="16" fill="#1e1136" stroke="#9333ea" stroke-width="2" filter="url(#cardShadow)"/>
+    
+    <rect x="15" y="15" width="32" height="32" rx="8" fill="url(#engineGrad)"/>
+    <text x="31" y="37" fill="#ffffff" font-size="16" text-anchor="middle">🧠</text>
+
+    <text x="58" y="29" fill="#c084fc" font-size="13" font-weight="800">Hazard Prediction</text>
+    <text x="58" y="45" fill="#ffffff" font-size="13" font-weight="800">Engine</text>
+    <text x="15" y="68" fill="#e9d5ff" font-size="9" font-family="'JetBrains Mono', monospace">PHYSICS (80%) + ML (20%)</text>
+
+    <line x1="15" y1="78" x2="225" y2="78" stroke="#7e22ce" stroke-width="1.5"/>
+
+    <!-- Sub-Block 1: Physics Engine (80%) -->
+    <g transform="translate(15, 90)">
+      <rect x="0" y="0" width="210" height="110" rx="8" fill="#2e1065" stroke="#a855f7" stroke-width="1"/>
+      <text x="10" y="18" fill="#d8b4fe" font-size="11" font-weight="800">Deterministic Physics (80%)</text>
+      <text x="10" y="36" fill="#ffffff" font-size="10">• Eaton (1972) PP &amp; Fracture</text>
+      <text x="10" y="52" fill="#ffffff" font-size="10">• Teale (1965) MSE (η=0.35)</text>
+      <text x="10" y="68" fill="#ffffff" font-size="10">• Jorden &amp; Shirley dxc (1966)</text>
+      <text x="10" y="84" fill="#ffffff" font-size="10">• Rehm &amp; McClendon (1971) ECD</text>
+      <text x="10" y="100" fill="#e9d5ff" font-size="9" font-style="italic">Rigorous first-principles barrier</text>
+    </g>
+
+    <!-- Sub-Block 2: Machine Learning (20%) -->
+    <g transform="translate(15, 210)">
+      <rect x="0" y="0" width="210" height="95" rx="8" fill="#3b0764" stroke="#c084fc" stroke-width="1"/>
+      <text x="10" y="18" fill="#f3e8ff" font-size="11" font-weight="800">LightGBM Multi-Class (20%)</text>
+      <text x="10" y="36" fill="#e9d5ff" font-size="10">• 4 Disaggregated Hazards:</text>
+      <text x="20" y="52" fill="#d8b4fe" font-size="9">Gas Kick • Lost Circulation</text>
+      <text x="20" y="66" fill="#d8b4fe" font-size="9">Stuck Pipe • Torque &amp; Drag</text>
+      <text x="10" y="84" fill="#f5d0fe" font-size="9" font-style="italic">Verified non-zero ML contribution</text>
+    </g>
+
+    <g transform="translate(15, 315)">
+      <rect x="0" y="0" width="210" height="65" rx="8" fill="#1e1b4b" stroke="#6366f1" stroke-width="1"/>
+      <text x="10" y="18" fill="#c7d2fe" font-size="10" font-weight="800">Vector Memory (ChromaDB / RAG)</text>
+      <text x="10" y="34" fill="#a5b4fc" font-size="9">Semantic incident retrieval: DDR/WCR</text>
+      <text x="10" y="48" fill="#818cf8" font-size="9">Matches offset pre-spud lessons</text>
+    </g>
+  </g>
+
+  <!-- CONNECTOR 3: Engine to Presentation Layer -->
+  <path d="M 890 365 L 945 365" fill="none" stroke="#9333ea" stroke-width="3" marker-end="url(#arrowPurple)"/>
+
+  <!-- COLUMN 4: PRESENTATION LAYER -->
+  <g transform="translate(950, 155)">
+    <rect x="0" y="0" width="200" height="420" rx="16" fill="#1c1917" stroke="#f59e0b" stroke-width="2" filter="url(#cardShadow)"/>
+    
+    <rect x="15" y="15" width="32" height="32" rx="8" fill="url(#clientGrad)"/>
+    <text x="31" y="37" fill="#ffffff" font-size="16" text-anchor="middle">💻</text>
+
+    <text x="58" y="29" fill="#fbbf24" font-size="13" font-weight="800">Operational</text>
+    <text x="58" y="45" fill="#ffffff" font-size="13" font-weight="800">Dashboard</text>
+    <text x="15" y="68" fill="#fef3c7" font-size="9" font-family="'JetBrains Mono', monospace">DECISION SUPPORT APPS</text>
+
+    <line x1="15" y1="78" x2="185" y2="78" stroke="#78350f" stroke-width="1.5"/>
+
+    <!-- Module 1 -->
+    <g transform="translate(15, 90)">
+      <rect x="0" y="0" width="170" height="60" rx="8" fill="#292524" stroke="#d97706" stroke-width="1"/>
+      <text x="10" y="18" fill="#fde68a" font-size="10" font-weight="700">Lookahead Radar</text>
+      <text x="10" y="32" fill="#d6d3d1" font-size="9">+250m horizon proximity scan</text>
+      <text x="10" y="46" fill="#a8a29e" font-size="9">Impending Barail sand kicks</text>
+    </g>
+
+    <!-- Module 2 -->
+    <g transform="translate(15, 160)">
+      <rect x="0" y="0" width="170" height="60" rx="8" fill="#292524" stroke="#10b981" stroke-width="1"/>
+      <text x="10" y="18" fill="#a7f3d0" font-size="10" font-weight="700">Safe Mud Window (PPFG)</text>
+      <text x="10" y="32" fill="#d6d3d1" font-size="9">Eaton pore pressure curve</text>
+      <text x="10" y="46" fill="#a8a29e" font-size="9">±5-8% sonic proxy uncertainty</text>
+    </g>
+
+    <!-- Module 3 -->
+    <g transform="translate(15, 230)">
+      <rect x="0" y="0" width="170" height="60" rx="8" fill="#292524" stroke="#06b6d4" stroke-width="1"/>
+      <text x="10" y="18" fill="#bae6fd" font-size="10" font-weight="700">3D Subsurface Trajectory</text>
+      <text x="10" y="32" fill="#d6d3d1" font-size="9">Anti-collision clearance</text>
+      <text x="10" y="46" fill="#a8a29e" font-size="9">Live bit TVD projection</text>
+    </g>
+
+    <!-- Module 4 -->
+    <g transform="translate(15, 300)">
+      <rect x="0" y="0" width="170" height="60" rx="8" fill="#292524" stroke="#c084fc" stroke-width="1"/>
+      <text x="10" y="18" fill="#f3e8ff" font-size="10" font-weight="700">Pre-Spud Dossier</text>
+      <text x="10" y="32" fill="#d6d3d1" font-size="9">1-Click offset hazard briefing</text>
+      <text x="10" y="46" fill="#a8a29e" font-size="9">PDF export &amp; lessons learned</text>
+    </g>
+
+    <rect x="15" y="375" width="170" height="24" rx="6" fill="#451a03" stroke="#b45309" stroke-width="1"/>
+    <text x="100" y="391" fill="#fcd34d" font-size="9" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono', monospace">Field Engineer &amp; Reviewer</text>
+  </g>
+
+  <!-- INTEGRATION GUARANTEE FOOTNOTE CALLOUT -->
+  <g transform="translate(60, 625)">
+    <rect x="0" y="0" width="1080" height="32" rx="8" fill="#032a30" stroke="#0891b2" stroke-width="1"/>
+    <text x="20" y="20" fill="#67e8f9" font-size="11" font-weight="700" font-family="'JetBrains Mono', monospace">DATA-SOURCE-AGNOSTIC GUARANTEE:</text>
+    <text x="290" y="20" fill="#e0f2fe" font-size="11">Switching from Telemetry Simulator to live OIL eRTMAC WITSML/TCP feed requires ZERO changes downstream of WebSocket Ingestion.</text>
+  </g>
+</svg>
