@@ -291,3 +291,57 @@ def test_bm25_lexical_overlap():
     assert compute_bm25_score("", "some document") == 0.0
     score = compute_bm25_score("stuck pipe differential", "Differential sticking occurred. Pipe stuck at 2300m.")
     assert 0.0 < score <= 1.0
+
+
+# ==============================================================================
+# FEATURE 3 TESTS: DEMO SCENARIOS ENDPOINT
+# ==============================================================================
+
+def test_demo_scenarios_endpoint_structure():
+    """
+    Tests GET /api/demo-scenarios returns 3 pre-configured realistic scenarios
+    with all required fields from existing documented well events.
+    """
+    from fastapi.testclient import TestClient
+    from main import app, DEMO_SCENARIOS
+
+    client = TestClient(app)
+    response = client.get("/api/demo-scenarios")
+    assert response.status_code == 200
+    scenarios = response.json()
+
+    assert len(scenarios) == 3
+    
+    # Check scenario 1: Stuck Pipe at OIL-MORAN-1 / 2832m
+    sc1 = scenarios[0]
+    assert sc1["id"] == "1"
+    assert sc1["well_id"] == "OIL-MORAN-1"
+    assert sc1["depth"] == 2832.0
+    assert sc1["scenario_action"] == "inject_stuck_pipe"
+    assert "Barail" in sc1["formation"]
+    assert "stuck pipe" in sc1["suggested_question"].lower()
+
+    # Check scenario 2: Mud Loss at OIL-MORAN-1 / 1540m
+    sc2 = scenarios[1]
+    assert sc2["id"] == "2"
+    assert sc2["well_id"] == "OIL-MORAN-1"
+    assert sc2["depth"] == 1540.0
+    assert sc2["scenario_action"] == "inject_lost_circulation"
+    assert "Tipam" in sc2["formation"]
+
+    # Check scenario 3: Gas Kick at OIL-NAHARKATIYA-1 / 3105m
+    sc3 = scenarios[2]
+    assert sc3["id"] == "3"
+    assert sc3["well_id"] == "OIL-NAHARKATIYA-1"
+    assert sc3["depth"] == 3105.0
+    assert sc3["scenario_action"] == "inject_kick"
+    assert "Kopili" in sc3["formation"]
+
+    # Verify all fields present on all scenarios
+    required_keys = {
+        "id", "title", "well_id", "depth", "torque", "wob", "rop",
+        "formation", "scenario_action", "description", "suggested_question"
+    }
+    for sc in scenarios:
+        assert required_keys.issubset(sc.keys())
+

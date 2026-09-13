@@ -424,6 +424,69 @@ def get_simulator_status():
     """Returns current telemetry simulator state."""
     return telemetry_simulator.get_status()
 
+class DemoScenario(BaseModel):
+    id: str
+    title: str
+    well_id: str
+    depth: float
+    torque: float
+    wob: float
+    rop: float
+    formation: str
+    scenario_action: str
+    description: str
+    suggested_question: str
+
+DEMO_SCENARIOS: List[Dict[str, Any]] = [
+    {
+        "id": "1",
+        "title": "Shallow Stuck Pipe Warning — OIL-MORAN-1",
+        "well_id": "OIL-MORAN-1",
+        "depth": 2832.0,
+        "torque": 22500.0,
+        "wob": 18.0,
+        "rop": 4.5,
+        "formation": "Barail Sandstone/Shale transition",
+        "scenario_action": "inject_stuck_pipe",
+        "description": "Reproduces the documented differential-sticking incident at 2832m — torque spike, ROP collapse, elevated overpull.",
+        "suggested_question": "What historical evidence do we have for stuck pipe risk in this formation, and what mitigation worked previously?"
+    },
+    {
+        "id": "2",
+        "title": "Severe Lost Circulation — OIL-MORAN-1",
+        "well_id": "OIL-MORAN-1",
+        "depth": 1540.0,
+        "torque": 14200.0,
+        "wob": 12.0,
+        "rop": 18.0,
+        "formation": "Tipam Sandstone (Upper Permeable Zone)",
+        "scenario_action": "inject_lost_circulation",
+        "description": "Reproduces the severe mud loss incident at 1540m in Tipam Sandstone — pit level drop, flow-out reduction, fracture window breach.",
+        "suggested_question": "What is the recommended LCM pill composition and safe mud weight window for Tipam losses?"
+    },
+    {
+        "id": "3",
+        "title": "Abnormal Gas Kick Influx — OIL-NAHARKATIYA-1",
+        "well_id": "OIL-NAHARKATIYA-1",
+        "depth": 3105.0,
+        "torque": 19800.0,
+        "wob": 15.0,
+        "rop": 22.5,
+        "formation": "Kopili Formation Overpressure Ramp",
+        "scenario_action": "inject_kick",
+        "description": "Reproduces the documented high-pressure gas kick at 3105m in Kopili Formation — rapid pit gain, flow increase, SIDPP pressure spike.",
+        "suggested_question": "What are the shut-in drill pipe pressure (SIDPP) precedents and kill mud requirements in Kopili?"
+    }
+]
+
+@app.get("/api/demo-scenarios", response_model=List[DemoScenario])
+def get_demo_scenarios():
+    """
+    Serves 3 pre-configured realistic demo scenarios directly from backend data
+    for 1-click live pitch demonstration.
+    """
+    return DEMO_SCENARIOS
+
 @app.websocket("/api/ws/telemetry")
 async def websocket_telemetry(websocket: WebSocket):
     """

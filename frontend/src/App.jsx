@@ -94,6 +94,66 @@ function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const wsRef = useRef(null);
 
+  // Pre-configured Demo Scenarios (Golden PDF Documented Well Incidents)
+  const [demoScenarios, setDemoScenarios] = useState([
+    {
+      id: "1",
+      title: "Shallow Stuck Pipe Warning — OIL-MORAN-1",
+      well_id: "OIL-MORAN-1",
+      depth: 2832.0,
+      torque: 22500.0,
+      wob: 18.0,
+      rop: 4.5,
+      formation: "Barail Sandstone/Shale transition",
+      scenario_action: "inject_stuck_pipe",
+      description: "Reproduces the documented differential-sticking incident at 2832m — torque spike, ROP collapse, elevated overpull.",
+      suggested_question: "What historical evidence do we have for stuck pipe risk in this formation, and what mitigation worked previously?"
+    },
+    {
+      id: "2",
+      title: "Severe Lost Circulation — OIL-MORAN-1",
+      well_id: "OIL-MORAN-1",
+      depth: 1540.0,
+      torque: 14200.0,
+      wob: 12.0,
+      rop: 18.0,
+      formation: "Tipam Sandstone (Upper Permeable Zone)",
+      scenario_action: "inject_lost_circulation",
+      description: "Reproduces the severe mud loss incident at 1540m in Tipam Sandstone — pit level drop, flow-out reduction, fracture window breach.",
+      suggested_question: "What is the recommended LCM pill composition and safe mud weight window for Tipam losses?"
+    },
+    {
+      id: "3",
+      title: "Abnormal Gas Kick Influx — OIL-NAHARKATIYA-1",
+      well_id: "OIL-NAHARKATIYA-1",
+      depth: 3105.0,
+      torque: 19800.0,
+      wob: 15.0,
+      rop: 22.5,
+      formation: "Kopili Formation Overpressure Ramp",
+      scenario_action: "inject_kick",
+      description: "Reproduces the documented high-pressure gas kick at 3105m in Kopili Formation — rapid pit gain, flow increase, SIDPP pressure spike.",
+      suggested_question: "What are the shut-in drill pipe pressure (SIDPP) precedents and kill mud requirements in Kopili?"
+    }
+  ]);
+  const [activeDemoScenarioId, setActiveDemoScenarioId] = useState('');
+  const [searchSuggestedQuery, setSearchSuggestedQuery] = useState('');
+
+  // Fetch pre-configured demo scenarios from backend
+  useEffect(() => {
+    const fetchScenarios = async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/api/demo-scenarios`);
+        if (res.data && Array.isArray(res.data) && res.data.length > 0) {
+          setDemoScenarios(res.data);
+        }
+      } catch (err) {
+        console.warn("Could not fetch remote demo scenarios; fallback active.", err);
+      }
+    };
+    fetchScenarios();
+  }, []);
+
   const showAlerts = role === 'Field Engineer';
 
   const handleRoleChange = (e) => {
@@ -501,6 +561,48 @@ function App() {
     setTelemetryData(base);
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(base));
+    }
+  };
+
+  // 1-Click Realistic Demo Scenario Selection Handler
+  const handleSelectDemoScenario = (scenario) => {
+    if (!scenario) return;
+    setActiveDemoScenarioId(scenario.id);
+
+    // (a) Set active well to scenario's well_id
+    handleSelectWell(scenario.well_id);
+
+    // (b) Seek simulator to scenario's depth using existing seek functionality
+    handleSeek(scenario.depth);
+
+    // (c) Trigger corresponding scenario_action using existing scenario injection logic
+    let actionScenario = 'normal';
+    const act = (scenario.scenario_action || '').toLowerCase();
+    if (act.includes('stuck')) {
+      actionScenario = 'stuck_pipe';
+    } else if (act.includes('loss') || act.includes('circulation')) {
+      actionScenario = 'lost_circulation';
+    } else if (act.includes('kick')) {
+      actionScenario = 'gas_kick';
+    }
+    handleScenarioInject(actionScenario);
+
+    // Update telemetry parameters with realistic scenario values
+    setTelemetryData(prev => {
+      const current = prev || WELL_DEFAULT_TELEMETRY[scenario.well_id] || WELL_DEFAULT_TELEMETRY['OIL-BAGHJAN-1'];
+      return {
+        ...current,
+        depth_tvd: scenario.depth,
+        torque: scenario.torque || current.torque,
+        wob_klbs: scenario.wob || current.wob_klbs,
+        rop_mhr: scenario.rop || current.rop_mhr,
+        formation: scenario.formation || current.formation
+      };
+    });
+
+    // (d) Optionally pre-fill knowledge search box with suggested_question
+    if (scenario.suggested_question) {
+      setSearchSuggestedQuery(scenario.suggested_question);
     }
   };
 
@@ -1373,6 +1475,34 @@ function App() {
               </button>
             </div>
 
+            {/* 1-Click Pitch Demo Scenarios (Calibrated to Golden PDF Events) */}
+            <div className="flex items-center space-x-1.5 border-l border-slate-800 pl-3">
+              <span className="text-[10px] font-mono text-amber-400 font-bold uppercase tracking-wider flex items-center gap-1 shrink-0">
+                <Sparkles size={11} className="text-amber-400" />
+                <span>Demo Scenarios:</span>
+              </span>
+              <div className="flex items-center space-x-1">
+                {demoScenarios.map(sc => {
+                  const isActive = activeDemoScenarioId === sc.id;
+                  return (
+                    <button
+                      key={sc.id}
+                      id={`demo-scenario-btn-${sc.id}`}
+                      onClick={() => handleSelectDemoScenario(sc)}
+                      className={`px-2 py-1 rounded-lg text-[10px] font-bold tracking-tight transition border flex items-center space-x-1 ${
+                        isActive
+                          ? 'bg-amber-500/30 border-amber-400 text-amber-200 shadow-glow-amber'
+                          : 'bg-slate-900/90 border-slate-700/80 text-slate-300 hover:border-amber-500/50 hover:text-white'
+                      }`}
+                      title={`${sc.title}\nWell: ${sc.well_id} | Depth: ${sc.depth}m | Formation: ${sc.formation}\nClick to load scenario in 1 click`}
+                    >
+                      <span>{sc.id === "1" ? "⚠️ Stuck (2832m)" : sc.id === "2" ? "💧 Losses (1540m)" : "🔥 Kick (3105m)"}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Active Status Badge */}
             <div className="flex items-center space-x-2 border-l border-slate-800 pl-3">
               <span className={`w-2 h-2 rounded-full ${simStatus.is_running ? 'bg-emerald-400 animate-ping' : 'bg-slate-600'}`}></span>
@@ -1560,6 +1690,45 @@ function App() {
                   </div>
                   {simStatus.active_scenario === 'stuck_pipe' && <CheckCircle2 size={16} className="text-rose-400 shrink-0" />}
                 </button>
+              </div>
+
+              {/* Pitch Demo Scenarios (Golden PDF Documented Incidents) */}
+              <div className="mt-4 pt-3 border-t border-slate-800">
+                <div className="flex items-center justify-between text-xs font-bold text-amber-400 uppercase tracking-wider mb-2.5">
+                  <div className="flex items-center space-x-1.5">
+                    <Sparkles size={13} className="text-amber-400" />
+                    <span>Demo Scenarios (Golden PDF)</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-slate-500">1-Click</span>
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                  {demoScenarios.map(sc => (
+                    <button
+                      key={sc.id}
+                      onClick={() => handleSelectDemoScenario(sc)}
+                      className={`p-2.5 rounded-xl text-left border transition flex items-start justify-between ${
+                        activeDemoScenarioId === sc.id
+                          ? 'bg-amber-500/15 border-amber-500 text-amber-200'
+                          : 'bg-slate-950/60 border-slate-800 text-slate-300 active:bg-slate-800'
+                      }`}
+                    >
+                      <div className="min-w-0 pr-2">
+                        <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                          <span>{sc.title}</span>
+                        </div>
+                        <div className="text-[10px] font-mono text-cyan-400 mt-0.5">
+                          {sc.well_id} • {sc.depth}m • {sc.formation}
+                        </div>
+                        <div className="text-[10px] text-slate-400 mt-1 line-clamp-2">
+                          {sc.description}
+                        </div>
+                      </div>
+                      {activeDemoScenarioId === sc.id && (
+                        <CheckCircle2 size={16} className="text-amber-400 shrink-0 mt-0.5" />
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -2240,6 +2409,7 @@ function App() {
       <KnowledgeSearch 
           isOpen={isKnowledgeSearchOpen}
           onClose={() => setIsKnowledgeSearchOpen(false)}
+          suggestedQuery={searchSuggestedQuery}
       />
 
       {/* Cross-Well Correlation Panel */}

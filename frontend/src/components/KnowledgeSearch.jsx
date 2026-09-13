@@ -1,13 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE } from '../lib/api';
 import { Search, X, BookOpen, ChevronRight, Loader2, ShieldCheck } from 'lucide-react';
 
-const KnowledgeSearch = ({ isOpen, onClose }) => {
-    const [query, setQuery] = useState('');
+const KnowledgeSearch = ({ isOpen, onClose, suggestedQuery = '' }) => {
+    const [query, setQuery] = useState(suggestedQuery || '');
     const [results, setResults] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
+
+    useEffect(() => {
+        if (suggestedQuery) {
+            setQuery(suggestedQuery);
+        }
+    }, [suggestedQuery]);
 
     if (!isOpen) return null;
 
