@@ -31,12 +31,41 @@ PetrolQ is an AI-powered Nearby Wells Intelligence System  designed to serve as 
    ```
 
 4. **Set Environment Variables:**
-   Create a `.env` file in the root directory (copy from `.env.example` if available) and ensure your database credentials are correct. Make sure to set your `DATABASE_URL`. If using the document extraction feature, set the LLM variables (defaults to a local Ollama endpoint):
-   ```env
-   DATABASE_URL=postgresql://<db_user>:<db_password>@<db_host>:<db_port>/<db_name>
-   LLM_API_KEY=<your-api-key-here>
-   LLM_ENDPOINT=<your-llm-endpoint-url>
+   Create a `.env` file in the root directory (copy from `.env.example`):
+   ```bash
+   cp .env.example .env
    ```
+   Configure your `DATABASE_URL` and choose your preferred AI model provider:
+
+   ### 🤖 Bring Your Own AI Model (Gemini, Claude, OpenAI, or Ollama)
+   PetrolQ includes a **universal AI model factory** with automatic provider detection, structured JSON extraction, and safety guardrails. You can use any of the following:
+
+   - **Google Gemini (Recommended for free cloud tiers):**
+     ```env
+     LLM_PROVIDER=gemini
+     GEMINI_API_KEY=AIzaSy...
+     GEMINI_MODEL_NAME=gemini-1.5-flash
+     ```
+   - **Anthropic Claude:**
+     ```env
+     LLM_PROVIDER=claude
+     ANTHROPIC_API_KEY=sk-ant-...
+     ANTHROPIC_MODEL_NAME=claude-3-5-haiku-20241022
+     ```
+   - **OpenAI:**
+     ```env
+     LLM_PROVIDER=openai
+     OPENAI_API_KEY=sk-proj-...
+     OPENAI_MODEL_NAME=gpt-4o-mini
+     ```
+   - **Local Ollama (100% Free & Offline):**
+     ```env
+     LLM_PROVIDER=ollama
+     OLLAMA_ENDPOINT=http://localhost:11434/v1
+     OLLAMA_MODEL_NAME=llama3
+     ```
+   - **Auto-Detect (`LLM_PROVIDER=auto`):**
+     Simply paste whichever key you have into `.env` (e.g. `GEMINI_API_KEY` or `ANTHROPIC_API_KEY`), and PetrolQ will automatically pick the right model provider! If no key is set, it checks for a local Ollama server, or gracefully falls back to deterministic rule-based NLP so the app **never crashes**.
 
 5. **Initialize and Seed the Database:**
    Ensure your PostgreSQL instance is running, then run the pipeline and seeding scripts:

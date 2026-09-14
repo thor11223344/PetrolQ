@@ -16,6 +16,10 @@ pdfplumber
 langchain
 langchain-core
 langchain-openai
+langchain-anthropic
+langchain-google-genai
+anthropic
+google-genai
 fastembed
 lightgbm
 scikit-learn

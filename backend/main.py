@@ -31,6 +31,7 @@ from api.lookahead import router as lookahead_router
 from api.ppfg import router as ppfg_router
 from api.dossier import router as dossier_router
 from api.backtest import router as backtest_router
+from api.ai_assistant import router as ai_assistant_router
 from services.hybrid_retrieval import (
     DEFAULT_WEIGHTS,
     compute_bm25_score,
@@ -119,6 +120,7 @@ app.include_router(lookahead_router)
 app.include_router(ppfg_router)
 app.include_router(dossier_router)
 app.include_router(backtest_router)
+app.include_router(ai_assistant_router)
 
 @app.get("/")
 def root():

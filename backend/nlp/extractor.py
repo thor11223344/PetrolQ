@@ -2,10 +2,9 @@ import logging
 from typing import List, Optional
 from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
 
-# Import the configuration we created earlier
-from nlp.config import LLM_API_KEY, LLM_ENDPOINT, LLM_MODEL_NAME
+# Import unified multi-provider factory
+from nlp.llm_factory import get_llm, is_llm_available, detect_active_provider
 
 logger = logging.getLogger(__name__)
 
@@ -55,33 +54,15 @@ class IncidentExtractionResult(BaseModel):
 # -------------------------------------------------------------------
 
 def _is_llm_available() -> bool:
-    """Check if remote or local LLM server is accessible without blocking."""
-    if not LLM_API_KEY or LLM_API_KEY == "your-api-key-here":
-        if not LLM_ENDPOINT or "localhost" in LLM_ENDPOINT or "127.0.0.1" in LLM_ENDPOINT:
-            import socket
-            try:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(0.15)
-                res = sock.connect_ex(('127.0.0.1', 11434))
-                sock.close()
-                return res == 0
-            except Exception:
-                return False
-    return True
+    """Check if any remote or local LLM server is accessible without blocking."""
+    return is_llm_available()
 
 def _get_llm():
     """
-    Initialize the LLM. 
-    ChatOpenAI is highly compatible with both official OpenAI APIs and local Ollama instances.
+    Initialize the LLM using the universal factory.
+    Supports Google Gemini, Anthropic Claude, OpenAI, and Ollama (Local).
     """
-    return ChatOpenAI(
-        model=LLM_MODEL_NAME,
-        base_url=LLM_ENDPOINT if LLM_ENDPOINT else None,
-        api_key=LLM_API_KEY,
-        max_retries=0,
-        timeout=3.0,
-        temperature=0.0
-    )
+    return get_llm(temperature=0.0, timeout=8.0)
 
 def extract_incidents_from_text(text: str) -> List[DrillingIncidentSchema]:
     """

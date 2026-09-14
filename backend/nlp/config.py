@@ -1,10 +1,31 @@
 import os
 import threading
 
-# LLM Configuration
-# Placeholder for Gemini API key, OpenAI API key, or a local Ollama endpoint.
+# ---------------------------------------------------------------------------
+# Multi-Provider LLM Configuration (Gemini, Claude, OpenAI, Ollama)
+# ---------------------------------------------------------------------------
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "auto")
+
+# Google Gemini
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL_NAME", "gemini-1.5-flash")
+
+# Anthropic Claude
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY") or os.getenv("CLAUDE_API_KEY")
+ANTHROPIC_MODEL_NAME = os.getenv("ANTHROPIC_MODEL_NAME", "claude-3-5-haiku-20241022")
+
+# OpenAI
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_MODEL_NAME = os.getenv("OPENAI_MODEL_NAME", "gpt-4o-mini")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL")
+
+# Ollama (Local)
+OLLAMA_ENDPOINT = os.getenv("OLLAMA_ENDPOINT", "http://localhost:11434/v1")
+OLLAMA_MODEL_NAME = os.getenv("OLLAMA_MODEL_NAME", "llama3")
+
+# Backward compatibility fallbacks
 LLM_API_KEY = os.getenv("LLM_API_KEY", "your-api-key-here")
-LLM_ENDPOINT = os.getenv("LLM_ENDPOINT", "http://localhost:11434/v1") # Default fallback for local Ollama (OpenAI compatible)
+LLM_ENDPOINT = os.getenv("LLM_ENDPOINT", OLLAMA_ENDPOINT)
 LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME", "llama3")
 
 embedding_model = None

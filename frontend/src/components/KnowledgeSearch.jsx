@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE } from '../lib/api';
-import { Search, X, BookOpen, ChevronRight, Loader2, ShieldCheck, Filter } from 'lucide-react';
+import { Search, X, BookOpen, ChevronRight, Loader2, ShieldCheck, Filter, Sparkles, Bot, CheckCircle2 } from 'lucide-react';
 import SourceTag from './SourceTag';
 
 const KnowledgeSearch = ({ isOpen, onClose, suggestedQuery = '', activeWellId = 'OIL-BAGHJAN-1' }) => {
@@ -10,6 +10,8 @@ const KnowledgeSearch = ({ isOpen, onClose, suggestedQuery = '', activeWellId = 
     const [isSearching, setIsSearching] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
     const [preFilterToAnalogs, setPreFilterToAnalogs] = useState(false);
+    const [aiBriefing, setAiBriefing] = useState(null);
+    const [isSynthesizing, setIsSynthesizing] = useState(false);
 
     useEffect(() => {
         if (suggestedQuery) {
@@ -33,11 +35,29 @@ const KnowledgeSearch = ({ isOpen, onClose, suggestedQuery = '', activeWellId = 
                 }
             });
             setResults(response.data || []);
+            setAiBriefing(null);
         } catch (error) {
             console.error("Search failed:", error);
             setResults([]);
         } finally {
             setIsSearching(false);
+        }
+    };
+
+    const generateAiBriefing = async () => {
+        if (!query.trim()) return;
+        setIsSynthesizing(true);
+        try {
+            const resp = await axios.post(`${API_BASE}/api/ai/synthesize`, {
+                query: query.trim(),
+                well_id: activeWellId,
+                max_records: 5
+            });
+            setAiBriefing(resp.data);
+        } catch (err) {
+            console.error("AI synthesis error:", err);
+        } finally {
+            setIsSynthesizing(false);
         }
     };
 
@@ -99,7 +119,68 @@ const KnowledgeSearch = ({ isOpen, onClose, suggestedQuery = '', activeWellId = 
             </div>
 
             {/* Results Area */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 bg-slate-950">
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 bg-slate-950 space-y-4">
+                {/* AI Executive Synthesis Trigger & Card */}
+                {results.length > 0 && (
+                    <div className="bg-gradient-to-r from-cyan-950/40 via-blue-950/30 to-purple-950/40 border border-cyan-500/30 rounded-xl p-3 shadow-glow-cyan">
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center space-x-2">
+                                <Sparkles size={15} className="text-cyan-400 animate-pulse" />
+                                <span className="text-xs font-semibold text-cyan-200 uppercase tracking-wider">AI Executive Briefing</span>
+                            </div>
+                            <button
+                                onClick={generateAiBriefing}
+                                disabled={isSynthesizing}
+                                className="flex items-center space-x-1.5 px-2.5 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 text-cyan-300 border border-cyan-500/40 rounded-lg text-xs font-medium transition cursor-pointer disabled:opacity-50"
+                            >
+                                {isSynthesizing ? (
+                                    <>
+                                        <Loader2 size={12} className="animate-spin text-cyan-400" />
+                                        <span>Synthesizing...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Bot size={12} className="text-cyan-400" />
+                                        <span>{aiBriefing ? "Re-Synthesize" : "Synthesize with AI"}</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+
+                        {aiBriefing && (
+                            <div className="mt-2.5 pt-2.5 border-t border-cyan-500/20 text-xs space-y-2">
+                                <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
+                                    <span className="capitalize text-cyan-300 font-semibold">
+                                        Model: {aiBriefing.provider.toUpperCase()} ({aiBriefing.model})
+                                    </span>
+                                    {aiBriefing.guardrail_verified && (
+                                        <span className="text-emerald-400 font-medium flex items-center gap-1">
+                                            <CheckCircle2 size={11} /> Guardrail Safe
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="text-slate-300 leading-relaxed bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
+                                    {aiBriefing.summary}
+                                </p>
+                                {aiBriefing.recommendations && aiBriefing.recommendations.length > 0 && (
+                                    <div>
+                                        <span className="text-[11px] font-bold text-slate-200 uppercase tracking-wide block mb-1">
+                                            Advisory Action Items:
+                                        </span>
+                                        <ul className="space-y-1 pl-1">
+                                            {aiBriefing.recommendations.map((rec, i) => (
+                                                <li key={i} className="text-[11px] text-slate-300 flex items-start space-x-1.5">
+                                                    <span className="text-cyan-400 font-bold">•</span>
+                                                    <span>{rec}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
                 {isSearching ? (
                     <div className="flex flex-col items-center justify-center h-32 text-slate-500 space-y-3">
                         <Loader2 size={24} className="animate-spin text-status-fluid" />

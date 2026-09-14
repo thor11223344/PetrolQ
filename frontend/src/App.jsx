@@ -33,7 +33,9 @@ import {
   ShieldCheck,
   Info,
   Terminal,
-  History
+  History,
+  Bot,
+  Cpu
 } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE, WS_BASE } from './lib/api';
@@ -52,6 +54,7 @@ import DataTransparencyModal from './components/DataTransparencyModal';
 import ImpactStatCards from './components/ImpactStatCards';
 import SourceTag from './components/SourceTag';
 import MatrixRain from './components/MatrixRain';
+import AiModelModal from './components/AiModelModal';
 
 import { REGIONS_CONFIG, getRegionBadge, getRegionIdFromWellId } from './lib/regionalGeology';
 
@@ -121,6 +124,8 @@ function App() {
   const [isContributeOpen, setIsContributeOpen] = useState(false);
   const [isTransparencyOpen, setIsTransparencyOpen] = useState(false);
   const [is3DViewerOpen, setIs3DViewerOpen] = useState(false);
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [aiStatus, setAiStatus] = useState(null);
   const [isAutoDemoRunning, setIsAutoDemoRunning] = useState(false);
   const [autoDemoStep, setAutoDemoStep] = useState(0);
   const [autoDemoStatus, setAutoDemoStatus] = useState('');
@@ -205,6 +210,22 @@ function App() {
     };
     fetchScenarios();
   }, []);
+
+  // Fetch real-time AI Model Provider status (Gemini, Claude, OpenAI, Ollama)
+  const fetchAiStatus = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/api/ai/status`);
+      setAiStatus(res.data);
+    } catch (err) {
+      console.warn("Could not fetch AI status:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAiStatus();
+    const interval = setInterval(fetchAiStatus, 30000);
+    return () => clearInterval(interval);
+  }, [fetchAiStatus]);
 
   const showAlerts = role === 'Field Engineer';
 
@@ -1044,6 +1065,32 @@ function App() {
                 <span>Offline</span>
               </div>
             )}
+          </div>
+
+          {/* AI Model Engine Status Pill (Multi-Provider Support) */}
+          <div className="flex items-center shrink-0">
+            <button
+              onClick={() => setIsAiModalOpen(true)}
+              className={`flex items-center space-x-1.5 px-2 py-1 rounded-lg border text-[11px] font-mono font-medium transition cursor-pointer ${
+                aiStatus?.active_provider === 'gemini' 
+                  ? 'bg-cyan-500/10 border-cyan-500/35 text-cyan-300 hover:bg-cyan-500/20 shadow-glow-cyan' 
+                  : aiStatus?.active_provider === 'claude'
+                  ? 'bg-amber-500/10 border-amber-500/35 text-amber-300 hover:bg-amber-500/20 shadow-glow-amber'
+                  : aiStatus?.active_provider === 'openai'
+                  ? 'bg-emerald-500/10 border-emerald-500/35 text-emerald-300 hover:bg-emerald-500/20 shadow-glow-emerald'
+                  : aiStatus?.active_provider === 'ollama'
+                  ? 'bg-blue-500/10 border-blue-500/35 text-blue-300 hover:bg-blue-500/20'
+                  : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-slate-200'
+              }`}
+              title="Click to view or configure AI model (Gemini, Claude, OpenAI, Ollama)"
+            >
+              <Bot size={13} className="shrink-0 text-cyan-400" />
+              <span className="capitalize">
+                {aiStatus?.active_provider && aiStatus.active_provider !== 'offline' 
+                  ? `${aiStatus.active_provider}` 
+                  : 'AI Offline'}
+              </span>
+            </button>
           </div>
 
           {/* Auto-Play Demo Mode Trigger Button (Tier 3) */}
@@ -2755,6 +2802,14 @@ function App() {
       <DataTransparencyModal 
           isOpen={isTransparencyOpen}
           onClose={() => setIsTransparencyOpen(false)}
+      />
+
+      {/* Multi-Provider AI Model Details Modal */}
+      <AiModelModal 
+          isOpen={isAiModalOpen}
+          onClose={() => setIsAiModalOpen(false)}
+          aiStatus={aiStatus}
+          onRefreshStatus={fetchAiStatus}
       />
     </div>
   );
