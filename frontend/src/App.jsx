@@ -53,9 +53,10 @@ import ImpactStatCards from './components/ImpactStatCards';
 import SourceTag from './components/SourceTag';
 import MatrixRain from './components/MatrixRain';
 
-import { REGIONS_CONFIG, getRegionBadge } from './lib/regionalGeology';
+import { REGIONS_CONFIG, getRegionBadge, getRegionIdFromWellId } from './lib/regionalGeology';
 
 const WELL_DEFAULT_TELEMETRY = {
+  // Upper Assam Basin
   'OIL-BAGHJAN-1': { well_id: 'OIL-BAGHJAN-1', depth_tvd: 2240.0, rop: 16.5, wob: 14.0, rpm: 105.0, torque: 13200.0, mud_weight: 11.2, ecd: 11.6, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2800.0 },
   'OIL-BAGHJAN-4': { well_id: 'OIL-BAGHJAN-4', depth_tvd: 2380.0, rop: 18.2, wob: 15.0, rpm: 110.0, torque: 14100.0, mud_weight: 11.4, ecd: 11.8, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2950.0 },
   'OIL-NAHARKATIYA-1': { well_id: 'OIL-NAHARKATIYA-1', depth_tvd: 2020.0, rop: 14.0, wob: 12.5, rpm: 95.0, torque: 11800.0, mud_weight: 10.8, ecd: 11.2, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2600.0 },
@@ -65,10 +66,29 @@ const WELL_DEFAULT_TELEMETRY = {
   'OIL-KOTHALONI-1': { well_id: 'OIL-KOTHALONI-1', depth_tvd: 2300.0, rop: 15.5, wob: 14.0, rpm: 105.0, torque: 13000.0, mud_weight: 11.2, ecd: 11.6, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2800.0 },
   'OIL-HAPJAN-1': { well_id: 'OIL-HAPJAN-1', depth_tvd: 2400.0, rop: 14.5, wob: 13.0, rpm: 100.0, torque: 12500.0, mud_weight: 11.0, ecd: 11.4, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2750.0 },
   'OIL-SHALMARI-1': { well_id: 'OIL-SHALMARI-1', depth_tvd: 2150.0, rop: 17.5, wob: 14.5, rpm: 110.0, torque: 13500.0, mud_weight: 11.3, ecd: 11.7, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2850.0 },
+  'OIL-KUSIJAN-1': { well_id: 'OIL-KUSIJAN-1', depth_tvd: 2280.0, rop: 16.0, wob: 14.0, rpm: 102.0, torque: 13100.0, mud_weight: 11.1, ecd: 11.5, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2780.0 },
+  'OIL-HEBEDA-1': { well_id: 'OIL-HEBEDA-1', depth_tvd: 2220.0, rop: 16.2, wob: 13.8, rpm: 104.0, torque: 12900.0, mud_weight: 11.0, ecd: 11.4, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2760.0 },
+
+  // Rajasthan Basin
   'OIL-RAJ-BAGHEWALA-1': { well_id: 'OIL-RAJ-BAGHEWALA-1', depth_tvd: 2100.0, rop: 10.5, wob: 12.0, rpm: 90.0, torque: 14500.0, mud_weight: 10.5, ecd: 11.0, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2100.0 },
+  'OIL-RAJ-BAGHEWALA-2': { well_id: 'OIL-RAJ-BAGHEWALA-2', depth_tvd: 2150.0, rop: 11.0, wob: 12.5, rpm: 92.0, torque: 14800.0, mud_weight: 10.6, ecd: 11.1, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2150.0 },
   'OIL-RAJ-TANOT-1': { well_id: 'OIL-RAJ-TANOT-1', depth_tvd: 1950.0, rop: 11.2, wob: 13.0, rpm: 95.0, torque: 14200.0, mud_weight: 10.4, ecd: 10.9, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2050.0 },
+  'OIL-RAJ-TANOT-2': { well_id: 'OIL-RAJ-TANOT-2', depth_tvd: 2000.0, rop: 11.5, wob: 13.2, rpm: 96.0, torque: 14300.0, mud_weight: 10.5, ecd: 11.0, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2080.0 },
+  'OIL-RAJ-DANDEWALA-1': { well_id: 'OIL-RAJ-DANDEWALA-1', depth_tvd: 2050.0, rop: 10.8, wob: 12.8, rpm: 94.0, torque: 14400.0, mud_weight: 10.4, ecd: 10.9, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2060.0 },
+
+  // KG Deepwater
   'OIL-KG-DEEPWATER-1': { well_id: 'OIL-KG-DEEPWATER-1', depth_tvd: 3200.0, rop: 8.5, wob: 18.0, rpm: 85.0, torque: 18500.0, mud_weight: 13.2, ecd: 13.8, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 4100.0 },
+  'OIL-KG-DWN-98-2': { well_id: 'OIL-KG-DWN-98-2', depth_tvd: 3350.0, rop: 8.2, wob: 18.5, rpm: 82.0, torque: 19100.0, mud_weight: 13.4, ecd: 14.0, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 4250.0 },
+  'OIL-KG-D6-OFFSHORE': { well_id: 'OIL-KG-D6-OFFSHORE', depth_tvd: 3450.0, rop: 7.8, wob: 19.0, rpm: 80.0, torque: 19800.0, mud_weight: 13.6, ecd: 14.2, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 4400.0 },
+  'OIL-KG-YANAM-1': { well_id: 'OIL-KG-YANAM-1', depth_tvd: 2950.0, rop: 9.5, wob: 16.5, rpm: 90.0, torque: 17200.0, mud_weight: 12.8, ecd: 13.3, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 3850.0 },
+  'OIL-KG-AMALAPURAM-1': { well_id: 'OIL-KG-AMALAPURAM-1', depth_tvd: 2850.0, rop: 10.2, wob: 16.0, rpm: 92.0, torque: 16800.0, mud_weight: 12.5, ecd: 13.0, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 3700.0 },
+
+  // Mizoram Fold Belt
   'OIL-MZ-AIZAWL-1': { well_id: 'OIL-MZ-AIZAWL-1', depth_tvd: 2800.0, rop: 7.5, wob: 22.0, rpm: 80.0, torque: 21500.0, mud_weight: 12.5, ecd: 13.0, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 3800.0 },
+  'OIL-MZ-MAMIT-1': { well_id: 'OIL-MZ-MAMIT-1', depth_tvd: 2920.0, rop: 7.2, wob: 22.5, rpm: 78.0, torque: 22100.0, mud_weight: 12.7, ecd: 13.2, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 3950.0 },
+  'OIL-MZ-KOLASIB-1': { well_id: 'OIL-MZ-KOLASIB-1', depth_tvd: 2750.0, rop: 7.8, wob: 21.5, rpm: 82.0, torque: 20900.0, mud_weight: 12.4, ecd: 12.9, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 3750.0 },
+  'OIL-MZ-LUNGLEI-1': { well_id: 'OIL-MZ-LUNGLEI-1', depth_tvd: 3100.0, rop: 6.8, wob: 23.0, rpm: 75.0, torque: 22800.0, mud_weight: 12.9, ecd: 13.5, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 4100.0 },
+  'OIL-MZ-CHAMPHAI-1': { well_id: 'OIL-MZ-CHAMPHAI-1', depth_tvd: 3250.0, rop: 6.5, wob: 23.5, rpm: 72.0, torque: 23400.0, mud_weight: 13.1, ecd: 13.7, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 4250.0 },
 };
 
 function App() {
@@ -583,8 +603,8 @@ function App() {
     setSelectedRegion(regionId);
     if (regionId !== 'all') {
       const regionConfig = REGIONS_CONFIG[regionId];
-      const currentRegion = getRegionBadge(selectedWell, 'all');
-      if (regionConfig && regionConfig.defaultWell && currentRegion.id !== regionId) {
+      const wellRegion = getRegionIdFromWellId(selectedWell);
+      if (regionConfig && regionConfig.defaultWell && wellRegion !== regionId) {
         handleSelectWell(regionConfig.defaultWell);
       }
     }
@@ -596,6 +616,12 @@ function App() {
     alertActiveRef.current = false;
     lastCheckedDepthRef.current = null;
     setAlertState({ active: false, prediction: null });
+
+    const wellRegion = getRegionIdFromWellId(newWellId);
+    if (selectedRegion !== 'all' && selectedRegion !== wellRegion) {
+      setSelectedRegion(wellRegion);
+    }
+
     const base = WELL_DEFAULT_TELEMETRY[newWellId] || WELL_DEFAULT_TELEMETRY['OIL-BAGHJAN-1'];
     setTelemetryData(base);
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -855,22 +881,35 @@ function App() {
                 <option value="OIL-KOTHALONI-1">KOTHALONI-1</option>
                 <option value="OIL-HAPJAN-1">HAPJAN-1</option>
                 <option value="OIL-SHALMARI-1">SHALMARI-1</option>
+                <option value="OIL-KUSIJAN-1">KUSIJAN-1</option>
+                <option value="OIL-HEBEDA-1">HEBEDA-1</option>
               </optgroup>
             )}
             {(selectedRegion === 'all' || selectedRegion === 'rajasthan') && (
               <optgroup label="Rajasthan Basin">
                 <option value="OIL-RAJ-BAGHEWALA-1">BAGHEWALA-1</option>
+                <option value="OIL-RAJ-BAGHEWALA-2">BAGHEWALA-2</option>
                 <option value="OIL-RAJ-TANOT-1">TANOT-1</option>
+                <option value="OIL-RAJ-TANOT-2">TANOT-2</option>
+                <option value="OIL-RAJ-DANDEWALA-1">DANDEWALA-1</option>
               </optgroup>
             )}
             {(selectedRegion === 'all' || selectedRegion === 'kg') && (
               <optgroup label="KG Deepwater">
-                <option value="OIL-KG-DEEPWATER-1">KG-ONN-2004/1</option>
+                <option value="OIL-KG-DEEPWATER-1">KG-DEEPWATER-1</option>
+                <option value="OIL-KG-DWN-98-2">KG-DWN-98/2</option>
+                <option value="OIL-KG-D6-OFFSHORE">KG-D6-OFFSHORE</option>
+                <option value="OIL-KG-YANAM-1">KG-YANAM-1</option>
+                <option value="OIL-KG-AMALAPURAM-1">KG-AMALAPURAM-1</option>
               </optgroup>
             )}
             {(selectedRegion === 'all' || selectedRegion === 'mizoram') && (
               <optgroup label="Mizoram Fold Belt">
-                <option value="OIL-MZ-AIZAWL-1">MZ-ONN-2004/2</option>
+                <option value="OIL-MZ-AIZAWL-1">MZ-AIZAWL-1</option>
+                <option value="OIL-MZ-MAMIT-1">MZ-MAMIT-1</option>
+                <option value="OIL-MZ-KOLASIB-1">MZ-KOLASIB-1</option>
+                <option value="OIL-MZ-LUNGLEI-1">MZ-LUNGLEI-1</option>
+                <option value="OIL-MZ-CHAMPHAI-1">MZ-CHAMPHAI-1</option>
               </optgroup>
             )}
           </select>
@@ -950,22 +989,35 @@ function App() {
                       <option value="OIL-KOTHALONI-1">KOTHALONI-1</option>
                       <option value="OIL-HAPJAN-1">HAPJAN-1</option>
                       <option value="OIL-SHALMARI-1">SHALMARI-1</option>
+                      <option value="OIL-KUSIJAN-1">KUSIJAN-1</option>
+                      <option value="OIL-HEBEDA-1">HEBEDA-1</option>
                     </optgroup>
                   )}
                   {(selectedRegion === 'all' || selectedRegion === 'rajasthan') && (
                     <optgroup label="Rajasthan Basin">
                       <option value="OIL-RAJ-BAGHEWALA-1">BAGHEWALA-1</option>
+                      <option value="OIL-RAJ-BAGHEWALA-2">BAGHEWALA-2</option>
                       <option value="OIL-RAJ-TANOT-1">TANOT-1</option>
+                      <option value="OIL-RAJ-TANOT-2">TANOT-2</option>
+                      <option value="OIL-RAJ-DANDEWALA-1">DANDEWALA-1</option>
                     </optgroup>
                   )}
                   {(selectedRegion === 'all' || selectedRegion === 'kg') && (
                     <optgroup label="KG Deepwater">
-                      <option value="OIL-KG-DEEPWATER-1">KG-ONN-2004/1</option>
+                      <option value="OIL-KG-DEEPWATER-1">KG-DEEPWATER-1</option>
+                      <option value="OIL-KG-DWN-98-2">KG-DWN-98/2</option>
+                      <option value="OIL-KG-D6-OFFSHORE">KG-D6-OFFSHORE</option>
+                      <option value="OIL-KG-YANAM-1">KG-YANAM-1</option>
+                      <option value="OIL-KG-AMALAPURAM-1">KG-AMALAPURAM-1</option>
                     </optgroup>
                   )}
                   {(selectedRegion === 'all' || selectedRegion === 'mizoram') && (
                     <optgroup label="Mizoram Fold Belt">
-                      <option value="OIL-MZ-AIZAWL-1">MZ-ONN-2004/2</option>
+                      <option value="OIL-MZ-AIZAWL-1">MZ-AIZAWL-1</option>
+                      <option value="OIL-MZ-MAMIT-1">MZ-MAMIT-1</option>
+                      <option value="OIL-MZ-KOLASIB-1">MZ-KOLASIB-1</option>
+                      <option value="OIL-MZ-LUNGLEI-1">MZ-LUNGLEI-1</option>
+                      <option value="OIL-MZ-CHAMPHAI-1">MZ-CHAMPHAI-1</option>
                     </optgroup>
                   )}
               </select>

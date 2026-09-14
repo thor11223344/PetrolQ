@@ -130,29 +130,17 @@ def health():
 
 @app.get("/api/wells/nearby", response_model=List[WellResponse])
 def get_nearby_wells(
-    lat: float = Query(..., description="Latitude"),
-    lon: float = Query(..., description="Longitude"),
-    radius_km: float = Query(5.0, description="Radius in kilometers"),
+    lat: Optional[float] = Query(None, description="Latitude"),
+    lon: Optional[float] = Query(None, description="Longitude"),
+    radius_km: Optional[float] = Query(None, description="Radius in kilometers"),
     region: str = Query("all", description="Filter by region (assam, rajasthan, kg, mizoram, all)"),
     db: Session = Depends(get_db)
 ):
     """
-    Search for wells within a specified radius (in km) using PostGIS spatial queries, filtered by region.
+    Search for wells filtered by region and optionally within a spatial radius.
+    Guarantees that all wells in the selected basin (Assam, Rajasthan, KG, Mizoram) or across India are returned.
     """
-    # PostGIS geography calculations use meters
-    radius_meters = radius_km * 1000.0
-
-    # Build the target point (SRID 4326)
-    target_point = ST_SetSRID(ST_MakePoint(lon, lat), 4326)
-
-    # Use ST_DWithin cast to Geography for highly accurate meter-based spatial distance calculation
-    query = db.query(WellMaster).filter(
-        ST_DWithin(
-            cast(WellMaster.surface_location, Geography),
-            cast(target_point, Geography),
-            radius_meters
-        )
-    )
+    query = db.query(WellMaster)
     
     if region != "all":
         if region == "rajasthan":
@@ -167,6 +155,18 @@ def get_nearby_wells(
                 ~WellMaster.well_id.like("OIL-KG-%"),
                 ~WellMaster.well_id.like("OIL-MZ-%")
             )
+    
+    # If a strict local radius is requested with coordinates (and not an all-region or large basin query)
+    if lat is not None and lon is not None and radius_km is not None and radius_km < 100 and region == "all":
+        radius_meters = radius_km * 1000.0
+        target_point = ST_SetSRID(ST_MakePoint(lon, lat), 4326)
+        query = query.filter(
+            ST_DWithin(
+                cast(WellMaster.surface_location, Geography),
+                cast(target_point, Geography),
+                radius_meters
+            )
+        )
 
     wells = query.all()
     return wells

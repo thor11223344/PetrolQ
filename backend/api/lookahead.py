@@ -66,6 +66,27 @@ DEFAULT_HORIZONS = [
     {"name": "Kopili Formation", "tvd_top": 2950.0, "color": "#A855F7", "lithology": "Deep Marine Fissile Shale", "primary_risk": "Shale Swelling & Packoff"}
 ]
 
+RAJASTHAN_HORIZONS = [
+    {"name": "Pariwar Formation", "tvd_top": 1200.0, "color": "#FCD34D", "lithology": "Abrasive Sandstone", "primary_risk": "Sand Abrasion & Bit Wear"},
+    {"name": "Baisakhi Formation", "tvd_top": 1800.0, "color": "#9CA3AF", "lithology": "Tight Shale / Siltstone", "primary_risk": "Tight Hole & Overpull"},
+    {"name": "Jodhpur Sandstone", "tvd_top": 2300.0, "color": "#D97706", "lithology": "Heavy Oil Sandstone", "primary_risk": "Viscous Drag & Differential Sticking"},
+    {"name": "Bilara Carbonates", "tvd_top": 2800.0, "color": "#94A3B8", "lithology": "Cavernous Dolomite/Limestone", "primary_risk": "Catastrophic Lost Circulation"}
+]
+
+KG_HORIZONS = [
+    {"name": "Shallow Marine Sediments", "tvd_top": 800.0, "color": "#38BDF8", "lithology": "Unconsolidated Silt/Hydrates", "primary_risk": "Shallow Water Flow / Slumping"},
+    {"name": "Godavari Gumbo", "tvd_top": 1800.0, "color": "#3F6212", "lithology": "Highly Reactive Gumbo Shale", "primary_risk": "Bit Balling & Annular Packing"},
+    {"name": "Ravva Formation", "tvd_top": 3200.0, "color": "#DC2626", "lithology": "Deep Turbidite Sandstone", "primary_risk": "Narrow PP-FG Margin & Gas Influx"},
+    {"name": "Cretaceous Basement", "tvd_top": 4200.0, "color": "#7C3AED", "lithology": "HPHT Fractured Shale-Sand", "primary_risk": "Overpressured HPHT Gas Kick"}
+]
+
+MIZORAM_HORIZONS = [
+    {"name": "Bokabil Formation", "tvd_top": 1500.0, "color": "#F59E0B", "lithology": "Interbedded Sand-Shale", "primary_risk": "Borehole Ovalization"},
+    {"name": "Upper Bhuban", "tvd_top": 2500.0, "color": "#B45309", "lithology": "High Stress Marine Shale", "primary_risk": "Tectonic Stress Breakout"},
+    {"name": "Middle Bhuban", "tvd_top": 3400.0, "color": "#78350F", "lithology": "Steeply Dipping Hard Shales", "primary_risk": "Bedding Plane Splintering & Severe Stuck Pipe"},
+    {"name": "Disang Flysch", "tvd_top": 4100.0, "color": "#475569", "lithology": "Crushed Tectonic Flysch", "primary_risk": "Abnormal Pore Pressure & Severe Sloughing"}
+]
+
 # Baseline depths when opening each well if telemetry is not yet active
 WELL_BASE_DEPTHS = {
     "OIL-BAGHJAN-1": 2240.0,
@@ -77,6 +98,23 @@ WELL_BASE_DEPTHS = {
     "OIL-KOTHALONI-1": 2200.0,
     "OIL-HAPJAN-1": 2230.0,
     "OIL-SHALMARI-1": 2080.0,
+    "OIL-KUSIJAN-1": 2250.0,
+    "OIL-HEBEDA-1": 2180.0,
+    "OIL-RAJ-BAGHEWALA-1": 2100.0,
+    "OIL-RAJ-BAGHEWALA-2": 2150.0,
+    "OIL-RAJ-TANOT-1": 1950.0,
+    "OIL-RAJ-TANOT-2": 2000.0,
+    "OIL-RAJ-DANDEWALA-1": 2050.0,
+    "OIL-KG-DEEPWATER-1": 3200.0,
+    "OIL-KG-DWN-98-2": 3300.0,
+    "OIL-KG-D6-OFFSHORE": 3400.0,
+    "OIL-KG-YANAM-1": 2900.0,
+    "OIL-KG-AMALAPURAM-1": 2800.0,
+    "OIL-MZ-AIZAWL-1": 2800.0,
+    "OIL-MZ-MAMIT-1": 2900.0,
+    "OIL-MZ-KOLASIB-1": 2750.0,
+    "OIL-MZ-LUNGLEI-1": 3100.0,
+    "OIL-MZ-CHAMPHAI-1": 3250.0,
 }
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -112,7 +150,16 @@ def get_lookahead_advisory(
     target_depth = current_depth + window_meters
 
     # 1. Identify upcoming formations specifically for this well
-    horizons = WELL_FORMATION_HORIZONS.get(well_id, DEFAULT_HORIZONS)
+    if well_id in WELL_FORMATION_HORIZONS:
+        horizons = WELL_FORMATION_HORIZONS[well_id]
+    elif well_id.startswith("OIL-RAJ-"):
+        horizons = RAJASTHAN_HORIZONS
+    elif well_id.startswith("OIL-KG-"):
+        horizons = KG_HORIZONS
+    elif well_id.startswith("OIL-MZ-"):
+        horizons = MIZORAM_HORIZONS
+    else:
+        horizons = DEFAULT_HORIZONS
     upcoming_formations = []
     next_formation = None
     dist_to_next_formation = None

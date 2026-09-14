@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Target, AlertTriangle, Box, ChevronDown, ChevronUp, Moon, Globe, Mountain } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { Target, Box, ChevronDown, ChevronUp, Moon, Globe, Mountain, Compass, MapPin } from 'lucide-react';
 import Map, { Marker, NavigationControl, Source, Layer } from 'react-map-gl/maplibre';
 import * as maplibregl from 'maplibre-gl';
 import axios from 'axios';
@@ -7,10 +7,7 @@ import { API_BASE } from '../lib/api';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import Trajectory3DViewer from './Trajectory3DViewer';
 import SourceTag from './SourceTag';
-import { REGIONS_CONFIG } from '../lib/regionalGeology';
-
-// Note: Mapbox requires an access token.
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
+import { REGIONS_CONFIG, getRegionIdFromWellId } from '../lib/regionalGeology';
 
 function createGeoJSONCircle(center, radiusInKm, points = 64) {
     const coords = { latitude: center[1], longitude: center[0] };
@@ -19,14 +16,13 @@ function createGeoJSONCircle(center, radiusInKm, points = 64) {
     const distanceX = km / (111.320 * Math.cos(coords.latitude * Math.PI / 180));
     const distanceY = km / 110.574;
 
-    let theta, x, y;
     for (let i = 0; i < points; i++) {
-        theta = (i / points) * (2 * Math.PI);
-        x = distanceX * Math.cos(theta);
-        y = distanceY * Math.sin(theta);
+        const theta = (i / points) * (2 * Math.PI);
+        const x = distanceX * Math.cos(theta);
+        const y = distanceY * Math.sin(theta);
         ret.push([coords.longitude + x, coords.latitude + y]);
     }
-    ret.push(ret[0]); // Close the polygon
+    ret.push(ret[0]); // Close polygon
 
     return {
         type: "FeatureCollection",
@@ -46,30 +42,12 @@ function getCircleBoundingBox(center, radiusInKm) {
     const distanceX = km / (111.320 * Math.cos(coords.latitude * Math.PI / 180));
     const distanceY = km / 110.574;
     return [
-        [coords.longitude - distanceX, coords.latitude - distanceY], // southwest [minLon, minLat]
-        [coords.longitude + distanceX, coords.latitude + distanceY]  // northeast [maxLon, maxLat]
+        [coords.longitude - distanceX, coords.latitude - distanceY],
+        [coords.longitude + distanceX, coords.latitude + distanceY]
     ];
 }
 
 const isOffline = import.meta.env.VITE_OFFLINE_MODE === 'true';
-
-const offlineStyle = {
-    version: 8,
-    sources: {
-        'offline-tiles': {
-            type: 'raster',
-            tiles: [`${API_BASE}/tiles/{z}/{x}/{y}.png`],
-            tileSize: 256
-        }
-    },
-    layers: [{
-        id: 'offline-tiles-layer',
-        type: 'raster',
-        source: 'offline-tiles',
-        minzoom: 0,
-        maxzoom: 22
-    }]
-};
 
 const osmStyle = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
 
@@ -111,21 +89,55 @@ const BASEMAP_OPTIONS = [
     { id: 'terrain', label: 'Terrain', icon: Mountain }
 ];
 
+const REGION_THEME = {
+    assam: {
+        color: '#10B981',
+        border: 'border-emerald-400',
+        bg: 'bg-emerald-500',
+        glow: 'shadow-[0_0_12px_rgba(16,185,129,0.7)]',
+        label: 'Assam'
+    },
+    rajasthan: {
+        color: '#F59E0B',
+        border: 'border-amber-400',
+        bg: 'bg-amber-500',
+        glow: 'shadow-[0_0_12px_rgba(245,158,11,0.7)]',
+        label: 'Rajasthan'
+    },
+    kg: {
+        color: '#0284C7',
+        border: 'border-sky-400',
+        bg: 'bg-sky-500',
+        glow: 'shadow-[0_0_12px_rgba(2,132,199,0.7)]',
+        label: 'KG Deepwater'
+    },
+    mizoram: {
+        color: '#8B5CF6',
+        border: 'border-purple-400',
+        bg: 'bg-purple-500',
+        glow: 'shadow-[0_0_12px_rgba(139,92,246,0.7)]',
+        label: 'Mizoram'
+    }
+};
+
 export default function WellMap({ 
     activeWellId, 
     onSelectWell, 
-    selectedRegion,
+    selectedRegion = 'all',
     onSelectRegion,
     currentDepth, 
     activeScenario,
     is3DViewerOpen: external3DOpen,
     setIs3DViewerOpen: setExternal3DOpen
 }) {
+    const mapRef = useRef(null);
+    const initialConfig = REGIONS_CONFIG[selectedRegion] || REGIONS_CONFIG.assam;
+
     const [viewState, setViewState] = useState({
-        longitude: 95.185,
-        latitude: 27.415,
-        zoom: 11,
-        pitch: 30
+        longitude: initialConfig.center[1],
+        latitude: initialConfig.center[0],
+        zoom: initialConfig.zoom || 8,
+        pitch: 25
     });
 
     const [basemapStyle, setBasemapStyle] = useState(() => {
@@ -140,110 +152,104 @@ export default function WellMap({
         return 'dark';
     });
 
-    const handleBasemapChange = (styleKey) => {
-        setBasemapStyle(styleKey);
-        try {
-            localStorage.setItem(BASEMAP_STORAGE_KEY, styleKey);
-        } catch (e) {
-            console.warn("Could not save basemapStyle to localStorage", e);
-        }
-    };
-
-    const currentMapStyle = useMemo(() => {
-        if (isOffline) return offlineStyle;
-        switch (basemapStyle) {
-            case 'satellite':
-                return satelliteStyle;
-            case 'terrain':
-                return terrainStyle;
-            case 'dark':
-            default:
-                return osmStyle;
-        }
-    }, [basemapStyle]);
-
-    const [radius, setRadius] = useState(50.0);
     const [wells, setWells] = useState([]);
+    const [radius, setRadius] = useState(50);
     const [isCollapsed, setIsCollapsed] = useState(false);
-    
-    // Draggable state for the search box
-    const [position, setPosition] = useState({ x: 24, y: 150 }); // Start a bit lower to avoid App.jsx status cards
+    const [position, setPosition] = useState({ x: 24, y: 150 });
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
     const [internal3DOpen, setInternal3DOpen] = useState(false);
     const is3DViewerOpen = external3DOpen !== undefined ? external3DOpen : internal3DOpen;
     const setIs3DViewerOpen = setExternal3DOpen || setInternal3DOpen;
 
-    // The coordinates the radius search is centered around
-    const [searchCoords, setSearchCoords] = useState({ lat: 27.415, lon: 95.185 });
+    const [searchCoords, setSearchCoords] = useState({ 
+        lat: initialConfig.center[0], 
+        lon: initialConfig.center[1] 
+    });
 
+    // 1. Fetch nearby/regional wells whenever region or search parameters change
     useEffect(() => {
-        // Fetch nearby wells based on searchCoords and radius
-        const fetchNearby = async () => {
+        const fetchWells = async () => {
             try {
                 const params = {
-                    lat: searchCoords.lat,
-                    lon: searchCoords.lon,
-                    radius_km: radius
+                    region: selectedRegion || 'all'
                 };
                 if (selectedRegion && selectedRegion !== 'all') {
-                    params.region = selectedRegion;
+                    params.lat = searchCoords.lat;
+                    params.lon = searchCoords.lon;
+                    params.radius_km = radius;
+                } else {
+                    params.radius_km = 3000; // Return all across India
                 }
                 const response = await axios.get(`${API_BASE}/api/wells/nearby`, { params });
                 setWells(response.data);
             } catch (err) {
-                console.error("Failed to fetch nearby wells:", err);
+                console.error("Failed to fetch regional wells:", err);
             }
         };
-        fetchNearby();
-    }, [searchCoords, radius, selectedRegion]);
+        fetchWells();
+    }, [selectedRegion, searchCoords.lat, searchCoords.lon, radius]);
 
-    // Recenter map when region changes
+    // 2. Synchronize map camera viewport whenever selectedRegion changes
     useEffect(() => {
-        if (selectedRegion && selectedRegion !== 'all') {
-            const config = REGIONS_CONFIG[selectedRegion];
-            if (config) {
-                setSearchCoords({ lat: config.center[0], lon: config.center[1] });
-                setRadius(config.zoom === 8 ? 500 : 50);
+        const config = REGIONS_CONFIG[selectedRegion] || REGIONS_CONFIG.all;
+        if (config) {
+            const targetLat = config.center[0];
+            const targetLon = config.center[1];
+            const targetZoom = config.zoom || 8;
+
+            setSearchCoords({ lat: targetLat, lon: targetLon });
+            setRadius(selectedRegion === 'all' ? 1200 : selectedRegion === 'assam' ? 60 : 250);
+
+            setViewState(prev => ({
+                ...prev,
+                latitude: targetLat,
+                longitude: targetLon,
+                zoom: targetZoom
+            }));
+
+            const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
+            if (map && map.flyTo) {
+                map.flyTo({
+                    center: [targetLon, targetLat],
+                    zoom: targetZoom,
+                    duration: 1000,
+                    essential: true
+                });
             }
         }
     }, [selectedRegion]);
 
-    const circleGeoJSON = useMemo(() => {
-        return createGeoJSONCircle([searchCoords.lon, searchCoords.lat], radius);
-    }, [searchCoords, radius]);
-
-    const fitCircleBounds = React.useCallback((coords = searchCoords, r = radius, duration = 400) => {
-        const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
-        if (!map) return;
-        const bounds = getCircleBoundingBox([coords.lon, coords.lat], r);
-        try {
-            map.fitBounds(bounds, {
-                padding: 60,
-                duration,
-                maxZoom: 15
-            });
-        } catch (err) {
-            console.warn("fitBounds failed:", err);
-        }
-    }, [searchCoords, radius]);
-
-    // Automatically fit map view to the circle bounds whenever searchCoords or radius changes
+    // 3. Center smoothly on active well whenever activeWellId changes
     useEffect(() => {
-        const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
-        if (!map) return;
+        if (!activeWellId || wells.length === 0) return;
+        const active = wells.find(w => w.well_id === activeWellId);
+        if (active && active.surface_location) {
+            const lat = active.surface_location.lat;
+            const lon = active.surface_location.lon;
 
-        const bounds = getCircleBoundingBox([searchCoords.lon, searchCoords.lat], radius);
-        try {
-            map.fitBounds(bounds, {
-                padding: 60,
-                duration: 400,
-                maxZoom: 15
-            });
-        } catch (err) {
-            console.warn("fitBounds failed:", err);
+            const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
+            if (map && map.flyTo) {
+                map.flyTo({
+                    center: [lon, lat],
+                    zoom: Math.max(viewState.zoom, 9.5),
+                    duration: 900,
+                    essential: true
+                });
+            }
+            setViewState(prev => ({
+                ...prev,
+                latitude: lat,
+                longitude: lon,
+                zoom: Math.max(prev.zoom, 9.5)
+            }));
         }
-    }, [searchCoords.lat, searchCoords.lon, radius]);
+    }, [activeWellId, wells]);
+
+    const circleGeoJSON = useMemo(() => {
+        if (selectedRegion === 'all') return null;
+        return createGeoJSONCircle([searchCoords.lon, searchCoords.lat], radius);
+    }, [searchCoords, radius, selectedRegion]);
 
     const setAsActiveRig = () => {
         const active = wells.find(w => w.well_id === activeWellId);
@@ -253,12 +259,15 @@ export default function WellMap({
                 lon: active.surface_location.lon
             };
             setSearchCoords(newCoords);
-            fitCircleBounds(newCoords, radius, 600);
+            const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
+            if (map && map.flyTo) {
+                map.flyTo({ center: [newCoords.lon, newCoords.lat], zoom: 11, duration: 800 });
+            }
+            setViewState(prev => ({ ...prev, latitude: newCoords.lat, longitude: newCoords.lon, zoom: 11 }));
         }
     };
 
     const handlePointerDown = (e) => {
-        // Prevent dragging if interacting with inputs or buttons
         if (e.target.tagName.toLowerCase() === 'input' || e.target.tagName.toLowerCase() === 'button') {
             return;
         }
@@ -279,19 +288,35 @@ export default function WellMap({
         }
     };
 
-    const mapRef = React.useRef(null);
-    useEffect(() => {
-        if (mapRef.current) {
-            window.debugMap = mapRef.current.getMap ? mapRef.current.getMap() : mapRef.current;
+    const handleBasemapChange = (styleId) => {
+        setBasemapStyle(styleId);
+        try {
+            localStorage.setItem(BASEMAP_STORAGE_KEY, styleId);
+        } catch (e) {
+            console.warn("Could not save basemapStyle to localStorage", e);
         }
-    }, [mapRef.current]);
+    };
+
+    const currentMapStyle = useMemo(() => {
+        switch (basemapStyle) {
+            case 'satellite':
+                return satelliteStyle;
+            case 'terrain':
+                return terrainStyle;
+            case 'dark':
+            default:
+                return osmStyle;
+        }
+    }, [basemapStyle]);
 
     const hideBorders = (map) => {
         if (!map || !map.getLayer) return;
         const borderLayers = ['boundary_county', 'boundary_state', 'boundary_country_outline', 'boundary_country_inner'];
         borderLayers.forEach(layer => {
             if (map.getLayer(layer)) {
-                map.setLayoutProperty(layer, 'visibility', 'none');
+                try {
+                    map.setLayoutProperty(layer, 'visibility', 'none');
+                } catch (e) {}
             }
         });
     };
@@ -300,21 +325,12 @@ export default function WellMap({
         const map = evt.target;
         hideBorders(map);
         if (map.on) {
-            map.on('style.load', () => {
-                hideBorders(map);
-            });
-        }
-        // Initial fit to ensure default 50km radius circle is fully visible with padding
-        const bounds = getCircleBoundingBox([searchCoords.lon, searchCoords.lat], radius);
-        try {
-            map.fitBounds(bounds, { padding: 60, duration: 400, maxZoom: 15 });
-        } catch (err) {
-            console.warn("fitBounds on load failed:", err);
+            map.on('style.load', () => hideBorders(map));
         }
     };
 
     return (
-        <div className="relative w-full h-full flex-1">
+        <div className="relative w-full h-full flex-1 overflow-hidden">
             {/* Basemap Style Switcher Control */}
             <div 
                 id="basemap-style-switcher"
@@ -331,7 +347,7 @@ export default function WellMap({
                             type="button"
                             id={`basemap-btn-${opt.id}`}
                             onClick={() => handleBasemapChange(opt.id)}
-                            title={isOffline ? `${opt.label} (Offline mode active - serving local tiles)` : `Switch to ${opt.label} basemap`}
+                            title={isOffline ? `${opt.label} (Offline mode)` : `Switch to ${opt.label} basemap`}
                             className={`
                                 flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all
                                 ${isSelected 
@@ -346,11 +362,6 @@ export default function WellMap({
                         </button>
                     );
                 })}
-                {isOffline && (
-                    <span className="text-[10px] text-amber-400/90 font-mono px-1.5 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded">
-                        Offline
-                    </span>
-                )}
             </div>
 
             <Map
@@ -359,46 +370,50 @@ export default function WellMap({
                 onLoad={handleMapLoad}
                 {...viewState}
                 onMove={evt => setViewState(evt.viewState)}
-                onMoveEnd={evt => setViewState(evt.viewState)}
                 mapStyle={currentMapStyle}
                 style={{ width: '100%', height: '100%' }}
             >
                 <NavigationControl position="bottom-right" />
 
-                {/* Radius Polygon - Fill */}
-                <Source id="radius-source-fill" type="geojson" data={circleGeoJSON}>
-                    <Layer 
-                        id="radius-fill" 
-                        type="fill" 
-                        paint={{
-                            'fill-color': '#0284C7',
-                            'fill-opacity': 0.35
-                        }} 
-                    />
-                </Source>
+                {/* Radius Polygon - Active only when inspecting a single region */}
+                {circleGeoJSON && (
+                    <>
+                        <Source id="radius-source-fill" type="geojson" data={circleGeoJSON}>
+                            <Layer 
+                                id="radius-fill" 
+                                type="fill" 
+                                paint={{
+                                    'fill-color': '#0284C7',
+                                    'fill-opacity': 0.18
+                                }} 
+                            />
+                        </Source>
+                        <Source id="radius-source-line" type="geojson" data={circleGeoJSON}>
+                            <Layer 
+                                id="radius-line" 
+                                type="line" 
+                                paint={{
+                                    'line-color': '#38BDF8',
+                                    'line-width': 2,
+                                    'line-dasharray': [2, 2]
+                                }} 
+                            />
+                        </Source>
+                    </>
+                )}
 
-                {/* Radius Polygon - Line */}
-                <Source id="radius-source-line" type="geojson" data={circleGeoJSON}>
-                    <Layer 
-                        id="radius-line" 
-                        type="line" 
-                        paint={{
-                            'line-color': '#1E3A8A',
-                            'line-width': 3
-                        }} 
-                    />
-                </Source>
-
-                {/* Markers */}
+                {/* Regional Well Markers */}
                 {wells.map(well => {
                     const loc = well.surface_location;
-                    if (!loc || typeof loc === 'string') return null;
+                    if (!loc || typeof loc !== 'object' || loc.lat === undefined || loc.lon === undefined) return null;
                     
                     const isActive = well.well_id === activeWellId;
+                    const regionKey = getRegionIdFromWellId(well.well_id);
+                    const theme = REGION_THEME[regionKey] || REGION_THEME.assam;
                     
                     return (
                         <Marker 
-                            key={well.id} 
+                            key={well.well_id || well.id} 
                             longitude={loc.lon} 
                             latitude={loc.lat}
                             anchor="center"
@@ -410,25 +425,35 @@ export default function WellMap({
                             <div className="relative flex items-center justify-center cursor-pointer group">
                                 {isActive && (
                                     <>
-                                        <span className="animate-ping absolute inline-flex h-9 w-9 rounded-full bg-status-active opacity-60"></span>
-                                        <span className="absolute inline-flex h-6 w-6 rounded-full bg-status-active/30 border border-status-active/50"></span>
+                                        <span className="animate-ping absolute inline-flex h-10 w-10 rounded-full bg-emerald-400 opacity-60"></span>
+                                        <span className="absolute inline-flex h-7 w-7 rounded-full bg-emerald-500/30 border border-emerald-400"></span>
                                     </>
                                 )}
+                                
                                 <div className={`
-                                    relative z-10 rounded-full border-2 shadow-lg transition-transform group-hover:scale-125 flex items-center justify-center
+                                    relative z-10 rounded-full border-2 transition-all transform group-hover:scale-125 flex items-center justify-center
                                     ${isActive 
-                                        ? 'bg-status-active border-white w-5 h-5 shadow-glow-emerald' 
-                                        : 'bg-slate-400 hover:bg-cyan-400 border-slate-900 w-3.5 h-3.5'}
+                                        ? 'bg-emerald-400 border-white w-5 h-5 shadow-[0_0_15px_rgba(52,211,153,0.9)]' 
+                                        : `${theme.bg} ${theme.border} ${theme.glow} w-3.5 h-3.5 hover:scale-110`}
                                 `}>
-                                    {isActive && <div className="w-1.5 h-1.5 rounded-full bg-slate-950"></div>}
+                                    {isActive ? (
+                                        <div className="w-1.5 h-1.5 rounded-full bg-slate-950"></div>
+                                    ) : (
+                                        <div className="w-1 h-1 rounded-full bg-white/70"></div>
+                                    )}
                                 </div>
                                 
-                                {/* Tooltip */}
-                                <div className="absolute top-7 opacity-0 group-hover:opacity-100 transition-all duration-200 bg-[#0c1322]/95 border border-slate-700 text-slate-100 text-[11px] font-mono px-2.5 py-1.5 rounded-lg shadow-xl pointer-events-none whitespace-nowrap z-50 flex items-center space-x-2 backdrop-blur-md">
-                                    <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-status-active' : 'bg-cyan-400'}`}></span>
-                                    <span className="font-semibold">{well.well_id}</span>
-                                    {isActive && <span className="text-[10px] text-emerald-400 font-sans font-bold">(ACTIVE)</span>}
-                                    <SourceTag source={well.data_source} compact={true} />
+                                {/* Rich Interactive Tooltip */}
+                                <div className="absolute bottom-8 opacity-0 group-hover:opacity-100 transition-all duration-200 bg-[#0c1322]/95 border border-slate-700 text-slate-100 text-[11px] font-mono px-3 py-2 rounded-xl shadow-2xl pointer-events-none whitespace-nowrap z-50 flex flex-col space-y-1 backdrop-blur-md">
+                                    <div className="flex items-center space-x-2">
+                                        <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-400' : theme.bg}`}></span>
+                                        <span className="font-bold tracking-wide">{well.well_id}</span>
+                                        {isActive && <span className="text-[9px] text-emerald-400 font-sans font-extrabold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/30">ACTIVE RIG</span>}
+                                    </div>
+                                    <div className="flex items-center justify-between text-[10px] text-slate-400 border-t border-slate-800 pt-1">
+                                        <span>{well.field_name || theme.label}</span>
+                                        <span className="font-semibold text-slate-300 ml-3">{well.total_depth_tvd ? `${well.total_depth_tvd}m TVD` : ''}</span>
+                                    </div>
                                 </div>
                             </div>
                         </Marker>
@@ -438,7 +463,7 @@ export default function WellMap({
 
             {/* Floating Control Card (Draggable / Mobile Responsive) */}
             <div 
-                className={`absolute w-80 max-w-[calc(100vw-32px)] glass-panel border border-slate-750 shadow-glass rounded-2xl p-3.5 sm:p-4 z-10 transition-all ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                className={`absolute w-84 max-w-[calc(100vw-32px)] glass-panel border border-slate-750 shadow-glass rounded-2xl p-3.5 sm:p-4 z-10 transition-all ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
                 style={{ top: Math.max(60, position.y), left: Math.max(12, position.x), touchAction: 'none' }}
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
@@ -448,7 +473,7 @@ export default function WellMap({
                 <div className="flex items-center justify-between mb-2">
                     <h3 className="font-display font-bold text-slate-100 flex items-center text-xs sm:text-sm">
                         <Target size={16} className="mr-2 text-cyan-400" />
-                        Offset Search Horizon
+                        Regional Exploration Map
                     </h3>
                     <div className="flex items-center space-x-1.5">
                         <span className="bg-cyan-950/60 text-cyan-300 border border-cyan-500/30 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold">
@@ -466,27 +491,41 @@ export default function WellMap({
 
                 {!isCollapsed && (
                     <div className="space-y-3 pt-1">
-                        <div>
-                            <div className="flex justify-between text-xs font-mono text-slate-400 mb-1.5">
-                                <span>Radial Buffer:</span>
-                                <span className="text-cyan-400 font-bold">{radius.toFixed(1)} km</span>
-                            </div>
-                            <input 
-                                type="range" 
-                                min="5.0" 
-                                max="200.0" 
-                                step="5.0" 
-                                value={radius}
-                                onChange={(e) => setRadius(parseFloat(e.target.value))}
-                                className="w-full accent-cyan-500 bg-slate-800 rounded-lg appearance-none cursor-pointer h-1.5"
-                            />
+                        {/* Region Indicator Pill */}
+                        <div className="flex items-center justify-between text-[11px] bg-slate-900/80 px-2.5 py-1.5 rounded-lg border border-slate-800">
+                            <span className="text-slate-400 flex items-center">
+                                <Compass size={13} className="mr-1.5 text-cyan-400" />
+                                Active Basin:
+                            </span>
+                            <span className="font-semibold text-slate-200 capitalize">
+                                {REGIONS_CONFIG[selectedRegion]?.name || "Pan-India Portfolio"}
+                            </span>
                         </div>
+
+                        {selectedRegion !== 'all' && (
+                            <div>
+                                <div className="flex justify-between text-xs font-mono text-slate-400 mb-1.5">
+                                    <span>Inspection Radius:</span>
+                                    <span className="text-cyan-400 font-bold">{radius.toFixed(0)} km</span>
+                                </div>
+                                <input 
+                                    type="range" 
+                                    min="20.0" 
+                                    max="500.0" 
+                                    step="10.0" 
+                                    value={radius}
+                                    onChange={(e) => setRadius(parseFloat(e.target.value))}
+                                    className="w-full accent-cyan-500 bg-slate-800 rounded-lg appearance-none cursor-pointer h-1.5"
+                                />
+                            </div>
+                        )}
 
                         <button 
                             onClick={setAsActiveRig}
                             className="w-full bg-slate-850 hover:bg-slate-800 active:bg-slate-750 text-slate-200 text-xs font-medium py-2.5 rounded-xl transition-colors border border-slate-700/80 flex items-center justify-center min-h-[40px] shadow-sm"
                         >
-                            Set Selected as Active Rig
+                            <MapPin size={14} className="mr-2 text-emerald-400" />
+                            Fly to Active Wellhead ({activeWellId ? activeWellId.replace('OIL-', '') : 'None'})
                         </button>
                         
                         <button 

@@ -15,7 +15,7 @@ import {
     EyeOff,
     Maximize2
 } from 'lucide-react';
-import { REGIONS_CONFIG, getRegionalGeoLayers } from '../lib/regionalGeology';
+import { REGIONS_CONFIG, getRegionalGeoLayers, getRegionIdFromWellId } from '../lib/regionalGeology';
 
 // Helper to construct a flattened, irregular geological reservoir pool lens
 const createReservoirLensMesh = (cx, cy, cz, rx, ry, rz, color, opacity, name) => {
@@ -250,17 +250,24 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [], c
                     console.error("Failed to load active well trajectory", e);
                 }
 
-                // 2. Fetch Offset Wells Trajectories
-                const loadedOffsets = [];
-                const offsetList = offsetWells.filter(w => w.well_id !== activeWellId);
-                for (const w of offsetList) {
+                // 2. Fetch Offset Wells Trajectories (Scoped to same basin for realistic pad geometry)
+                const activeRegion = getRegionIdFromWellId(activeWellId);
+                const offsetList = offsetWells.filter(w => {
+                    if (!w.well_id || w.well_id === activeWellId) return false;
+                    return getRegionIdFromWellId(w.well_id) === activeRegion;
+                });
+                
+                const offsetPromises = offsetList.map(async (w) => {
                     try {
                         const offsetRes = await axios.get(`${API_BASE}/api/wells/${w.well_id}/trajectory?is_active=false`);
-                        loadedOffsets.push(offsetRes.data);
+                        return offsetRes.data;
                     } catch (e) {
                         console.warn(`Could not load offset ${w.well_id}`, e);
+                        return null;
                     }
-                }
+                });
+                const fetchedOffsets = await Promise.all(offsetPromises);
+                const loadedOffsets = fetchedOffsets.filter(Boolean);
 
                 // 3. Fetch Anti-Collision Analysis
                 let antiCollision = null;
@@ -621,7 +628,7 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [], c
             }
 
             const maxWellTVD = activeWell?.tvd_max || 3500;
-            const regionGeoLayers = getRegionalGeoLayers(selectedRegion || 'Assam');
+            const regionGeoLayers = getRegionalGeoLayers(activeWellId, selectedRegion);
             const layers = regionGeoLayers.map(l => {
                 if (l.to === 5000 && maxWellTVD > 5000) {
                     return { ...l, to: maxWellTVD + 500 };

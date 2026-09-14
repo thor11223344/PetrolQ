@@ -26,6 +26,19 @@ def test_regional_formation_tops():
     assert any("Bokabil" in top["name"] for top in mz_tops)
     assert any("Bhuban" in top["name"] for top in mz_tops)
 
+def test_new_regional_wells():
+    # Test newly added wells for KG Deepwater
+    kg2_traj = compute_realistic_trajectory("OIL-KG-DWN-98-2", 4500)
+    assert len(kg2_traj['formation_tops']) > 0
+
+    # Test newly added wells for Mizoram
+    mz2_traj = compute_realistic_trajectory("OIL-MZ-MAMIT-1", 4200)
+    assert len(mz2_traj['formation_tops']) > 0
+
+    # Test newly added wells for Rajasthan
+    raj2_traj = compute_realistic_trajectory("OIL-RAJ-TANOT-2", 3000)
+    assert len(raj2_traj['formation_tops']) > 0
+
 def test_trajectory_generation():
     traj = compute_realistic_trajectory("OIL-BAGHJAN-1", 3500)
     assert len(traj['trajectory']['md']) > 0
