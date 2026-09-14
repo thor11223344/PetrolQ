@@ -133,10 +133,11 @@ def get_nearby_wells(
     lat: float = Query(..., description="Latitude"),
     lon: float = Query(..., description="Longitude"),
     radius_km: float = Query(5.0, description="Radius in kilometers"),
+    region: str = Query("all", description="Filter by region (assam, rajasthan, kg, mizoram, all)"),
     db: Session = Depends(get_db)
 ):
     """
-    Search for wells within a specified radius (in km) using PostGIS spatial queries.
+    Search for wells within a specified radius (in km) using PostGIS spatial queries, filtered by region.
     """
     # PostGIS geography calculations use meters
     radius_meters = radius_km * 1000.0
@@ -145,15 +146,74 @@ def get_nearby_wells(
     target_point = ST_SetSRID(ST_MakePoint(lon, lat), 4326)
 
     # Use ST_DWithin cast to Geography for highly accurate meter-based spatial distance calculation
-    wells = db.query(WellMaster).filter(
+    query = db.query(WellMaster).filter(
         ST_DWithin(
             cast(WellMaster.surface_location, Geography),
             cast(target_point, Geography),
             radius_meters
         )
-    ).all()
+    )
+    
+    if region != "all":
+        if region == "rajasthan":
+            query = query.filter(WellMaster.well_id.like("OIL-RAJ-%"))
+        elif region == "kg":
+            query = query.filter(WellMaster.well_id.like("OIL-KG-%"))
+        elif region == "mizoram":
+            query = query.filter(WellMaster.well_id.like("OIL-MZ-%"))
+        elif region == "assam":
+            query = query.filter(
+                ~WellMaster.well_id.like("OIL-RAJ-%"),
+                ~WellMaster.well_id.like("OIL-KG-%"),
+                ~WellMaster.well_id.like("OIL-MZ-%")
+            )
 
+    wells = query.all()
     return wells
+
+@app.get("/api/wells/regions")
+def get_regions(db: Session = Depends(get_db)):
+    """Returns available regions, their center coordinates, well counts, and geological descriptions."""
+    all_wells = db.query(WellMaster.well_id).all()
+    well_ids = [w[0] for w in all_wells]
+    
+    counts = {
+        "assam": sum(1 for wid in well_ids if not (wid.startswith("OIL-RAJ") or wid.startswith("OIL-KG") or wid.startswith("OIL-MZ"))),
+        "rajasthan": sum(1 for wid in well_ids if wid.startswith("OIL-RAJ")),
+        "kg": sum(1 for wid in well_ids if wid.startswith("OIL-KG")),
+        "mizoram": sum(1 for wid in well_ids if wid.startswith("OIL-MZ"))
+    }
+    
+    return [
+        {
+            "id": "assam",
+            "name": "Upper Assam Shelf",
+            "center": [27.4, 95.2],
+            "well_count": counts["assam"],
+            "description": "Mature oilfield with severe thief-bed losses and high-pressure gas kicks."
+        },
+        {
+            "id": "rajasthan",
+            "name": "Rajasthan Basin",
+            "center": [27.5, 71.5],
+            "well_count": counts["rajasthan"],
+            "description": "Desert basin with heavy oil, sand abrasion, and massive lost circulation."
+        },
+        {
+            "id": "kg",
+            "name": "KG Deepwater",
+            "center": [16.25, 82.40],
+            "well_count": counts["kg"],
+            "description": "Offshore basin with Shallow Water Flow, gumbo shale, and HPHT overpressures."
+        },
+        {
+            "id": "mizoram",
+            "name": "Mizoram Fold Belt",
+            "center": [23.72, 92.70],
+            "well_count": counts["mizoram"],
+            "description": "Tectonically active fold belt with high horizontal stress and stuck pipe risks."
+        }
+    ]
 
 @app.get("/api/wells/{well_id}/history")
 def get_well_history(

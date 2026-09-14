@@ -15,14 +15,7 @@ import {
     EyeOff,
     Maximize2
 } from 'lucide-react';
-
-const GEO_LAYERS = [
-  { from: 0,    to: 400,  color: '#8B6F47', label: 'Topsoil / Alluvium' },
-  { from: 400,  to: 1200, color: '#C2A366', label: 'Tipam Sandstone' },
-  { from: 1200, to: 2200, color: '#7A8B5C', label: 'Girujan Clay' },
-  { from: 2200, to: 3200, color: '#A67C52', label: 'Barail Sandstone' },
-  { from: 3200, to: 5000, color: '#5C4A3D', label: 'Basement / Deep Shale' },
-];
+import { REGIONS_CONFIG, getRegionalGeoLayers } from '../lib/regionalGeology';
 
 // Helper to construct a flattened, irregular geological reservoir pool lens
 const createReservoirLensMesh = (cx, cy, cz, rx, ry, rz, color, opacity, name) => {
@@ -73,7 +66,7 @@ const createReservoirLensMesh = (cx, cy, cz, rx, ry, rz, color, opacity, name) =
     };
 };
 
-const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [], currentDepth, activeScenario }) => {
+const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [], currentDepth, activeScenario, selectedRegion }) => {
     const [plotData, setPlotData] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [theme, setTheme] = useState('dark');
@@ -628,7 +621,8 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [], c
             }
 
             const maxWellTVD = activeWell?.tvd_max || 3500;
-            const layers = GEO_LAYERS.map(l => {
+            const regionGeoLayers = getRegionalGeoLayers(selectedRegion || 'Assam');
+            const layers = regionGeoLayers.map(l => {
                 if (l.to === 5000 && maxWellTVD > 5000) {
                     return { ...l, to: maxWellTVD + 500 };
                 }
@@ -992,6 +986,22 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [], c
                     className={`flex-1 relative overflow-hidden ${theme === 'geo' ? 'bg-[#DDEBF7]' : 'bg-slate-950'}`}
                     onMouseDown={handleMouseDown}
                 >
+                    {/* Regional Hazard Card */}
+                    <div className="absolute top-4 left-4 z-20 w-64 glass-panel border border-slate-700/80 p-3 rounded-xl shadow-2xl bg-slate-900/80 backdrop-blur-md">
+                        <div className="flex items-center space-x-2 border-b border-slate-700 pb-2 mb-2">
+                            <Layers size={16} className="text-amber-400" />
+                            <h3 className="font-bold text-xs text-white uppercase tracking-wider">{REGIONS_CONFIG[selectedRegion || 'Assam']?.name || 'Region'} Geo-Hazards</h3>
+                        </div>
+                        <ul className="space-y-1.5 text-[10px] font-mono text-slate-300">
+                            {(REGIONS_CONFIG[selectedRegion || 'Assam']?.hazards || []).map((h, i) => (
+                                <li key={i} className="flex items-start space-x-1.5">
+                                    <AlertTriangle size={12} className="text-rose-400 shrink-0 mt-0.5" />
+                                    <span>{h}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
                     {isLoading ? (
                         <div className={`absolute inset-0 flex flex-col items-center justify-center text-slate-400 z-10 ${theme === 'geo' ? 'bg-[#DDEBF7]/90' : 'bg-slate-950/90'}`}>
                             <Loader2 size={36} className="animate-spin mb-3 text-cyan-400" />
@@ -1026,18 +1036,12 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [], c
                             <span className="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
                             <span>Offset Trajectories</span>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                            <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                            <span>Tipam (1450m)</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <span className="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
-                            <span>Barail Kick Zone (2400m)</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
-                            <span>Kopili (2950m)</span>
-                        </div>
+                        {getRegionalGeoLayers(selectedRegion || 'Assam').slice(1, 4).map((layer, idx) => (
+                            <div key={idx} className="flex items-center gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: layer.color }}></span>
+                                <span>{layer.label}</span>
+                            </div>
+                        ))}
                     </div>
                     <div className="text-slate-400">
                         Rotate: <span className="text-slate-300">Left-Click + Drag</span> | Pan: <span className="text-slate-300">Right-Click + Drag</span> | Zoom: <span className="text-slate-300">Scroll</span>

@@ -7,6 +7,7 @@ import { API_BASE } from '../lib/api';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import Trajectory3DViewer from './Trajectory3DViewer';
 import SourceTag from './SourceTag';
+import { REGIONS_CONFIG } from '../lib/regionalGeology';
 
 // Note: Mapbox requires an access token.
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
@@ -113,6 +114,8 @@ const BASEMAP_OPTIONS = [
 export default function WellMap({ 
     activeWellId, 
     onSelectWell, 
+    selectedRegion,
+    onSelectRegion,
     currentDepth, 
     activeScenario,
     is3DViewerOpen: external3DOpen,
@@ -178,20 +181,33 @@ export default function WellMap({
         // Fetch nearby wells based on searchCoords and radius
         const fetchNearby = async () => {
             try {
-                const response = await axios.get(`${API_BASE}/api/wells/nearby`, {
-                    params: {
-                        lat: searchCoords.lat,
-                        lon: searchCoords.lon,
-                        radius_km: radius
-                    }
-                });
+                const params = {
+                    lat: searchCoords.lat,
+                    lon: searchCoords.lon,
+                    radius_km: radius
+                };
+                if (selectedRegion && selectedRegion !== 'all') {
+                    params.region = selectedRegion;
+                }
+                const response = await axios.get(`${API_BASE}/api/wells/nearby`, { params });
                 setWells(response.data);
             } catch (err) {
                 console.error("Failed to fetch nearby wells:", err);
             }
         };
         fetchNearby();
-    }, [searchCoords, radius]);
+    }, [searchCoords, radius, selectedRegion]);
+
+    // Recenter map when region changes
+    useEffect(() => {
+        if (selectedRegion && selectedRegion !== 'all') {
+            const config = REGIONS_CONFIG[selectedRegion];
+            if (config) {
+                setSearchCoords({ lat: config.center[0], lon: config.center[1] });
+                setRadius(config.zoom === 8 ? 500 : 50);
+            }
+        }
+    }, [selectedRegion]);
 
     const circleGeoJSON = useMemo(() => {
         return createGeoJSONCircle([searchCoords.lon, searchCoords.lat], radius);
@@ -491,6 +507,7 @@ export default function WellMap({
                 offsetWells={wells} 
                 currentDepth={currentDepth}
                 activeScenario={activeScenario}
+                selectedRegion={selectedRegion}
             />
         </div>
     );

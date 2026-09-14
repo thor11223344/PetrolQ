@@ -1,6 +1,65 @@
 import hashlib
 import numpy as np
 
+REGIONAL_GEOLOGY_CONFIG = {
+    "assam": {
+        "formations": [
+            ("Tipam Sandstone", 1450.0, "#EAB308", "Freshwater permeable sand reservoir, severe thief-bed mud loss"),
+            ("Girujan Clay", 2000.0, "#8B4513", "Sloughing/caving shale"),
+            ("Barail Formation", 2400.0, "#F97316", "Overpressured sand-shale (Known Kick Zone & differential sticking)"),
+            ("Kopili Formation", 2950.0, "#A855F7", "Deep marine shale transition, swelling reactive shale")
+        ],
+        "risk_curve": lambda z: (
+            0.12 + 0.08 * np.sin(z / 200.0) if z < 1400 else
+            0.35 + 0.15 * np.sin(z / 150.0) if z < 2100 else
+            0.55 + 0.38 * np.exp(-((z - 2480.0) / 200.0) ** 2) if z < 2750 else
+            0.42 + 0.12 * np.sin(z / 180.0)
+        )
+    },
+    "rajasthan": {
+        "formations": [
+            ("Pariwar Formation", 1200.0, "#FCD34D", "Sand abrasion & filtration loss"),
+            ("Baisakhi Formation", 1800.0, "#9CA3AF", "Tight hole"),
+            ("Jodhpur Sandstone", 2300.0, "#D97706", "Heavy oil viscous drag & differential sticking"),
+            ("Bilara Carbonates", 2800.0, "#94A3B8", "Massive cavernous lost circulation & torque vibration")
+        ],
+        "risk_curve": lambda z: (
+            0.15 + 0.1 * np.sin(z / 300.0) if z < 1200 else
+            0.30 + 0.15 * np.sin(z / 200.0) if z < 1800 else
+            0.60 + 0.3 * np.exp(-((z - 2300.0) / 150.0) ** 2) if z < 2500 else
+            0.70 + 0.25 * np.exp(-((z - 2800.0) / 100.0) ** 2)
+        )
+    },
+    "kg": {
+        "formations": [
+            ("Shallow Marine Sediments", 800.0, "#38BDF8", "Shallow Water Flow / gas hydrates"),
+            ("Godavari Gumbo", 1800.0, "#3F6212", "Gumbo bit balling & plugging"),
+            ("Ravva Formation", 3200.0, "#DC2626", "Narrow PP-FG window & rapid gas influx"),
+            ("Cretaceous", 4200.0, "#7C3AED", "HPHT overpressures")
+        ],
+        "risk_curve": lambda z: (
+            0.40 + 0.2 * np.exp(-((z - 600.0) / 200.0) ** 2) if z < 1200 else
+            0.50 + 0.15 * np.sin(z / 250.0) if z < 2500 else
+            0.80 + 0.18 * np.exp(-((z - 3200.0) / 300.0) ** 2) if z < 3800 else
+            0.85 + 0.1 * np.sin(z / 200.0)
+        )
+    },
+    "mizoram": {
+        "formations": [
+            ("Bokabil Formation", 1500.0, "#F59E0B", "Tectonic ovalization"),
+            ("Upper Bhuban", 2500.0, "#B45309", "High horizontal stress breakout"),
+            ("Middle Bhuban", 3400.0, "#78350F", "Steeply dipping bedding-plane packoff & catastrophic stuck pipe"),
+            ("Disang Flysch", 4100.0, "#475569", "Tectonic crushed rock overpressure")
+        ],
+        "risk_curve": lambda z: (
+            0.30 + 0.1 * np.sin(z / 300.0) if z < 1500 else
+            0.55 + 0.2 * np.sin(z / 200.0) if z < 2500 else
+            0.75 + 0.2 * np.exp(-((z - 3400.0) / 250.0) ** 2) if z < 3800 else
+            0.85 + 0.1 * np.sin(z / 150.0)
+        )
+    }
+}
+
 def compute_realistic_trajectory(well_id: str, tvd_max: float, is_active: bool = False, db_events: list = None):
     """
     Computes a realistic 3D directional borehole trajectory.
@@ -58,26 +117,30 @@ def compute_realistic_trajectory(well_id: str, tvd_max: float, is_active: bool =
     # Azimuth: direction from North (degrees)
     az = (np.degrees(np.arctan2(dx, dy + 1e-6)) + 360.0) % 360.0
     
+    # Determine region based on well_id
+    well_prefix = well_id.upper()
+    if "RAJ" in well_prefix:
+        region = "rajasthan"
+    elif "KG" in well_prefix:
+        region = "kg"
+    elif "MZ" in well_prefix:
+        region = "mizoram"
+    else:
+        region = "assam"
+        
+    geo_config = REGIONAL_GEOLOGY_CONFIG[region]
+
     # Depth-indexed risk score (0.0 to 1.0) along trajectory
     risk_scores = []
     for z in depths_z:
-        if z < 1400: # Shallow Tipam: Low risk
-            r = 0.12 + 0.08 * np.sin(z / 200.0)
-        elif z < 2100: # Upper Barail transition: Moderate risk
-            r = 0.35 + 0.15 * np.sin(z / 150.0)
-        elif z < 2750: # Known Barail kick & loss overpressure zone: High/Critical risk
-            peak_factor = np.exp(-((z - 2480.0) / 200.0) ** 2)
-            r = 0.55 + 0.38 * peak_factor
-        else: # Deep Kopili: Elevated pressure
-            r = 0.42 + 0.12 * np.sin(z / 180.0)
+        r = geo_config["risk_curve"](z)
         risk_scores.append(round(float(np.clip(r, 0.05, 0.98)), 3))
         
-    # Formation tops for this well (Assam shelf basin)
-    formation_specs = [
-        ("Tipam Sandstone", min(tvd_max * 0.42, 1450.0), "#EAB308", "Freshwater permeable sand reservoir"),
-        ("Barail Formation", min(tvd_max * 0.68, 2400.0), "#F97316", "Overpressured sand-shale (Known Kick Zone)"),
-        ("Kopili Formation", min(tvd_max * 0.85, 2950.0), "#A855F7", "Deep marine shale transition")
-    ]
+    # Formation tops for this well
+    formation_specs = []
+    for f in geo_config["formations"]:
+        # Dynamically scale slightly based on tvd_max if needed, or just use hardcoded tops
+        formation_specs.append((f[0], min(tvd_max * (f[1]/max(tvd_max, 4500.0)), f[1]), f[2], f[3]))
     
     # Check if we have specific events with formation depths
     if db_events:

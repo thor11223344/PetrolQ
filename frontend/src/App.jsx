@@ -53,15 +53,26 @@ import ImpactStatCards from './components/ImpactStatCards';
 import SourceTag from './components/SourceTag';
 import MatrixRain from './components/MatrixRain';
 
+import { REGIONS_CONFIG, getRegionBadge } from './lib/regionalGeology';
+
 const WELL_DEFAULT_TELEMETRY = {
   'OIL-BAGHJAN-1': { well_id: 'OIL-BAGHJAN-1', depth_tvd: 2240.0, rop: 16.5, wob: 14.0, rpm: 105.0, torque: 13200.0, mud_weight: 11.2, ecd: 11.6, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2800.0 },
   'OIL-BAGHJAN-4': { well_id: 'OIL-BAGHJAN-4', depth_tvd: 2380.0, rop: 18.2, wob: 15.0, rpm: 110.0, torque: 14100.0, mud_weight: 11.4, ecd: 11.8, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2950.0 },
   'OIL-NAHARKATIYA-1': { well_id: 'OIL-NAHARKATIYA-1', depth_tvd: 2020.0, rop: 14.0, wob: 12.5, rpm: 95.0, torque: 11800.0, mud_weight: 10.8, ecd: 11.2, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2600.0 },
   'OIL-MORAN-1': { well_id: 'OIL-MORAN-1', depth_tvd: 2550.0, rop: 15.0, wob: 13.0, rpm: 100.0, torque: 12500.0, mud_weight: 11.0, ecd: 11.4, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2750.0 },
   'OIL-DIKOM-1': { well_id: 'OIL-DIKOM-1', depth_tvd: 2200.0, rop: 17.0, wob: 14.5, rpm: 105.0, torque: 13500.0, mud_weight: 11.3, ecd: 11.7, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2850.0 },
+  'OIL-TENGAKHAT-1': { well_id: 'OIL-TENGAKHAT-1', depth_tvd: 2100.0, rop: 16.0, wob: 13.5, rpm: 100.0, torque: 12800.0, mud_weight: 11.1, ecd: 11.5, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2700.0 },
+  'OIL-KOTHALONI-1': { well_id: 'OIL-KOTHALONI-1', depth_tvd: 2300.0, rop: 15.5, wob: 14.0, rpm: 105.0, torque: 13000.0, mud_weight: 11.2, ecd: 11.6, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2800.0 },
+  'OIL-HAPJAN-1': { well_id: 'OIL-HAPJAN-1', depth_tvd: 2400.0, rop: 14.5, wob: 13.0, rpm: 100.0, torque: 12500.0, mud_weight: 11.0, ecd: 11.4, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2750.0 },
+  'OIL-SHALMARI-1': { well_id: 'OIL-SHALMARI-1', depth_tvd: 2150.0, rop: 17.5, wob: 14.5, rpm: 110.0, torque: 13500.0, mud_weight: 11.3, ecd: 11.7, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2850.0 },
+  'OIL-RAJ-BAGHEWALA-1': { well_id: 'OIL-RAJ-BAGHEWALA-1', depth_tvd: 2100.0, rop: 10.5, wob: 12.0, rpm: 90.0, torque: 14500.0, mud_weight: 10.5, ecd: 11.0, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2100.0 },
+  'OIL-RAJ-TANOT-1': { well_id: 'OIL-RAJ-TANOT-1', depth_tvd: 1950.0, rop: 11.2, wob: 13.0, rpm: 95.0, torque: 14200.0, mud_weight: 10.4, ecd: 10.9, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2050.0 },
+  'OIL-KG-DEEPWATER-1': { well_id: 'OIL-KG-DEEPWATER-1', depth_tvd: 3200.0, rop: 8.5, wob: 18.0, rpm: 85.0, torque: 18500.0, mud_weight: 13.2, ecd: 13.8, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 4100.0 },
+  'OIL-MZ-AIZAWL-1': { well_id: 'OIL-MZ-AIZAWL-1', depth_tvd: 2800.0, rop: 7.5, wob: 22.0, rpm: 80.0, torque: 21500.0, mud_weight: 12.5, ecd: 13.0, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 3800.0 },
 };
 
 function App() {
+  const [selectedRegion, setSelectedRegion] = useState('assam');
   const [selectedWell, setSelectedWell] = useState('OIL-BAGHJAN-1');
   const [telemetryData, setTelemetryData] = useState(WELL_DEFAULT_TELEMETRY['OIL-BAGHJAN-1']);
   const [predictionData, setPredictionData] = useState(null);
@@ -568,16 +579,18 @@ function App() {
     });
   };
 
-  const handleSelectWell = (newWellId) => {
-    if (newWellId.includes('RAJ') || newWellId.includes('KG') || newWellId.includes('MZ')) {
-      setUploadToast({
-        title: 'OIL Exploration Asset (Coming Soon)',
-        description: 'Data integration pending for Rajasthan / KG Deepwater / Mizoram regional portfolio blocks. Currently serving active Upper Assam producing fields.',
-        wellId: newWellId,
-        time: new Date().toLocaleTimeString()
-      });
-      return;
+  const handleSelectRegion = (regionId) => {
+    setSelectedRegion(regionId);
+    if (regionId !== 'all') {
+      const regionConfig = REGIONS_CONFIG[regionId];
+      const currentRegion = getRegionBadge(selectedWell, 'all');
+      if (regionConfig && regionConfig.defaultWell && currentRegion.id !== regionId) {
+        handleSelectWell(regionConfig.defaultWell);
+      }
     }
+  };
+
+  const handleSelectWell = (newWellId) => {
     setSelectedWell(newWellId);
     setProximityWarning(null);
     alertActiveRef.current = false;
@@ -812,29 +825,54 @@ function App() {
 
         {/* Mobile Quick Action Bar (Visible only on mobile < lg) */}
         <div className="flex items-center space-x-2 lg:hidden">
+          {/* Quick Region Selector on Mobile */}
+          <select 
+            value={selectedRegion} 
+            onChange={(e) => handleSelectRegion(e.target.value)}
+            className="bg-slate-900 border border-slate-700/80 text-slate-200 text-[10px] font-mono font-medium rounded-lg px-1.5 py-1.5 outline-none max-w-[90px] truncate shadow-inner focus:border-cyan-500"
+          >
+            <option value="all">All Regions</option>
+            <option value="assam">Assam</option>
+            <option value="rajasthan">Rajasthan</option>
+            <option value="kg">KG</option>
+            <option value="mizoram">Mizoram</option>
+          </select>
+
           {/* Quick Target Well on Mobile */}
           <select 
             value={selectedWell} 
             onChange={(e) => handleSelectWell(e.target.value)}
-            className="bg-slate-900 border border-slate-700/80 text-slate-200 text-xs font-mono font-medium rounded-lg px-2 py-1.5 outline-none max-w-[130px] truncate shadow-inner focus:border-cyan-500"
+            className="bg-slate-900 border border-slate-700/80 text-slate-200 text-[10px] font-mono font-medium rounded-lg px-1.5 py-1.5 outline-none max-w-[110px] truncate shadow-inner focus:border-cyan-500"
           >
-            <optgroup label="Upper Assam Basin (Active Telemetry)">
-              <option value="OIL-BAGHJAN-1">BAGHJAN-1</option>
-              <option value="OIL-BAGHJAN-4">BAGHJAN-4</option>
-              <option value="OIL-NAHARKATIYA-1">NAHARKATIYA-1</option>
-              <option value="OIL-MORAN-1">MORAN-1</option>
-              <option value="OIL-DIKOM-1">DIKOM-1</option>
-              <option value="OIL-TENGAKHAT-1">TENGAKHAT-1</option>
-              <option value="OIL-KOTHALONI-1">KOTHALONI-1</option>
-              <option value="OIL-HAPJAN-1">HAPJAN-1</option>
-              <option value="OIL-SHALMARI-1">SHALMARI-1</option>
-            </optgroup>
-            <optgroup label="OIL Regional Portfolio (Expansion — Data Pending)">
-              <option value="OIL-RAJ-BAGHEWALA-1" disabled className="text-slate-500 bg-slate-950">BAGHEWALA-1 (Rajasthan) — Coming Soon</option>
-              <option value="OIL-RAJ-TANAOT-1" disabled className="text-slate-500 bg-slate-950">TANOT-1 (Jaisalmer, RJ) — Coming Soon</option>
-              <option value="OIL-KG-DEEPWATER-1" disabled className="text-slate-500 bg-slate-950">KG-ONN-2004/1 (KG Deepwater) — Coming Soon</option>
-              <option value="OIL-MZ-AIZAWL-1" disabled className="text-slate-500 bg-slate-950">MZ-ONN-2004/2 (Mizoram Belt) — Coming Soon</option>
-            </optgroup>
+            {(selectedRegion === 'all' || selectedRegion === 'assam') && (
+              <optgroup label="Upper Assam Basin">
+                <option value="OIL-BAGHJAN-1">BAGHJAN-1</option>
+                <option value="OIL-BAGHJAN-4">BAGHJAN-4</option>
+                <option value="OIL-NAHARKATIYA-1">NAHARKATIYA-1</option>
+                <option value="OIL-MORAN-1">MORAN-1</option>
+                <option value="OIL-DIKOM-1">DIKOM-1</option>
+                <option value="OIL-TENGAKHAT-1">TENGAKHAT-1</option>
+                <option value="OIL-KOTHALONI-1">KOTHALONI-1</option>
+                <option value="OIL-HAPJAN-1">HAPJAN-1</option>
+                <option value="OIL-SHALMARI-1">SHALMARI-1</option>
+              </optgroup>
+            )}
+            {(selectedRegion === 'all' || selectedRegion === 'rajasthan') && (
+              <optgroup label="Rajasthan Basin">
+                <option value="OIL-RAJ-BAGHEWALA-1">BAGHEWALA-1</option>
+                <option value="OIL-RAJ-TANOT-1">TANOT-1</option>
+              </optgroup>
+            )}
+            {(selectedRegion === 'all' || selectedRegion === 'kg') && (
+              <optgroup label="KG Deepwater">
+                <option value="OIL-KG-DEEPWATER-1">KG-ONN-2004/1</option>
+              </optgroup>
+            )}
+            {(selectedRegion === 'all' || selectedRegion === 'mizoram') && (
+              <optgroup label="Mizoram Fold Belt">
+                <option value="OIL-MZ-AIZAWL-1">MZ-ONN-2004/2</option>
+              </optgroup>
+            )}
           </select>
 
           {/* Quick Upload Icon Button */}
@@ -872,6 +910,25 @@ function App() {
             </select>
           </div>
 
+          {/* Active Region Selector */}
+          <div className="flex items-center space-x-1 border-l border-slate-800/80 pl-1.5 xl:pl-2 shrink-0">
+            <div className="flex items-center space-x-1.5 bg-slate-900 hover:bg-slate-850 px-2 py-1 rounded-lg transition-colors border border-slate-700 shadow-inner">
+              <MapIcon size={13} className="text-emerald-400 shrink-0" />
+              <select 
+                  value={selectedRegion} 
+                  onChange={(e) => handleSelectRegion(e.target.value)}
+                  className="bg-transparent text-slate-200 text-[11px] font-mono font-semibold outline-none cursor-pointer max-w-[110px] xl:max-w-[145px] truncate"
+                  title="Filter portfolio by geographic region"
+              >
+                  <option value="all">All Regions</option>
+                  <option value="assam">Upper Assam Shelf</option>
+                  <option value="rajasthan">Rajasthan Basin</option>
+                  <option value="kg">KG Deepwater</option>
+                  <option value="mizoram">Mizoram Fold Belt</option>
+              </select>
+            </div>
+          </div>
+
           {/* Active Field / Well Selector with Regional Portfolio Extensibility */}
           <div className="flex items-center space-x-1 border-l border-slate-800/80 pl-1.5 xl:pl-2 shrink-0">
             <div className="flex items-center space-x-1.5 bg-slate-900 hover:bg-slate-850 px-2 py-1 rounded-lg transition-colors border border-slate-700 shadow-inner">
@@ -880,33 +937,37 @@ function App() {
                   value={selectedWell} 
                   onChange={(e) => handleSelectWell(e.target.value)}
                   className="bg-transparent text-slate-200 text-[11px] font-mono font-semibold outline-none cursor-pointer max-w-[110px] xl:max-w-[145px] truncate"
-                  title="Choose active operational well or view OIL regional expansion portfolio"
+                  title="Choose active operational well"
               >
-                  <optgroup label="Upper Assam Basin (Active Telemetry)">
-                    <option value="OIL-BAGHJAN-1">BAGHJAN-1</option>
-                    <option value="OIL-BAGHJAN-4">BAGHJAN-4</option>
-                    <option value="OIL-NAHARKATIYA-1">NAHARKATIYA-1</option>
-                    <option value="OIL-MORAN-1">MORAN-1</option>
-                    <option value="OIL-DIKOM-1">DIKOM-1</option>
-                    <option value="OIL-TENGAKHAT-1">TENGAKHAT-1</option>
-                    <option value="OIL-KOTHALONI-1">KOTHALONI-1</option>
-                    <option value="OIL-HAPJAN-1">HAPJAN-1</option>
-                    <option value="OIL-SHALMARI-1">SHALMARI-1</option>
-                  </optgroup>
-                  <optgroup label="OIL Regional Portfolio (Expansion — Data Pending)">
-                    <option value="OIL-RAJ-BAGHEWALA-1" disabled className="text-slate-500 bg-slate-950">
-                      BAGHEWALA-1 (Rajasthan Basin) — Coming Soon
-                    </option>
-                    <option value="OIL-RAJ-TANAOT-1" disabled className="text-slate-500 bg-slate-950">
-                      TANOT-1 (Jaisalmer Basin, RJ) — Coming Soon
-                    </option>
-                    <option value="OIL-KG-DEEPWATER-1" disabled className="text-slate-500 bg-slate-950">
-                      KG-ONN-2004/1 (KG Deepwater) — Coming Soon
-                    </option>
-                    <option value="OIL-MZ-AIZAWL-1" disabled className="text-slate-500 bg-slate-950">
-                      MZ-ONN-2004/2 (Mizoram Fold Belt) — Coming Soon
-                    </option>
-                  </optgroup>
+                  {(selectedRegion === 'all' || selectedRegion === 'assam') && (
+                    <optgroup label="Upper Assam Basin">
+                      <option value="OIL-BAGHJAN-1">BAGHJAN-1</option>
+                      <option value="OIL-BAGHJAN-4">BAGHJAN-4</option>
+                      <option value="OIL-NAHARKATIYA-1">NAHARKATIYA-1</option>
+                      <option value="OIL-MORAN-1">MORAN-1</option>
+                      <option value="OIL-DIKOM-1">DIKOM-1</option>
+                      <option value="OIL-TENGAKHAT-1">TENGAKHAT-1</option>
+                      <option value="OIL-KOTHALONI-1">KOTHALONI-1</option>
+                      <option value="OIL-HAPJAN-1">HAPJAN-1</option>
+                      <option value="OIL-SHALMARI-1">SHALMARI-1</option>
+                    </optgroup>
+                  )}
+                  {(selectedRegion === 'all' || selectedRegion === 'rajasthan') && (
+                    <optgroup label="Rajasthan Basin">
+                      <option value="OIL-RAJ-BAGHEWALA-1">BAGHEWALA-1</option>
+                      <option value="OIL-RAJ-TANOT-1">TANOT-1</option>
+                    </optgroup>
+                  )}
+                  {(selectedRegion === 'all' || selectedRegion === 'kg') && (
+                    <optgroup label="KG Deepwater">
+                      <option value="OIL-KG-DEEPWATER-1">KG-ONN-2004/1</option>
+                    </optgroup>
+                  )}
+                  {(selectedRegion === 'all' || selectedRegion === 'mizoram') && (
+                    <optgroup label="Mizoram Fold Belt">
+                      <option value="OIL-MZ-AIZAWL-1">MZ-ONN-2004/2</option>
+                    </optgroup>
+                  )}
               </select>
               <SourceTag source={selectedWell.includes('NAHAR') ? 'force2020_relabeled' : selectedWell.includes('DIKOM') ? 'synthetic' : 'volve_relabeled'} compact={true} />
             </div>
@@ -1638,6 +1699,8 @@ function App() {
           <WellMap 
              activeWellId={selectedWell} 
              onSelectWell={handleSelectWell} 
+             selectedRegion={selectedRegion}
+             onSelectRegion={handleSelectRegion}
              currentDepth={telemetryData ? telemetryData.depth_tvd : null}
              activeScenario={simStatus.active_scenario}
              is3DViewerOpen={is3DViewerOpen}
