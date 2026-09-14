@@ -12,7 +12,8 @@ from services.hybrid_retrieval import (
     compute_depth_proximity_score,
     compute_formation_match_score,
     compute_event_type_match_score,
-    compute_hybrid_relevance_score
+    compute_hybrid_relevance_score,
+    jaccard_similarity
 )
 
 
@@ -285,6 +286,46 @@ def test_hybrid_geological_match_outranks_pure_semantic_similarity():
     assert f2 == 0.0
     assert d1 > 0.9
     assert d2 == 0.0
+
+
+def test_formation_match_scoring_jaccard_similarity():
+    """
+    Asserts Jaccard similarity is computed correctly for a hand-constructed example:
+    well A formations = {Tipam, Barail}
+    well B formations = {Tipam, Kopili}
+    -> intersection=1 ('Tipam'), union=3 ('Tipam', 'Barail', 'Kopili'), Jaccard = 1/3 = 0.333,
+    verified by hand calculation.
+    """
+    set_a = {"Tipam", "Barail"}
+    set_b = {"Tipam", "Kopili"}
+
+    # Hand-calculation:
+    # intersection: {'Tipam'} -> cardinality 1
+    # union: {'Tipam', 'Barail', 'Kopili'} -> cardinality 3
+    # Jaccard = 1 / 3 = 0.3333333333333333
+    raw_sim = jaccard_similarity(set_a, set_b)
+    assert raw_sim == pytest.approx(1.0 / 3.0, abs=1e-5)
+    assert round(raw_sim, 3) == 0.333
+
+    # compute_formation_match_score should return 0.333
+    score = compute_formation_match_score(set_a, set_b)
+    assert score == 0.333
+
+    # Multi-formation string parsing / canonicalization
+    str_a = "Tipam Sandstone, Barail Formation"
+    str_b = "Tipam Group / Kopili Shale"
+    score_str = compute_formation_match_score(str_a, str_b)
+    assert score_str == 0.333
+
+    # Complete disjoint sets
+    assert compute_formation_match_score({"Barail"}, {"Kopili"}) == 0.0
+
+    # Identical sets
+    assert compute_formation_match_score({"Tipam", "Barail"}, {"Tipam", "Barail"}) == 1.0
+
+    # Empty sets
+    assert jaccard_similarity(set(), set()) == 0.0
+    assert compute_formation_match_score(None, None) == 0.0
 
 
 def test_depth_proximity_properties():

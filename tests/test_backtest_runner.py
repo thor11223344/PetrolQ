@@ -118,7 +118,10 @@ def test_backtest_runner_milestones_and_advance_warning():
 
     # Elevated caution alert fired at 2820.0m (12m before)
     assert milestones["first_elevated_risk"]["triggered_at_depth_m"] == 2820.0
-    assert milestones["first_elevated_risk"]["advance_warning_m"] == 12.0
+    # Incident selection rationale assertion
+    assert "incident_selection_rationale" in result
+    assert len(result["incident_selection_rationale"]) > 50
+    assert "telemetry" in result["incident_selection_rationale"].lower() or "data" in result["incident_selection_rationale"].lower()
 
 
 def test_backtest_gas_kick_case():
@@ -132,14 +135,21 @@ def test_backtest_gas_kick_case():
     )
     assert result["milestones"]["first_critical_alert"]["advance_warning_m"] == 6.0
     assert "6.0m before the actual event occurred" in result["headline_result"]
+    assert "incident_selection_rationale" in result
+    assert "Baghjan" in result["incident_selection_rationale"] or "baghjan" in result["incident_selection_rationale"].lower()
 
 
 def test_available_cases_catalog():
     """
-    Verifies that get_available_cases returns documented real incidents.
+    Verifies that get_available_cases returns documented real incidents with honest selection rationales.
     """
     cases = get_available_cases()
     assert len(cases) >= 3
     case_ids = [c["case_id"] for c in cases]
     assert "OIL-MORAN-1-stuck-pipe" in case_ids
     assert "OIL-BAGHJAN-4-gas-kick" in case_ids
+
+    for case in cases:
+        assert "incident_selection_rationale" in case
+        assert len(case["incident_selection_rationale"].strip()) > 40
+

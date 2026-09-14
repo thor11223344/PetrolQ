@@ -1,5 +1,6 @@
 from .hybrid_retrieval import (
     DEFAULT_WEIGHTS,
+    jaccard_similarity,
     compute_bm25_score,
     compute_depth_proximity_score,
     compute_formation_match_score,
@@ -9,6 +10,7 @@ from .hybrid_retrieval import (
 
 __all__ = [
     "DEFAULT_WEIGHTS",
+    "jaccard_similarity",
     "compute_bm25_score",
     "compute_depth_proximity_score",
     "compute_formation_match_score",

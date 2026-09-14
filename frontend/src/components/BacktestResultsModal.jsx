@@ -27,6 +27,7 @@ const DEFAULT_CASES = [
     source_document: "Golden PDF / Historical Well Completion Report",
     formation: "Barail Sandstone",
     severity: "High / NPT Event",
+    incident_selection_rationale: "Selected because OIL-MORAN-1 is the primary reference well in the Golden PDF with complete contiguous telemetry coverage across the 2792m–2832m TVD depth range containing the documented incident, with no missing sensor channels (ROP, torque, WOB), providing an unbroken physical sequence from initial torque escalation to differential packoff.",
     report_summary: "Worked pipe with 60 klbs overpull and spotted acid soak pill to dissolve cake. Caused by high differential overbalance pressure against permeable Barail Sandstone."
   },
   {
@@ -38,6 +39,7 @@ const DEFAULT_CASES = [
     source_document: "DDR Report DDR-BGN-04/18 (OIL_Baghjan_DDR_Well_04.pdf)",
     formation: "Barail Formation (Overpressured Gas Sand Stringer)",
     severity: "CRITICAL / 5.5 hrs NPT",
+    incident_selection_rationale: "Selected because Daily Drilling Report DDR-BGN-04/18 contains a fully documented, high-consequence overpressure kick narrative with dual verified pit gain and flow-out divergence telemetry, enabling rigorous verification of kick precursor detection without sensor dropout.",
     report_summary: "Formation pore pressure (12.0 ppg equiv) exceeded active mud hydrostatic column resulting in gas influx. Shut-in well on annular preventer; circulated out influx using Driller's Method."
   },
   {
@@ -49,6 +51,7 @@ const DEFAULT_CASES = [
     source_document: "Golden PDF / Historical DDR Incident Record",
     formation: "Tipam Sandstone",
     severity: "HIGH / 3.5 hrs NPT",
+    incident_selection_rationale: "Selected because it represents a distinct lost circulation regime in the shallow Tipam Sandstone with documented flow-out drop and pit volume loss, validating the pipeline's capability on fluid loss rather than pipe sticking.",
     report_summary: "Pumped 40 bbl LCM pill with coarse nut plug and reduced pump rate to 350 gpm due to fluid breakout into depleted, micro-fractured reservoir sand."
   }
 ];
@@ -405,6 +408,28 @@ export default function BacktestResultsModal({ isOpen, onClose }) {
                 <h3 className="text-sm font-semibold text-slate-100 leading-snug">
                   {backtestData.headline_result}
                 </h3>
+              </div>
+            </div>
+          )}
+
+          {/* Incident Selection Rationale (Anti-Cherry-Picking Protocol) */}
+          {(backtestData?.incident_selection_rationale || caseMeta?.incident_selection_rationale) && (
+            <div className="p-3.5 rounded-xl bg-slate-900/70 border border-cyan-500/25 shadow-sm flex items-start space-x-3">
+              <div className="p-1.5 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 shrink-0 mt-0.5">
+                <FileText size={15} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center space-x-2 mb-1">
+                  <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-cyan-400">
+                    Incident Selection Rationale
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    • Data Completeness & Authenticity Guarantee
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                  {backtestData?.incident_selection_rationale || caseMeta?.incident_selection_rationale}
+                </p>
               </div>
             </div>
           )}

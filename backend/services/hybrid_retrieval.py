@@ -1,6 +1,6 @@
 import re
 import math
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Set
 try:
     from services.ahp_weights import (
         AHP_WEIGHTS,
@@ -66,42 +66,76 @@ def compute_depth_proximity_score(query_depth: Optional[float], event_depth: Opt
     return max(0.0, 1.0 - (diff / max_range))
 
 
+def jaccard_similarity(set_a: set, set_b: set) -> float:
+    """Intersection over union — standard set-similarity metric."""
+    if not set_a and not set_b:
+        return 0.0
+    norm_a = {str(x).strip().lower() for x in set_a if x is not None and str(x).strip()}
+    norm_b = {str(x).strip().lower() for x in set_b if x is not None and str(x).strip()}
+    if not norm_a and not norm_b:
+        return 0.0
+    intersection = len(norm_a & norm_b)
+    union = len(norm_a | norm_b)
+    return float(intersection / union) if union > 0 else 0.0
+
+
+def _extract_formation_set(formation_input: Any) -> Set[str]:
+    """Extracts a normalized set of canonical formation names from strings, sets, or lists."""
+    if not formation_input:
+        return set()
+    if isinstance(formation_input, (set, list, tuple)):
+        result = set()
+        for item in formation_input:
+            result.update(_extract_formation_set(item))
+        return result
+
+    raw_str = str(formation_input).strip().lower()
+    if not raw_str:
+        return set()
+
+    # Known regional formation names (Upper Assam Basin stratigraphy)
+    known_formations = ["dihing", "tipam", "surma", "barail", "kopili", "disang", "girujan", "jaintia"]
+    detected = {k for k in known_formations if k in raw_str}
+    if detected:
+        return detected
+
+    # Fallback: split by delimiters and clean common geologic terms
+    tokens = [t.strip() for t in re.split(r"[,/;\+]+", raw_str) if t.strip()]
+    cleaned = set()
+    for token in tokens:
+        c = re.sub(r"\b(formation|sandstone|sand|shale|gravels|group|member|transition)\b", "", token).strip()
+        cleaned.add(c if c else token)
+    return cleaned
+
+
 def compute_formation_match_score(
-    context_formation: Optional[str],
-    event_formation: Optional[str],
+    context_formation: Any,
+    event_formation: Any,
     query: str = ""
 ) -> float:
     """
-    Returns 1.0 if the event's formation matches active context formation or query,
-    or partial 0.5 if in the same regional group, else 0.0.
+    Computes Jaccard similarity over formation sets (intersection over union).
+    Produces a continuous, principled 0-1 score based on actual formation overlap
+    rather than arbitrary tier boundaries.
     """
-    ef = (event_formation or "").strip().lower()
-    cf = (context_formation or "").strip().lower()
-    q = (query or "").lower()
+    set_event = _extract_formation_set(event_formation)
+    set_context = _extract_formation_set(context_formation)
 
-    if not ef:
+    # If context formation is absent, try to infer formation names from query string
+    if not set_context and query:
+        set_context = _extract_formation_set(query)
+
+    if not set_context or not set_event:
         return 0.0
 
-    # Direct match with context formation
-    if cf and (cf in ef or ef in cf):
-        return 1.0
+    return round(jaccard_similarity(set_context, set_event), 3)
 
-    # Direct mention in query string
-    if ef in q or any(term in q for term in ef.split()):
-        return 1.0
 
-    # Regional basin stratigraphy proximity (Upper Assam Basin)
-    regional_pairs = [
-        {"barail", "kopili"},
-        {"tipam", "girujan"},
-        {"barail", "tipam"}
-    ]
-    if cf:
-        for pair in regional_pairs:
-            if any(p in cf for p in pair) and any(p in ef for p in pair):
-                return 0.5
-
-    return 0.0
+def compute_equipment_jaccard_similarity(active_equipment: Any, offset_equipment: Any) -> float:
+    """Computes Jaccard similarity between two equipment, BHA, or casing component sets."""
+    set_a = {str(x).strip().lower() for x in (active_equipment if isinstance(active_equipment, (list, set, tuple)) else [active_equipment]) if x}
+    set_b = {str(x).strip().lower() for x in (offset_equipment if isinstance(offset_equipment, (list, set, tuple)) else [offset_equipment]) if x}
+    return round(jaccard_similarity(set_a, set_b), 3)
 
 
 def compute_event_type_match_score(
