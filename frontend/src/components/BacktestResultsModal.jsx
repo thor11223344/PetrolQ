@@ -114,6 +114,7 @@ export default function BacktestResultsModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const currentCase = availableCases.find(c => c.case_id === selectedCaseId) || availableCases[0];
+  const caseMeta = backtestData?.case_meta || currentCase;
   const milestones = backtestData?.milestones || {};
   const replayCurve = backtestData?.replay_curve || [];
   const incidentDepth = backtestData?.incident_depth_m || currentCase?.incident_depth_m || 2832.0;
