@@ -2,6 +2,17 @@
 
 PetrolQ is an AI-powered Nearby Wells Intelligence System  designed to serve as a decision-support platform for drilling operations. It extracts and structures historical drilling knowledge using AI, NLP, and OCR to provide interactive geospatial mapping of offset wells, semantic search over historical events, and correlation of drilling parameters. By acting as an institutional memory alongside real-time monitoring systems, it enables engineers to proactively identify risks and make fast, data-driven decisions.
 
+## 🌐 Regional Basin Coverage & Data Provenance Disclosure
+
+| Basin / Region | Wells Available | Calibration & Data Provenance Status |
+| :--- | :--- | :--- |
+| **Upper Assam Shelf** | 11 Wells (`OIL-BAGHJAN-1`, `OIL-NAHARKATIYA-1`, etc.) | **Calibrated Baseline**: Derived from Equinor's Volve open field dataset (North Sea) and FORCE 2020 ML Competition log benchmark, relabeled to Assam stratigraphy and calibrated with Eaton (1972) / Teale (1965) physics rules. |
+| **Rajasthan Basin** | 5 Wells (`OIL-RAJ-BAGHEWALA-1` to `5`) | **Illustrative / Not Yet Calibrated**: Architecture demonstration only, no real or Volve-analog data basis. Formation names (Pariwar, Baisakhi, Jodhpur Sandstone, Bilara Carbonates) are authentic to Indian geology, but telemetry, depths, and trajectories are synthetic mock data. |
+| **KG Deepwater** | 5 Wells (`OIL-KG-DEEPWATER-1` to `5`) | **Illustrative / Not Yet Calibrated**: Architecture demonstration only, no real or Volve-analog data basis. Formation names (Godavari Gumbo, Ravva, etc.) are authentic to Indian geology, but telemetry, depths, and trajectories are synthetic mock data. |
+| **Mizoram Fold Belt** | 5 Wells (`OIL-MZ-AIZAWL-1` to `5`) | **Illustrative / Not Yet Calibrated**: Architecture demonstration only, no real or Volve-analog data basis. Formation names (Bokabil, Bhuban, Disang) are authentic to Indian geology, but telemetry, depths, and trajectories are synthetic mock data. |
+
+> **Transparency Policy:** All wells and UI views feature explicit per-item `SourceTag` provenance badges (`Volve`, `FORCE20`, `Synthetic`, or `Illustrative / Uncalibrated`) to clearly distinguish calibrated baseline wells from architectural demonstrations.
+
 ## Prerequisites
 
 - **Python:** 3.10 or higher

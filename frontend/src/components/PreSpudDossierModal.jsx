@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE } from '../lib/api';
+import SourceTag, { getWellDataSource } from './SourceTag';
 import { 
   FileText, 
   Printer, 
@@ -69,6 +70,7 @@ const PreSpudDossierModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1' }
                 <span className="text-[11px] px-2 py-0.5 rounded-full bg-cyan-950 border border-cyan-800 text-cyan-300 font-mono">
                   {activeWellId}
                 </span>
+                <SourceTag source={activeWellId} compact={true} />
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold hidden sm:inline">
                   OFFICIAL DOSSIER
                 </span>
@@ -107,6 +109,19 @@ const PreSpudDossierModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1' }
         {/* Printable Document Scroll Area */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-8 space-y-4 sm:space-y-6 print:overflow-visible print:p-0">
           
+          {/* Illustrative Notice Banner for Regional Expansion Wells */}
+          {getWellDataSource(activeWellId) === 'illustrative_uncalibrated' && (
+            <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs rounded-xl flex items-start space-x-2.5 print:bg-rose-50 print:border-rose-300 print:text-rose-900">
+              <AlertTriangle size={16} className="text-rose-400 print:text-rose-600 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold text-sm block">Illustrative / Not Yet Calibrated</span>
+                <p className="mt-0.5 text-rose-200/90 print:text-rose-800 text-xs leading-relaxed">
+                  Notice: Offset intelligence, formation hazards, and anti-collision trajectories for <strong>{activeWellId}</strong> represent an architecture demonstration only. While formation names are derived from Indian stratigraphy, the borehole data, telemetry, and depth horizons have no real or Volve-analog data basis.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Institutional Document Header */}
           <div className="border-b-2 border-slate-700 pb-4 sm:pb-5 print:border-black">
             <div className="flex justify-between items-start">

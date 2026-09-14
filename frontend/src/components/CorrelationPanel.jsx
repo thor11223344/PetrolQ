@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE } from '../lib/api';
 import Plot from 'react-plotly.js';
-import SourceTag from './SourceTag';
+import SourceTag, { getWellDataSource } from './SourceTag';
 import { 
   X, 
   Loader2, 
@@ -280,34 +280,42 @@ const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell }) => {
                 {activeTab === 'dtw' && (
                     <div className="flex-1 flex flex-col overflow-hidden">
                         {data && (
-                            <div className="bg-slate-950/70 border-b border-slate-800/80 px-5 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
-                                <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-                                    <div className="flex items-center space-x-2">
-                                        <span className="w-3.5 h-1 rounded bg-[#06B6D4] inline-block shadow-[0_0_8px_rgba(6,182,212,0.6)]"></span>
-                                        <span className="text-slate-400">Active Well:</span>
-                                        <span className="font-semibold text-cyan-300 font-mono">{activeWell}</span>
-                                        <SourceTag source={activeWell.includes('NAHAR') ? 'force2020_relabeled' : activeWell.includes('DIKOM') ? 'synthetic' : 'volve_relabeled'} compact={true} />
+                            <>
+                                {(getWellDataSource(activeWell) === 'illustrative_uncalibrated' || getWellDataSource(offsetWell) === 'illustrative_uncalibrated') && (
+                                    <div className="bg-rose-500/10 border-b border-rose-500/30 px-5 py-1.5 flex items-center space-x-2 text-[11px] text-rose-300">
+                                        <AlertTriangle size={13} className="text-rose-400 shrink-0" />
+                                        <span><strong>Regional Data Notice:</strong> {getWellDataSource(activeWell) === 'illustrative_uncalibrated' && getWellDataSource(offsetWell) === 'illustrative_uncalibrated' ? 'Active and offset wells are' : getWellDataSource(activeWell) === 'illustrative_uncalibrated' ? 'Active well is' : 'Offset well is'} <strong>Illustrative / Not Yet Calibrated</strong> — architecture demonstration only, no real or Volve-analog data basis.</span>
                                     </div>
-                                    <div className="flex items-center space-x-2">
-                                        <span className="w-3.5 h-1 rounded bg-[#F59E0B] inline-block shadow-[0_0_8px_rgba(245,158,11,0.6)]"></span>
-                                        <span className="text-slate-400">Historical Offset:</span>
-                                        <span className="font-semibold text-amber-300 font-mono">{offsetWell}</span>
-                                        <SourceTag source={offsetWell.includes('NAHAR') ? 'force2020_relabeled' : offsetWell.includes('DIKOM') ? 'synthetic' : 'volve_relabeled'} compact={true} />
+                                )}
+                                <div className="bg-slate-950/70 border-b border-slate-800/80 px-5 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
+                                    <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                                        <div className="flex items-center space-x-2">
+                                            <span className="w-3.5 h-1 rounded bg-[#06B6D4] inline-block shadow-[0_0_8px_rgba(6,182,212,0.6)]"></span>
+                                            <span className="text-slate-400">Active Well:</span>
+                                            <span className="font-semibold text-cyan-300 font-mono">{activeWell}</span>
+                                            <SourceTag source={activeWell} compact={true} />
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <span className="w-3.5 h-1 rounded bg-[#F59E0B] inline-block shadow-[0_0_8px_rgba(245,158,11,0.6)]"></span>
+                                            <span className="text-slate-400">Historical Offset:</span>
+                                            <span className="font-semibold text-amber-300 font-mono">{offsetWell}</span>
+                                            <SourceTag source={offsetWell} compact={true} />
+                                        </div>
+                                        <div className="h-4 w-px bg-slate-800 hidden md:block"></div>
+                                        <div className="text-slate-300">
+                                            <strong className="text-slate-100">DTW Alignment:</strong>
+                                            <span className="text-slate-400 ml-1.5">
+                                                {isAligned 
+                                                    ? 'Formations flattened at matching horizon datums' 
+                                                    : 'Tie-lines slope illustrates structural formation dip'}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div className="h-4 w-px bg-slate-800 hidden md:block"></div>
-                                    <div className="text-slate-300">
-                                        <strong className="text-slate-100">DTW Alignment:</strong>
-                                        <span className="text-slate-400 ml-1.5">
-                                            {isAligned 
-                                                ? 'Formations flattened at matching horizon datums' 
-                                                : 'Tie-lines slope illustrates structural formation dip'}
-                                        </span>
+                                    <div className="text-slate-400 font-mono">
+                                        DTW Distance: <span className="text-cyan-400 font-bold">{data.distance ? Math.round(data.distance) : 0}</span>
                                     </div>
                                 </div>
-                                <div className="text-slate-400 font-mono">
-                                    DTW Distance: <span className="text-cyan-400 font-bold">{data.distance ? Math.round(data.distance) : 0}</span>
-                                </div>
-                            </div>
+                            </>
                         )}
 
                         {showHelp && (

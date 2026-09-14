@@ -15,6 +15,7 @@ import {
     EyeOff,
     Maximize2
 } from 'lucide-react';
+import SourceTag, { getWellDataSource } from './SourceTag';
 import { REGIONS_CONFIG, getRegionalGeoLayers, getRegionIdFromWellId } from '../lib/regionalGeology';
 
 // Helper to construct a flattened, irregular geological reservoir pool lens
@@ -881,6 +882,12 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [], c
                                 <span className="text-[11px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-mono font-medium">
                                     {activeWellId}
                                 </span>
+                                <SourceTag source={activeWellId} compact={true} />
+                                {getWellDataSource(activeWellId) === 'illustrative_uncalibrated' && (
+                                    <span className="text-[10px] text-rose-300 bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 rounded-full font-sans">
+                                        Illustrative / Not Yet Calibrated
+                                    </span>
+                                )}
                             </h2>
                             <p className="text-[11px] sm:text-xs text-slate-400 hidden sm:block">
                                 Directional anti-collision monitoring with ML hazard score & stratigraphic tops
@@ -994,11 +1001,19 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [], c
                     onMouseDown={handleMouseDown}
                 >
                     {/* Regional Hazard Card */}
-                    <div className="absolute top-4 left-4 z-20 w-64 glass-panel border border-slate-700/80 p-3 rounded-xl shadow-2xl bg-slate-900/80 backdrop-blur-md">
-                        <div className="flex items-center space-x-2 border-b border-slate-700 pb-2 mb-2">
-                            <Layers size={16} className="text-amber-400" />
-                            <h3 className="font-bold text-xs text-white uppercase tracking-wider">{REGIONS_CONFIG[selectedRegion || 'Assam']?.name || 'Region'} Geo-Hazards</h3>
+                    <div className="absolute top-4 left-4 z-20 w-72 glass-panel border border-slate-700/80 p-3 rounded-xl shadow-2xl bg-slate-900/85 backdrop-blur-md">
+                        <div className="flex items-center justify-between border-b border-slate-700 pb-2 mb-2">
+                            <div className="flex items-center space-x-1.5">
+                                <Layers size={15} className="text-amber-400" />
+                                <h3 className="font-bold text-xs text-white uppercase tracking-wider">{REGIONS_CONFIG[selectedRegion || 'Assam']?.name || 'Region'} Geo-Hazards</h3>
+                            </div>
+                            <SourceTag source={activeWellId} compact={true} />
                         </div>
+                        {getWellDataSource(activeWellId) === 'illustrative_uncalibrated' && (
+                            <div className="mb-2 text-[9.5px] text-rose-300 font-sans bg-rose-500/10 border border-rose-500/30 px-2 py-1 rounded leading-snug">
+                                <strong>Illustrative / Not Yet Calibrated</strong> — architecture demonstration only, no real or Volve-analog data basis.
+                            </div>
+                        )}
                         <ul className="space-y-1.5 text-[10px] font-mono text-slate-300">
                             {(REGIONS_CONFIG[selectedRegion || 'Assam']?.hazards || []).map((h, i) => (
                                 <li key={i} className="flex items-start space-x-1.5">

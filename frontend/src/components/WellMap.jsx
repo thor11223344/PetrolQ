@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Target, Box, ChevronDown, ChevronUp, Moon, Globe, Mountain, Compass, MapPin } from 'lucide-react';
+import { Target, Box, ChevronDown, ChevronUp, Moon, Globe, Mountain, Compass, MapPin, AlertCircle } from 'lucide-react';
 import Map, { Marker, NavigationControl, Source, Layer } from 'react-map-gl/maplibre';
 import * as maplibregl from 'maplibre-gl';
 import axios from 'axios';
@@ -444,16 +444,22 @@ export default function WellMap({
                                 </div>
                                 
                                 {/* Rich Interactive Tooltip */}
-                                <div className="absolute bottom-8 opacity-0 group-hover:opacity-100 transition-all duration-200 bg-[#0c1322]/95 border border-slate-700 text-slate-100 text-[11px] font-mono px-3 py-2 rounded-xl shadow-2xl pointer-events-none whitespace-nowrap z-50 flex flex-col space-y-1 backdrop-blur-md">
+                                <div className="absolute bottom-8 opacity-0 group-hover:opacity-100 transition-all duration-200 bg-[#0c1322]/95 border border-slate-700 text-slate-100 text-[11px] font-mono px-3 py-2 rounded-xl shadow-2xl pointer-events-none whitespace-nowrap z-50 flex flex-col space-y-1.5 backdrop-blur-md">
                                     <div className="flex items-center space-x-2">
                                         <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-400' : theme.bg}`}></span>
                                         <span className="font-bold tracking-wide">{well.well_id}</span>
                                         {isActive && <span className="text-[9px] text-emerald-400 font-sans font-extrabold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/30">ACTIVE RIG</span>}
+                                        <SourceTag source={well.well_id} compact={true} />
                                     </div>
                                     <div className="flex items-center justify-between text-[10px] text-slate-400 border-t border-slate-800 pt-1">
                                         <span>{well.field_name || theme.label}</span>
                                         <span className="font-semibold text-slate-300 ml-3">{well.total_depth_tvd ? `${well.total_depth_tvd}m TVD` : ''}</span>
                                     </div>
+                                    {regionKey !== 'assam' && (
+                                        <div className="text-[9.5px] text-rose-300 font-sans bg-rose-500/10 border border-rose-500/30 px-2 py-1 rounded max-w-[290px] whitespace-normal leading-snug">
+                                            Illustrative / Not Yet Calibrated — architecture demonstration only, no real or Volve-analog data basis
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </Marker>
@@ -492,14 +498,22 @@ export default function WellMap({
                 {!isCollapsed && (
                     <div className="space-y-3 pt-1">
                         {/* Region Indicator Pill */}
-                        <div className="flex items-center justify-between text-[11px] bg-slate-900/80 px-2.5 py-1.5 rounded-lg border border-slate-800">
-                            <span className="text-slate-400 flex items-center">
-                                <Compass size={13} className="mr-1.5 text-cyan-400" />
-                                Active Basin:
-                            </span>
-                            <span className="font-semibold text-slate-200 capitalize">
-                                {REGIONS_CONFIG[selectedRegion]?.name || "Pan-India Portfolio"}
-                            </span>
+                        <div className="flex flex-col space-y-1.5 bg-slate-900/80 px-2.5 py-1.5 rounded-lg border border-slate-800">
+                            <div className="flex items-center justify-between text-[11px]">
+                                <span className="text-slate-400 flex items-center">
+                                    <Compass size={13} className="mr-1.5 text-cyan-400" />
+                                    Active Basin:
+                                </span>
+                                <span className="font-semibold text-slate-200 capitalize">
+                                    {REGIONS_CONFIG[selectedRegion]?.name || "Pan-India Portfolio"}
+                                </span>
+                            </div>
+                            {selectedRegion !== 'all' && selectedRegion !== 'assam' && (
+                                <div className="flex items-start space-x-1.5 text-[9.5px] font-sans text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded px-2 py-1 leading-snug">
+                                    <AlertCircle size={12} className="text-rose-400 shrink-0 mt-0.5" />
+                                    <span>Illustrative / Not Yet Calibrated — architecture demonstration only, no real or Volve-analog data basis</span>
+                                </div>
+                            )}
                         </div>
 
                         {selectedRegion !== 'all' && (

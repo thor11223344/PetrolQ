@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, ShieldCheck, Cpu } from 'lucide-react';
+import { Database, ShieldCheck, Cpu, AlertCircle } from 'lucide-react';
 
 /**
  * Reusable Data Provenance Badge component.
@@ -7,8 +7,9 @@ import { Database, ShieldCheck, Cpu } from 'lucide-react';
  * - "volve_relabeled": Equinor Volve Open Data (North Sea), calibrated to Upper Assam basin
  * - "force2020_relabeled": FORCE 2020 ML Competition Log Benchmark
  * - "synthetic": Regional Geomechanical Synthetic Calibration
+ * - "illustrative_uncalibrated": Illustrative / Not Yet Calibrated — architecture demonstration only, no real or Volve-analog data basis
  */
-const SOURCE_CONFIGS = {
+export const SOURCE_CONFIGS = {
   volve_relabeled: {
     label: "Volve (Relabeled)",
     shortLabel: "Volve",
@@ -38,25 +39,65 @@ const SOURCE_CONFIGS = {
     dotColor: "bg-purple-400",
     icon: Cpu,
     tooltip: "Data Provenance: Synthetically calibrated geomechanical model based on published Eaton / Teale physics rules for Upper Assam overpressure zones."
+  },
+  illustrative_uncalibrated: {
+    label: "Illustrative / Uncalibrated",
+    shortLabel: "Illustrative",
+    bgColor: "bg-rose-500/15",
+    textColor: "text-rose-300",
+    borderColor: "border-rose-500/40",
+    dotColor: "bg-rose-400",
+    icon: AlertCircle,
+    tooltip: "Data Provenance: Illustrative / Not Yet Calibrated — architecture demonstration only, no real or Volve-analog data basis."
   }
 };
 
-const SourceTag = ({ source, compact = false, showIcon = true, className = "" }) => {
-  // Normalize source key
-  const normalizedKey = (source || "").toLowerCase().trim();
-  let config = SOURCE_CONFIGS[normalizedKey];
+/**
+ * Resolves the data provenance classification key for any given well ID or raw data source label.
+ */
+export const getWellDataSource = (wellIdOrSource) => {
+  if (!wellIdOrSource) return "volve_relabeled";
+  const str = String(wellIdOrSource).toLowerCase().trim();
 
-  if (!config) {
-    // Fallback detection
-    if (normalizedKey.includes("force")) {
-      config = SOURCE_CONFIGS.force2020_relabeled;
-    } else if (normalizedKey.includes("synth")) {
-      config = SOURCE_CONFIGS.synthetic;
-    } else {
-      config = SOURCE_CONFIGS.volve_relabeled;
-    }
+  // Regional expansion wells (Rajasthan, KG Deepwater, Mizoram) are strictly illustrative / uncalibrated
+  if (
+    str.includes("raj") ||
+    str.includes("baghewala") ||
+    str.includes("tanot") ||
+    str.includes("dandewala") ||
+    str.includes("rajasthan") ||
+    str.includes("jaisalmer") ||
+    str.includes("kg") ||
+    str.includes("deepwater") ||
+    str.includes("yanam") ||
+    str.includes("amalapuram") ||
+    str.includes("mz") ||
+    str.includes("aizawl") ||
+    str.includes("mamit") ||
+    str.includes("kolasib") ||
+    str.includes("lunglei") ||
+    str.includes("champhai") ||
+    str.includes("mizoram") ||
+    str.includes("illustrative") ||
+    str.includes("uncalibrated")
+  ) {
+    return "illustrative_uncalibrated";
   }
 
+  if (str.includes("nahar") || str.includes("force")) {
+    return "force2020_relabeled";
+  }
+
+  if (str.includes("dikom") || str.includes("baghjan-4") || str.includes("synth")) {
+    return "synthetic";
+  }
+
+  return "volve_relabeled";
+};
+
+const SourceTag = ({ source, compact = false, showIcon = true, className = "" }) => {
+  const normalizedKey = getWellDataSource(source);
+  const config = SOURCE_CONFIGS[normalizedKey] || SOURCE_CONFIGS.volve_relabeled;
   const Icon = config.icon;
 
   return (

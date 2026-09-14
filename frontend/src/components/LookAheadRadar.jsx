@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE } from '../lib/api';
+import SourceTag, { getWellDataSource } from './SourceTag';
 import { 
   Radar, 
   AlertTriangle, 
@@ -26,6 +27,12 @@ const WELL_DEFAULT_DEPTHS = {
   'OIL-KOTHALONI-1': 2200,
   'OIL-HAPJAN-1': 2230,
   'OIL-SHALMARI-1': 2080,
+  'OIL-RAJ-BAGHEWALA-1': 2100,
+  'OIL-RAJ-TANOT-1': 1950,
+  'OIL-KG-DEEPWATER-1': 3200,
+  'OIL-KG-DWN-98-2': 3350,
+  'OIL-MZ-AIZAWL-1': 2800,
+  'OIL-MZ-MAMIT-1': 2920,
 };
 
 const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', currentDepth = 2240.0 }) => {
@@ -124,16 +131,32 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
                   className="bg-slate-800 border border-slate-700 text-cyan-300 text-xs font-mono font-bold rounded-lg px-2 py-1 outline-none hover:border-cyan-500 focus:border-cyan-400 cursor-pointer transition max-w-[140px] truncate"
                   title="Switch Target Well for Offset Radar Analysis"
                 >
-                  <option value="OIL-BAGHJAN-1">BAGHJAN-1</option>
-                  <option value="OIL-BAGHJAN-4">BAGHJAN-4</option>
-                  <option value="OIL-NAHARKATIYA-1">NAHARKATIYA-1</option>
-                  <option value="OIL-MORAN-1">MORAN-1</option>
-                  <option value="OIL-DIKOM-1">DIKOM-1</option>
-                  <option value="OIL-TENGAKHAT-1">TENGAKHAT-1</option>
-                  <option value="OIL-KOTHALONI-1">KOTHALONI-1</option>
-                  <option value="OIL-HAPJAN-1">HAPJAN-1</option>
-                  <option value="OIL-SHALMARI-1">SHALMARI-1</option>
+                  <optgroup label="Upper Assam (Calibrated)">
+                    <option value="OIL-BAGHJAN-1">BAGHJAN-1</option>
+                    <option value="OIL-BAGHJAN-4">BAGHJAN-4</option>
+                    <option value="OIL-NAHARKATIYA-1">NAHARKATIYA-1</option>
+                    <option value="OIL-MORAN-1">MORAN-1</option>
+                    <option value="OIL-DIKOM-1">DIKOM-1</option>
+                    <option value="OIL-TENGAKHAT-1">TENGAKHAT-1</option>
+                    <option value="OIL-KOTHALONI-1">KOTHALONI-1</option>
+                    <option value="OIL-HAPJAN-1">HAPJAN-1</option>
+                    <option value="OIL-SHALMARI-1">SHALMARI-1</option>
+                  </optgroup>
+                  <optgroup label="Rajasthan (Illustrative)">
+                    <option value="OIL-RAJ-BAGHEWALA-1">BAGHEWALA-1</option>
+                    <option value="OIL-RAJ-TANOT-1">TANOT-1</option>
+                  </optgroup>
+                  <optgroup label="KG Deepwater (Illustrative)">
+                    <option value="OIL-KG-DEEPWATER-1">KG-DEEPWATER-1</option>
+                    <option value="OIL-KG-DWN-98-2">KG-DWN-98/2</option>
+                  </optgroup>
+                  <optgroup label="Mizoram (Illustrative)">
+                    <option value="OIL-MZ-AIZAWL-1">MZ-AIZAWL-1</option>
+                    <option value="OIL-MZ-MAMIT-1">MZ-MAMIT-1</option>
+                  </optgroup>
                 </select>
+
+                <SourceTag source={targetWellId} compact={true} />
 
                 <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 font-mono">
                   {Math.round(simulatedDepth)}m
@@ -172,6 +195,14 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
             </button>
           </div>
         </div>
+
+        {/* Illustrative Notice Banner for Regional Expansion Wells */}
+        {getWellDataSource(targetWellId) === 'illustrative_uncalibrated' && (
+          <div className="px-3 sm:px-6 py-2 bg-rose-500/10 border-b border-rose-500/30 flex items-center space-x-2 text-xs text-rose-300">
+            <AlertTriangle size={14} className="text-rose-400 shrink-0" />
+            <span><strong>Regional Basin Notice:</strong> Ahead-of-the-bit formation radar for <strong>{targetWellId}</strong> is <strong>Illustrative / Not Yet Calibrated</strong> — architecture demonstration only, no real or Volve-analog data basis.</span>
+          </div>
+        )}
 
         {/* Controls Bar */}
         <div className="px-3 sm:px-6 py-2.5 sm:py-3 bg-slate-950/60 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">

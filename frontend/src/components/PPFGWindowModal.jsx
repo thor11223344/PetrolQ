@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE } from '../lib/api';
 import Plot from 'react-plotly.js';
+import SourceTag, { getWellDataSource } from './SourceTag';
 import { 
   Gauge, 
   ShieldCheck, 
   AlertTriangle, 
+  AlertCircle,
   X, 
   RefreshCw, 
   Layers, 
@@ -170,6 +172,7 @@ const PPFGWindowModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1' }) =>
                 <span className="text-[11px] px-2 py-0.5 rounded-full bg-cyan-950 border border-cyan-800 text-cyan-300 font-mono">
                   {activeWellId}
                 </span>
+                <SourceTag source={activeWellId} compact={true} />
                 <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 font-mono">
                   Depth: {act.current_tvd || 2240}m
                 </span>
@@ -212,6 +215,14 @@ const PPFGWindowModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1' }) =>
             </button>
           </div>
         </div>
+
+        {/* Illustrative Notice Banner for Regional Expansion Wells */}
+        {getWellDataSource(activeWellId) === 'illustrative_uncalibrated' && (
+          <div className="px-3 sm:px-6 py-2 bg-rose-500/10 border-b border-rose-500/30 flex items-center space-x-2 text-xs text-rose-300">
+            <AlertCircle size={14} className="text-rose-400 shrink-0" />
+            <span><strong>Regional Basin Notice:</strong> PPFG safe corridor for <strong>{activeWellId}</strong> is <strong>Illustrative / Not Yet Calibrated</strong> — architecture demonstration only, no real or Volve-analog data basis.</span>
+          </div>
+        )}
 
         {/* Operating Status Banner */}
         <div 

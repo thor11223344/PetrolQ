@@ -7,6 +7,7 @@ import {
   ChevronDown, 
   Database,
   AlertTriangle,
+  AlertCircle,
   XCircle,
   TrendingDown,
   FileUp,
@@ -52,11 +53,11 @@ import BacktestResultsModal from './components/BacktestResultsModal';
 import ContributeLessonModal from './components/ContributeLessonModal';
 import DataTransparencyModal from './components/DataTransparencyModal';
 import ImpactStatCards from './components/ImpactStatCards';
-import SourceTag from './components/SourceTag';
+import SourceTag, { getWellDataSource } from './components/SourceTag';
 import MatrixRain from './components/MatrixRain';
 import AiModelModal from './components/AiModelModal';
 
-import { REGIONS_CONFIG, getRegionBadge, getRegionIdFromWellId } from './lib/regionalGeology';
+import { REGIONS_CONFIG, getRegionBadge, getRegionIdFromWellId, isRegionCalibrated, getRegionProvenance } from './lib/regionalGeology';
 
 const WELL_DEFAULT_TELEMETRY = {
   // Upper Assam Basin
@@ -876,23 +877,23 @@ function App() {
           <select 
             value={selectedRegion} 
             onChange={(e) => handleSelectRegion(e.target.value)}
-            className="bg-slate-900 border border-slate-700/80 text-slate-200 text-[10px] font-mono font-medium rounded-lg px-1.5 py-1.5 outline-none max-w-[90px] truncate shadow-inner focus:border-cyan-500"
+            className="bg-slate-900 border border-slate-700/80 text-slate-200 text-[10px] font-mono font-medium rounded-lg px-1.5 py-1.5 outline-none max-w-[100px] truncate shadow-inner focus:border-cyan-500"
           >
             <option value="all">All Regions</option>
-            <option value="assam">Assam</option>
-            <option value="rajasthan">Rajasthan</option>
-            <option value="kg">KG</option>
-            <option value="mizoram">Mizoram</option>
+            <option value="assam">Assam (Calibrated)</option>
+            <option value="rajasthan">Rajasthan (Illustrative)</option>
+            <option value="kg">KG (Illustrative)</option>
+            <option value="mizoram">Mizoram (Illustrative)</option>
           </select>
 
           {/* Quick Target Well on Mobile */}
           <select 
             value={selectedWell} 
             onChange={(e) => handleSelectWell(e.target.value)}
-            className="bg-slate-900 border border-slate-700/80 text-slate-200 text-[10px] font-mono font-medium rounded-lg px-1.5 py-1.5 outline-none max-w-[110px] truncate shadow-inner focus:border-cyan-500"
+            className="bg-slate-900 border border-slate-700/80 text-slate-200 text-[10px] font-mono font-medium rounded-lg px-1.5 py-1.5 outline-none max-w-[125px] truncate shadow-inner focus:border-cyan-500"
           >
             {(selectedRegion === 'all' || selectedRegion === 'assam') && (
-              <optgroup label="Upper Assam Basin">
+              <optgroup label="Upper Assam Basin (Volve / Benchmark Calibrated)">
                 <option value="OIL-BAGHJAN-1">BAGHJAN-1</option>
                 <option value="OIL-BAGHJAN-4">BAGHJAN-4</option>
                 <option value="OIL-NAHARKATIYA-1">NAHARKATIYA-1</option>
@@ -907,7 +908,7 @@ function App() {
               </optgroup>
             )}
             {(selectedRegion === 'all' || selectedRegion === 'rajasthan') && (
-              <optgroup label="Rajasthan Basin">
+              <optgroup label="Rajasthan Basin (Illustrative / Uncalibrated)">
                 <option value="OIL-RAJ-BAGHEWALA-1">BAGHEWALA-1</option>
                 <option value="OIL-RAJ-BAGHEWALA-2">BAGHEWALA-2</option>
                 <option value="OIL-RAJ-TANOT-1">TANOT-1</option>
@@ -916,7 +917,7 @@ function App() {
               </optgroup>
             )}
             {(selectedRegion === 'all' || selectedRegion === 'kg') && (
-              <optgroup label="KG Deepwater">
+              <optgroup label="KG Deepwater (Illustrative / Uncalibrated)">
                 <option value="OIL-KG-DEEPWATER-1">KG-DEEPWATER-1</option>
                 <option value="OIL-KG-DWN-98-2">KG-DWN-98/2</option>
                 <option value="OIL-KG-D6-OFFSHORE">KG-D6-OFFSHORE</option>
@@ -925,7 +926,7 @@ function App() {
               </optgroup>
             )}
             {(selectedRegion === 'all' || selectedRegion === 'mizoram') && (
-              <optgroup label="Mizoram Fold Belt">
+              <optgroup label="Mizoram Fold Belt (Illustrative / Uncalibrated)">
                 <option value="OIL-MZ-AIZAWL-1">MZ-AIZAWL-1</option>
                 <option value="OIL-MZ-MAMIT-1">MZ-MAMIT-1</option>
                 <option value="OIL-MZ-KOLASIB-1">MZ-KOLASIB-1</option>
@@ -977,14 +978,14 @@ function App() {
               <select 
                   value={selectedRegion} 
                   onChange={(e) => handleSelectRegion(e.target.value)}
-                  className="bg-transparent text-slate-200 text-[11px] font-mono font-semibold outline-none cursor-pointer max-w-[110px] xl:max-w-[145px] truncate"
+                  className="bg-transparent text-slate-200 text-[11px] font-mono font-semibold outline-none cursor-pointer max-w-[130px] xl:max-w-[170px] truncate"
                   title="Filter portfolio by geographic region"
               >
-                  <option value="all">All Regions</option>
-                  <option value="assam">Upper Assam Shelf</option>
-                  <option value="rajasthan">Rajasthan Basin</option>
-                  <option value="kg">KG Deepwater</option>
-                  <option value="mizoram">Mizoram Fold Belt</option>
+                  <option value="all">All Regions (Pan-India)</option>
+                  <option value="assam">Upper Assam Shelf (Calibrated)</option>
+                  <option value="rajasthan">Rajasthan Basin (Illustrative)</option>
+                  <option value="kg">KG Deepwater (Illustrative)</option>
+                  <option value="mizoram">Mizoram Fold Belt (Illustrative)</option>
               </select>
             </div>
           </div>
@@ -1000,7 +1001,7 @@ function App() {
                   title="Choose active operational well"
               >
                   {(selectedRegion === 'all' || selectedRegion === 'assam') && (
-                    <optgroup label="Upper Assam Basin">
+                    <optgroup label="Upper Assam Basin (Volve / Benchmark Calibrated)">
                       <option value="OIL-BAGHJAN-1">BAGHJAN-1</option>
                       <option value="OIL-BAGHJAN-4">BAGHJAN-4</option>
                       <option value="OIL-NAHARKATIYA-1">NAHARKATIYA-1</option>
@@ -1015,7 +1016,7 @@ function App() {
                     </optgroup>
                   )}
                   {(selectedRegion === 'all' || selectedRegion === 'rajasthan') && (
-                    <optgroup label="Rajasthan Basin">
+                    <optgroup label="Rajasthan Basin (Illustrative / Uncalibrated)">
                       <option value="OIL-RAJ-BAGHEWALA-1">BAGHEWALA-1</option>
                       <option value="OIL-RAJ-BAGHEWALA-2">BAGHEWALA-2</option>
                       <option value="OIL-RAJ-TANOT-1">TANOT-1</option>
@@ -1024,7 +1025,7 @@ function App() {
                     </optgroup>
                   )}
                   {(selectedRegion === 'all' || selectedRegion === 'kg') && (
-                    <optgroup label="KG Deepwater">
+                    <optgroup label="KG Deepwater (Illustrative / Uncalibrated)">
                       <option value="OIL-KG-DEEPWATER-1">KG-DEEPWATER-1</option>
                       <option value="OIL-KG-DWN-98-2">KG-DWN-98/2</option>
                       <option value="OIL-KG-D6-OFFSHORE">KG-D6-OFFSHORE</option>
@@ -1033,7 +1034,7 @@ function App() {
                     </optgroup>
                   )}
                   {(selectedRegion === 'all' || selectedRegion === 'mizoram') && (
-                    <optgroup label="Mizoram Fold Belt">
+                    <optgroup label="Mizoram Fold Belt (Illustrative / Uncalibrated)">
                       <option value="OIL-MZ-AIZAWL-1">MZ-AIZAWL-1</option>
                       <option value="OIL-MZ-MAMIT-1">MZ-MAMIT-1</option>
                       <option value="OIL-MZ-KOLASIB-1">MZ-KOLASIB-1</option>
@@ -1042,7 +1043,15 @@ function App() {
                     </optgroup>
                   )}
               </select>
-              <SourceTag source={selectedWell.includes('NAHAR') ? 'force2020_relabeled' : selectedWell.includes('DIKOM') ? 'synthetic' : 'volve_relabeled'} compact={true} />
+              <SourceTag source={selectedWell} compact={true} />
+              {getWellDataSource(selectedWell) === 'illustrative_uncalibrated' && (
+                <span 
+                  className="hidden 2xl:inline-block text-[10px] text-rose-300 bg-rose-500/10 border border-rose-500/30 px-1.5 py-0.5 rounded font-mono font-medium truncate max-w-[170px]"
+                  title="Illustrative / Not Yet Calibrated — architecture demonstration only, no real or Volve-analog data basis"
+                >
+                  Illustrative
+                </span>
+              )}
             </div>
           </div>
 
@@ -2122,9 +2131,19 @@ function App() {
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
                 WELL: {selectedWell.replace('OIL-', '')}
               </span>
-              <SourceTag source={selectedWell.includes('NAHAR') ? 'force2020_relabeled' : selectedWell.includes('DIKOM') ? 'synthetic' : 'volve_relabeled'} compact={true} />
+              <SourceTag source={selectedWell} compact={true} />
             </div>
           </div>
+
+          {getWellDataSource(selectedWell) === 'illustrative_uncalibrated' && (
+            <div className="mx-4 mt-3 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-start space-x-2 shrink-0">
+              <AlertCircle size={15} className="text-rose-400 shrink-0 mt-0.5" />
+              <div className="leading-snug">
+                <span className="font-bold text-[11px] block">Illustrative / Not Yet Calibrated</span>
+                <span className="text-[10px] text-rose-200/80">Architecture demonstration only, no real or Volve-analog data basis.</span>
+              </div>
+            </div>
+          )}
           
           <div className="flex-1 p-4 overflow-y-auto custom-scrollbar pb-10 space-y-4">
             
@@ -2490,7 +2509,7 @@ function App() {
                             severity === 'HIGH' ? 'bg-status-warning' : 'bg-status-fluid'
                           }`} />
                           <span className="text-xs font-semibold text-slate-200">{event.event_type}</span>
-                          <SourceTag source={event.data_source || (selectedWell.includes('NAHAR') ? 'force2020_relabeled' : selectedWell.includes('DIKOM') ? 'synthetic' : 'volve_relabeled')} compact={true} />
+                          <SourceTag source={event.data_source || selectedWell} compact={true} />
                         </div>
                         <div className="flex items-center space-x-1.5 shrink-0">
                           {isNewlyAdded && (
