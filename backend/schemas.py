@@ -33,6 +33,7 @@ class EventResponse(BaseModel):
     root_cause: Optional[str] = None
     mitigation_applied: Optional[str] = None
     npt_hours: Optional[float] = None
+    data_source: Optional[str] = "synthetic"
 
     @computed_field
     @property
@@ -60,6 +61,7 @@ class WellResponse(BaseModel):
     kb_elevation: Optional[float] = None
     total_depth_tvd: Optional[float] = None
     spud_date: Optional[str] = None
+    data_source: Optional[str] = "volve_relabeled"
     
     # We will output this as a dictionary {"lat": y, "lon": x}
     surface_location: Any = None
@@ -71,7 +73,7 @@ class WellResponse(BaseModel):
             try:
                 from geoalchemy2.shape import to_shape
                 shape = to_shape(v)
-                return {"lat": shape.y, "lon": shape.x}
+                return {"lat": getattr(shape, "y", 0.0), "lon": getattr(shape, "x", 0.0)}
             except Exception:
                 # If shapely is missing or parse fails, return string rep
                 return str(v)

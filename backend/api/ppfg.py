@@ -24,7 +24,7 @@ def get_ppfg_safe_window(
     if not well:
         raise HTTPException(status_code=404, detail=f"Well {well_id} not found")
 
-    tvd_max = well.total_depth_tvd or 3500.0
+    tvd_max: float = float(getattr(well, "total_depth_tvd", 3500.0) or 3500.0)
     num_pts = 80
     depths_tvd = np.linspace(50.0, tvd_max, num_pts)
 
@@ -102,17 +102,17 @@ def get_ppfg_safe_window(
         DrillingParam.well_id == well_id
     ).order_by(DrillingParam.timestamp.desc()).first()
 
-    current_tvd = latest_param.depth_tvd if latest_param else 2240.0
-    current_mw = latest_param.mud_weight if latest_param else 11.2
-    current_ecd = latest_param.ecd if latest_param else 11.6
+    current_tvd: float = float(getattr(latest_param, "depth_tvd", 2240.0) or 2240.0) if latest_param else 2240.0
+    current_mw: float = float(getattr(latest_param, "mud_weight", 11.2) or 11.2) if latest_param else 11.2
+    current_ecd: float = float(getattr(latest_param, "ecd", 11.6) or 11.6) if latest_param else 11.6
 
     # Interpolate pore pressure and fracture gradient at current depth
     current_pp = float(np.interp(current_tvd, depths_tvd, pp_curve))
     current_fg = float(np.interp(current_tvd, depths_tvd, fg_curve))
 
     # Evaluate safety envelope
-    margin_to_kick = round(current_ecd - current_pp, 2)
-    margin_to_loss = round(current_fg - current_ecd, 2)
+    margin_to_kick = round(float(current_ecd - current_pp), 2)
+    margin_to_loss = round(float(current_fg - current_ecd), 2)
 
     if current_ecd < current_pp:
         operating_status = "CRITICAL_UNDERBALANCED"
@@ -172,11 +172,11 @@ def get_ppfg_safe_window(
             "notes": "Pore pressure and fracture gradient computed using Eaton's method (1972) with a synthetic sonic-log input calibrated to produce a plausible Upper Assam Basin overpressure signature — real acoustic log data was not available."
         },
         "active_status": {
-            "current_tvd": round(current_tvd, 1),
-            "mud_weight_ppg": round(current_mw, 2),
-            "ecd_ppg": round(current_ecd, 2),
-            "pore_pressure_at_depth": round(current_pp, 2),
-            "fracture_gradient_at_depth": round(current_fg, 2),
+            "current_tvd": round(float(current_tvd), 1),
+            "mud_weight_ppg": round(float(current_mw), 2),
+            "ecd_ppg": round(float(current_ecd), 2),
+            "pore_pressure_at_depth": round(float(current_pp), 2),
+            "fracture_gradient_at_depth": round(float(current_fg), 2),
             "kick_margin_ppg": margin_to_kick,
             "loss_margin_ppg": margin_to_loss,
             "operating_status": operating_status,

@@ -18,6 +18,7 @@ class WellMaster(Base):
     
     # PostGIS spatial column (Point, WGS84)
     surface_location = Column(Geometry(geometry_type='POINT', srid=4326))
+    data_source = Column(String, default='volve_relabeled')
     
     # Bi-directional relationships to related tables
     drilling_params = relationship("DrillingParam", back_populates="well", cascade="all, delete-orphan")
@@ -75,6 +76,7 @@ class SyntheticEvent(Base):
     root_cause = Column(String)
     mitigation_applied = Column(String)
     npt_hours = Column(Float)
+    data_source = Column(String, default='synthetic')
     
     # Fallback to standard Postgres Array since pgvector compilation failed
     embedding = Column(ARRAY(Float))

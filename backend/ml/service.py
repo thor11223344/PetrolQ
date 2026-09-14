@@ -482,6 +482,19 @@ class HazardPredictionService:
             ]
         else:
             top_factors_to_report = top_shap_factors[:3] if top_shap_factors else []
+
+        # Prompt 7: Classical Statistical Change-Point Baseline (Independent Signal)
+        try:
+            from services.statistical_anomaly import StatisticalAnomalyService
+            stat_svc = StatisticalAnomalyService()
+            stat_anomaly = stat_svc.evaluate_telemetry(current_params, custom_history=history_params)
+        except Exception:
+            stat_anomaly = {
+                "triggered": False,
+                "baseline_label": "Transparent Statistical Baseline (Z-score/CUSUM)",
+                "summary": "Nominal stationary baseline",
+                "channels": {}
+            }
                 
         return {
             'risk_probability': final_risk_prob,
@@ -494,5 +507,6 @@ class HazardPredictionService:
             'mse_kpsi': mse_kpsi,
             'd_xc': d_xc,
             'fracture_gradient_ppg': fg_ppg,
-            'fracture_margin_ppg': fg_margin_ppg
+            'fracture_margin_ppg': fg_margin_ppg,
+            'statistical_anomaly': stat_anomaly
         }

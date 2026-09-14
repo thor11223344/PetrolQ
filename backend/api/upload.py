@@ -35,7 +35,11 @@ async def upload_report(
     Supports PDF reports (with OCR fallback for scanned reports) and
     LAS well log files (Log ASCII Standard).
     """
-    filename_lower = file.filename.lower()
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No filename provided.")
+    
+    filename = file.filename
+    filename_lower = filename.lower()
     is_pdf = filename_lower.endswith('.pdf')
     is_las = filename_lower.endswith('.las')
 
@@ -44,7 +48,7 @@ async def upload_report(
         
     temp_dir = "temp_uploads"
     os.makedirs(temp_dir, exist_ok=True)
-    temp_file_path = os.path.join(temp_dir, f"{uuid.uuid4()}_{file.filename}")
+    temp_file_path = os.path.join(temp_dir, f"{uuid.uuid4()}_{filename}")
     
     try:
         # Save uploaded file to disk

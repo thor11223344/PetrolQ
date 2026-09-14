@@ -31,7 +31,9 @@ import {
   Menu,
   Sliders,
   ShieldCheck,
-  Info
+  Info,
+  Terminal,
+  History
 } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE, WS_BASE } from './lib/api';
@@ -44,9 +46,12 @@ import CorrelationPanel from './components/CorrelationPanel';
 import LookAheadRadar from './components/LookAheadRadar';
 import PPFGWindowModal from './components/PPFGWindowModal';
 import PreSpudDossierModal from './components/PreSpudDossierModal';
+import BacktestResultsModal from './components/BacktestResultsModal';
 import ContributeLessonModal from './components/ContributeLessonModal';
 import DataTransparencyModal from './components/DataTransparencyModal';
 import ImpactStatCards from './components/ImpactStatCards';
+import SourceTag from './components/SourceTag';
+import MatrixRain from './components/MatrixRain';
 
 const WELL_DEFAULT_TELEMETRY = {
   'OIL-BAGHJAN-1': { well_id: 'OIL-BAGHJAN-1', depth_tvd: 2240.0, rop: 16.5, wob: 14.0, rpm: 105.0, torque: 13200.0, mud_weight: 11.2, ecd: 11.6, flow_out_pct: 100.0, pit_gain_bbl: 0.0, spp_psi: 2800.0 },
@@ -81,6 +86,7 @@ function App() {
   const [isRadarOpen, setIsRadarOpen] = useState(false);
   const [isPPFGOpen, setIsPPFGOpen] = useState(false);
   const [isDossierOpen, setIsDossierOpen] = useState(false);
+  const [isBacktestOpen, setIsBacktestOpen] = useState(false);
   const [isContributeOpen, setIsContributeOpen] = useState(false);
   const [isTransparencyOpen, setIsTransparencyOpen] = useState(false);
   const [is3DViewerOpen, setIs3DViewerOpen] = useState(false);
@@ -93,6 +99,21 @@ function App() {
   const [mobileActiveTab, setMobileActiveTab] = useState('map'); // 'map' | 'telemetry' | 'simulator'
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const wsRef = useRef(null);
+
+  // Opt-in Visual Theme: 'standard' | 'terminal' (Prompt 6)
+  const [dashboardTheme, setDashboardTheme] = useState(() => {
+    return localStorage.getItem('petrolq_theme') || 'standard';
+  });
+  // Sequence-Based Precursor Pattern Match (Prompt 5)
+  const [sequenceAlert, setSequenceAlert] = useState(null);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('petrolq_theme', dashboardTheme);
+    } catch (e) {
+      console.warn("Could not save theme to localStorage", e);
+    }
+  }, [dashboardTheme]);
 
   // Pre-configured Demo Scenarios (Golden PDF Documented Well Incidents)
   const [demoScenarios, setDemoScenarios] = useState([
@@ -288,6 +309,10 @@ function App() {
               if (prediction) {
                 setPredictionData(prediction);
               }
+              // Sequence-based pattern precursor matching (Prompt 5)
+              if (data.sequence_match) {
+                setSequenceAlert(data.sequence_match);
+              }
               // Do NOT override local client simStatus from foreign broadcasts!
               
               // Update Trajectory Data for plotting (keep last 50 points to prevent lag)
@@ -314,6 +339,7 @@ function App() {
                   alertActiveRef.current = false;
                   setAlertState({ active: false, prediction: null });
                 }
+                setSequenceAlert(null);
               }
             }
           } catch (err) {
@@ -722,10 +748,51 @@ function App() {
   };
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-[#070b14] text-slate-200 overflow-hidden font-sans">
+    <div className={`h-screen w-screen flex flex-col ${dashboardTheme === 'terminal' ? 'bg-[#040805] text-[#10b981] font-mono select-text' : 'bg-[#070b14] text-slate-200 font-sans'} overflow-hidden relative`}>
       
+      {/* Terminal Mode Matrix Rain Effect (Opt-in) */}
+      {dashboardTheme === 'terminal' && <MatrixRain opacity={0.10} />}
+
+      {/* BSPWM Tiling Status Bar (Prompt 6) */}
+      {dashboardTheme === 'terminal' && (
+        <div className="bg-[#020503] border-b border-emerald-500/40 px-3 py-1 text-[11px] font-mono text-emerald-400 flex items-center justify-between z-50 shrink-0 select-none">
+          <div className="flex items-center space-x-2">
+            <span className="bg-emerald-500 text-black px-1.5 py-0.2 font-bold">[1:SYS]</span>
+            <span className="text-emerald-300 hover:text-emerald-100 cursor-pointer" onClick={() => setMobileActiveTab('map')}>[2:MAP]</span>
+            <span className="text-emerald-300 hover:text-emerald-100 cursor-pointer" onClick={() => setMobileActiveTab('telemetry')}>[3:TELEMETRY]</span>
+            <span className="text-emerald-300 hover:text-emerald-100 cursor-pointer" onClick={() => setIsKnowledgeSearchOpen(true)}>[4:GRAPH/RAG]</span>
+            <span className="text-emerald-700">│</span>
+            <span className="text-emerald-500/80">WM: BSPWM (TILED)</span>
+            <span className="text-emerald-700">│</span>
+            <span className="text-emerald-400 font-bold">TARGET: {selectedWell}</span>
+          </div>
+          <div className="flex items-center space-x-3 text-[10px]">
+            <span className="text-emerald-400">NET: {isBackendConnected ? 'UP (WS 1.0Hz)' : 'DOWN'}</span>
+            <span className="text-emerald-700">│</span>
+            <span className="text-emerald-400">AHP: SYNTHESIZED</span>
+            <span className="text-emerald-700">│</span>
+            <span className="text-emerald-300 font-bold">{new Date().toISOString().replace('T', ' ').slice(0, 19)} UTC</span>
+          </div>
+        </div>
+      )}
+
+      {/* Fake Terminal Titlebar when in Terminal Mode */}
+      {dashboardTheme === 'terminal' && (
+        <div className="bg-[#050b07] px-3 py-1 border-b border-emerald-500/20 flex items-center justify-between text-[10px] font-mono text-emerald-500/80 z-50 shrink-0">
+          <div className="flex items-center space-x-2">
+            <div className="flex space-x-1">
+              <div className="w-2.5 h-2.5 rounded-full bg-rose-500/80"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-amber-500/80"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/80"></div>
+            </div>
+            <span>petrolq@rig-edge:~/telemetry/{selectedWell.toLowerCase()} ($ ./monitor_ahead.sh --mode=live)</span>
+          </div>
+          <span className="text-emerald-400">TERM: VT100 / POSIX</span>
+        </div>
+      )}
+
       {/* Top Navigation Bar - Mission Control Bar */}
-      <header className="h-13 sm:h-14 border-b border-slate-800/80 bg-[#0c1322]/95 backdrop-blur-xl flex items-center justify-between px-3 sm:px-4 lg:px-5 z-50 shrink-0 shadow-[0_4px_25px_rgba(0,0,0,0.5)] relative w-full overflow-hidden">
+      <header className={`h-13 sm:h-14 border-b ${dashboardTheme === 'terminal' ? 'border-emerald-500/40 bg-[#06100a]/95' : 'border-slate-800/80 bg-[#0c1322]/95'} backdrop-blur-xl flex items-center justify-between px-3 sm:px-4 lg:px-5 z-40 shrink-0 shadow-[0_4px_25px_rgba(0,0,0,0.5)] relative w-full overflow-hidden`}>
         {/* Brand Identity */}
         <div className="flex items-center space-x-2.5 shrink-0 mr-3">
           <div className="relative flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-cyan-500/20 via-blue-500/10 to-indigo-500/10 border border-cyan-500/40 text-cyan-400 shadow-glow-cyan shrink-0">
@@ -841,6 +908,7 @@ function App() {
                     </option>
                   </optgroup>
               </select>
+              <SourceTag source={selectedWell.includes('NAHAR') ? 'force2020_relabeled' : selectedWell.includes('DIKOM') ? 'synthetic' : 'volve_relabeled'} compact={true} />
             </div>
           </div>
 
@@ -920,6 +988,16 @@ function App() {
             </button>
 
             <button 
+                id="btn-time-travel-backtest"
+                onClick={() => setIsBacktestOpen(true)}
+                className="flex items-center space-x-1 text-[11px] font-medium px-2 py-1 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 active:bg-indigo-500/35 text-indigo-300 border border-indigo-500/35 transition-all shadow-sm shrink-0"
+                title="Time-Travel Backtest: Causal Replay & Advance Warning Validation"
+            >
+                <History size={13} className="text-indigo-400 shrink-0" />
+                <span>Backtest</span>
+            </button>
+
+            <button 
                 onClick={() => setIsContributeOpen(true)}
                 className="flex items-center space-x-1 text-[11px] font-medium px-2 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 active:bg-purple-500/30 text-purple-300 border border-purple-500/35 transition-all shadow-[0_0_12px_-3px_rgba(168,85,247,0.25)] shrink-0"
                 title="Add Field Lesson Learned to Institutional Memory"
@@ -959,6 +1037,20 @@ function App() {
               <Info size={14} className="text-cyan-400" />
             </button>
 
+            {/* Terminal Mode Quick Toggle (Prompt 6: Opt-in Theme) */}
+            <button 
+              onClick={() => setDashboardTheme(prev => prev === 'terminal' ? 'standard' : 'terminal')} 
+              className={`p-1.5 rounded-lg transition-colors border shrink-0 flex items-center space-x-1 font-mono text-xs ${
+                dashboardTheme === 'terminal' 
+                  ? 'text-emerald-300 bg-emerald-500/20 border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.3)]' 
+                  : 'bg-slate-900/80 hover:bg-slate-800 border-slate-700/80 hover:text-white text-slate-400'
+              }`}
+              title={dashboardTheme === 'terminal' ? 'Terminal Mode: ON (Click to switch to Standard)' : 'Switch to Terminal / Tiling-WM Visual Mode'}
+            >
+              <Terminal size={14} className={dashboardTheme === 'terminal' ? 'text-emerald-400' : ''} />
+              <span className="text-[10px] hidden 2xl:inline">{dashboardTheme === 'terminal' ? 'TERM' : 'CLI'}</span>
+            </button>
+
             {/* Settings */}
             <button 
                 onClick={() => setIsSettingsOpen(!isSettingsOpen)} 
@@ -981,6 +1073,22 @@ function App() {
                         </button>
                     </div>
                     <div className="space-y-3.5">
+                        <div className="flex items-center justify-between">
+                            <div>
+                              <span className="text-xs text-slate-300 block">Terminal / Tiling Mode</span>
+                              <span className="text-[10px] text-slate-400 font-mono">BSPWM Monospace HUD</span>
+                            </div>
+                            <button
+                              onClick={() => setDashboardTheme(prev => prev === 'terminal' ? 'standard' : 'terminal')}
+                              className={`px-2.5 py-1 rounded text-[10px] font-mono font-bold transition border ${
+                                dashboardTheme === 'terminal'
+                                  ? 'bg-emerald-500 text-black border-emerald-400 shadow-glow-emerald'
+                                  : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'
+                              }`}
+                            >
+                              {dashboardTheme === 'terminal' ? 'ENABLED' : 'DISABLED'}
+                            </button>
+                        </div>
                         <div className="flex items-center justify-between">
                             <span className="text-xs text-slate-300">Dark Matter Theme</span>
                             <div className="w-8 h-4 bg-status-active rounded-full relative cursor-pointer shadow-glow-emerald">
@@ -1129,6 +1237,17 @@ function App() {
               <div>
                 <div className="font-bold text-white">1-Click Pre-Spud Dossier</div>
                 <div className="text-[10px] text-cyan-300/80">Pre-spud hazard briefing</div>
+              </div>
+            </button>
+
+            <button 
+              onClick={() => { setIsBacktestOpen(true); setIsMobileMenuOpen(false); }}
+              className="flex items-center space-x-3 p-3 rounded-xl bg-indigo-500/10 active:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-left font-medium text-xs min-h-[44px]"
+            >
+              <History size={18} className="text-indigo-400 shrink-0" />
+              <div>
+                <div className="font-semibold text-slate-100">Time-Travel Backtest</div>
+                <div className="text-[10px] text-slate-400">Validate advance warning against historical incidents</div>
               </div>
             </button>
 
@@ -1737,6 +1856,48 @@ function App() {
         {/* Right-Hand Drawer / Mobile Telemetry Tab */}
         <aside className={`${mobileActiveTab === 'telemetry' ? 'flex w-full flex-1' : 'hidden lg:flex lg:w-[460px]'} border-l border-slate-800/80 bg-[#0c1322]/95 backdrop-blur-xl flex flex-col shadow-2xl z-20 shrink-0 relative h-full min-h-0 overflow-hidden`}>
           
+          {/* Sequence-Based Pattern Matching Precursor Banner (Prompt 5) */}
+          {sequenceAlert && sequenceAlert.matched && (
+            <div className="bg-gradient-to-r from-amber-950 via-amber-900 to-amber-950 text-white p-3.5 border-b-2 border-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.3)] animate-in slide-in-from-top-4 relative z-30">
+              <button 
+                onClick={() => setSequenceAlert(null)}
+                className="absolute top-2.5 right-2.5 text-white/70 hover:text-white transition-colors p-1"
+                title="Dismiss Pattern Alert"
+              >
+                <XCircle size={16} />
+              </button>
+              <div className="flex items-start space-x-2.5">
+                <div className="p-1.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 animate-pulse mt-0.5 shrink-0">
+                  <Activity size={16} />
+                </div>
+                <div className="min-w-0 pr-6">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500 text-slate-950 px-1.5 py-0.5 rounded font-mono">
+                      DTW Pattern Precursor
+                    </span>
+                    <span className="text-xs font-bold text-amber-200">
+                      {sequenceAlert.pattern_name}
+                    </span>
+                  </div>
+                  <p className="text-xs text-amber-100/90 mt-1">
+                    Lead-up pattern matched historical incident <strong className="text-white font-mono">{sequenceAlert.historical_incident_id}</strong>
+                  </p>
+                  <div className="flex items-center justify-between flex-wrap gap-2 mt-2 pt-1.5 border-t border-amber-500/30 text-[11px] font-mono">
+                    <span className="text-amber-300">
+                      DTW Similarity: <strong className="text-white">{(sequenceAlert.similarity_score * 100).toFixed(1)}%</strong>
+                    </span>
+                    <button
+                      onClick={() => setIsCorrelationOpen(true)}
+                      className="px-2 py-0.5 rounded bg-amber-500/30 hover:bg-amber-500/50 border border-amber-500/60 text-amber-200 hover:text-white text-[10px] font-mono font-bold transition cursor-pointer"
+                    >
+                      View Reference Incident
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Hazard Alert Banner */}
           {showAlerts && alertState.active && (
             <div className="bg-gradient-to-r from-rose-950 via-rose-900 to-rose-950 text-white p-4 border-b-2 border-rose-500 shadow-glow-danger animate-in slide-in-from-top-4 relative z-30">
@@ -1799,6 +1960,7 @@ function App() {
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
                 WELL: {selectedWell.replace('OIL-', '')}
               </span>
+              <SourceTag source={selectedWell.includes('NAHAR') ? 'force2020_relabeled' : selectedWell.includes('DIKOM') ? 'synthetic' : 'volve_relabeled'} compact={true} />
             </div>
           </div>
           
@@ -1823,6 +1985,55 @@ function App() {
                   </span>
                 </div>
               </div>
+
+              {/* Statistical Anomaly Layer (Prompt 7: Independent Baseline Z-Score & CUSUM Signal) */}
+              {predictionData?.statistical_anomaly && (
+                <div className={`p-2.5 rounded-xl border font-mono text-xs transition ${
+                  predictionData.statistical_anomaly.anomaly_detected
+                    ? 'bg-amber-950/30 border-amber-500/50 text-amber-200'
+                    : 'bg-slate-950/50 border-slate-800/80 text-slate-400'
+                }`}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center space-x-1.5">
+                      <Sliders size={13} className={predictionData.statistical_anomaly.anomaly_detected ? 'text-amber-400 animate-pulse' : 'text-slate-500'} />
+                      <span className="text-[10px] uppercase font-bold tracking-wider">
+                        Statistical Anomaly (Independent 3rd Signal)
+                      </span>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
+                      predictionData.statistical_anomaly.anomaly_detected
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                        : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                    }`}>
+                      {predictionData.statistical_anomaly.anomaly_detected ? 'ANOMALY FLAGGED' : 'NOMINAL BASELINE'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5 text-[10px] text-center my-1.5">
+                    <div className="bg-slate-900/80 p-1 rounded border border-slate-800">
+                      <span className="text-slate-400 block text-[9px]">Torque Z</span>
+                      <span className={`font-bold ${Math.abs(predictionData.statistical_anomaly.z_scores?.torque || 0) >= 2.5 ? 'text-amber-400' : 'text-slate-200'}`}>
+                        {predictionData.statistical_anomaly.z_scores?.torque !== undefined ? predictionData.statistical_anomaly.z_scores.torque.toFixed(2) : '0.00'}σ
+                      </span>
+                    </div>
+                    <div className="bg-slate-900/80 p-1 rounded border border-slate-800">
+                      <span className="text-slate-400 block text-[9px]">ROP Z</span>
+                      <span className={`font-bold ${Math.abs(predictionData.statistical_anomaly.z_scores?.rop || 0) >= 2.5 ? 'text-amber-400' : 'text-slate-200'}`}>
+                        {predictionData.statistical_anomaly.z_scores?.rop !== undefined ? predictionData.statistical_anomaly.z_scores.rop.toFixed(2) : '0.00'}σ
+                      </span>
+                    </div>
+                    <div className="bg-slate-900/80 p-1 rounded border border-slate-800">
+                      <span className="text-slate-400 block text-[9px]">Flow Return Z</span>
+                      <span className={`font-bold ${Math.abs(predictionData.statistical_anomaly.z_scores?.flow_out_pct || 0) >= 2.5 ? 'text-amber-400' : 'text-slate-200'}`}>
+                        {predictionData.statistical_anomaly.z_scores?.flow_out_pct !== undefined ? predictionData.statistical_anomaly.z_scores.flow_out_pct.toFixed(2) : '0.00'}σ
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-[10px] text-slate-400 flex items-center justify-between border-t border-slate-800/60 pt-1">
+                    <span className="truncate">{predictionData.statistical_anomaly.summary}</span>
+                    <span className="text-[9px] text-slate-500 shrink-0 ml-1">Rolling N=15 CUSUM</span>
+                  </div>
+                </div>
+              )}
 
               {/* 4 Disaggregated Hazard Indicators */}
               <div className="grid grid-cols-2 gap-2.5">
@@ -2117,6 +2328,7 @@ function App() {
                             severity === 'HIGH' ? 'bg-status-warning' : 'bg-status-fluid'
                           }`} />
                           <span className="text-xs font-semibold text-slate-200">{event.event_type}</span>
+                          <SourceTag source={event.data_source || (selectedWell.includes('NAHAR') ? 'force2020_relabeled' : selectedWell.includes('DIKOM') ? 'synthetic' : 'volve_relabeled')} compact={true} />
                         </div>
                         <div className="flex items-center space-x-1.5 shrink-0">
                           {isNewlyAdded && (
@@ -2329,6 +2541,10 @@ function App() {
           isOpen={isDossierOpen}
           onClose={() => setIsDossierOpen(false)}
           activeWellId={selectedWell}
+      />
+      <BacktestResultsModal 
+          isOpen={isBacktestOpen}
+          onClose={() => setIsBacktestOpen(false)}
       />
 
       {/* Floating Ingestion / Institutional Memory Toast Notification */}

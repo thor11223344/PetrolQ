@@ -20,7 +20,7 @@ def get_embedding(text: str) -> list[float]:
         with _embedding_lock:
             if embedding_model is None:
                 try:
-                    from fastembed import TextEmbedding
+                    from fastembed import TextEmbedding  # type: ignore
                     cache_dir = os.path.join(os.getcwd(), "temp_uploads", "fastembed_cache")
                     os.makedirs(cache_dir, exist_ok=True)
                     embedding_model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5", cache_dir=cache_dir)

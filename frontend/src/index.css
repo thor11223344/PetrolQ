@@ -44,6 +44,7 @@
 /* Custom Tactical Range Slider */
 input[type=range] {
   -webkit-appearance: none;
+  appearance: none;
   background: #17233d;
   height: 6px;
   border-radius: 9999px;

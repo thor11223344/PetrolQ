@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE } from '../lib/api';
 import Plot from 'react-plotly.js';
+import SourceTag from './SourceTag';
 import { 
   X, 
   Loader2, 
@@ -285,11 +286,13 @@ const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell }) => {
                                         <span className="w-3.5 h-1 rounded bg-[#06B6D4] inline-block shadow-[0_0_8px_rgba(6,182,212,0.6)]"></span>
                                         <span className="text-slate-400">Active Well:</span>
                                         <span className="font-semibold text-cyan-300 font-mono">{activeWell}</span>
+                                        <SourceTag source={activeWell.includes('NAHAR') ? 'force2020_relabeled' : activeWell.includes('DIKOM') ? 'synthetic' : 'volve_relabeled'} compact={true} />
                                     </div>
                                     <div className="flex items-center space-x-2">
                                         <span className="w-3.5 h-1 rounded bg-[#F59E0B] inline-block shadow-[0_0_8px_rgba(245,158,11,0.6)]"></span>
                                         <span className="text-slate-400">Historical Offset:</span>
                                         <span className="font-semibold text-amber-300 font-mono">{offsetWell}</span>
+                                        <SourceTag source={offsetWell.includes('NAHAR') ? 'force2020_relabeled' : offsetWell.includes('DIKOM') ? 'synthetic' : 'volve_relabeled'} compact={true} />
                                     </div>
                                     <div className="h-4 w-px bg-slate-800 hidden md:block"></div>
                                     <div className="text-slate-300">

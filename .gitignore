@@ -18,3 +18,5 @@ venv/
 fresh_venv/
 .vscode/
 temp_uploads/
+demo_project/
+demo_projects/

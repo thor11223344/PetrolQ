@@ -173,6 +173,14 @@ const PreSpudDossierModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1' }
                   <span>Total Offset NPT: <strong className="text-amber-400 print:text-black">{exec.total_offset_npt_hours || 0} hrs</strong></span>
                   <span>Closest Subsurface Approach: <strong className="text-emerald-400 print:text-black">{exec.closest_approach_distance_m}m ({exec.closest_approach_offset_well})</strong></span>
                 </div>
+                {exec.mitigation_wilson_stats && (
+                  <div className="mt-2.5 pt-2.5 border-t border-amber-900/30 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono">
+                    <span className="text-amber-200">Historical Mitigation Success Rate (Wilson 95% CI):</span>
+                    <span className="font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">
+                      {exec.mitigation_wilson_stats.display_insight || `${(exec.mitigation_wilson_stats.point_estimate * 100).toFixed(0)}% (95% CI: ${(exec.mitigation_wilson_stats.ci_lower * 100).toFixed(0)}%-${(exec.mitigation_wilson_stats.ci_upper * 100).toFixed(0)}%, n=${exec.mitigation_wilson_stats.sample_size})`}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -268,11 +276,18 @@ const PreSpudDossierModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1' }
                 if (!evList || evList.length === 0) return null;
                 return (
                   <div key={formName} className="border border-slate-800 rounded-lg p-3.5 bg-slate-950/40 print:bg-slate-50 print:border-slate-300">
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                       <span className="font-bold text-sm text-cyan-300 print:text-cyan-900">{formName}</span>
-                      <span className="text-xs text-slate-400 font-mono">
-                        {evList.length} incident(s) cataloged
-                      </span>
+                      <div className="flex items-center space-x-2">
+                        {dossier?.formation_wilson_stats?.[formName] && (
+                          <span className="text-[10px] text-emerald-400 font-mono bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-500/20">
+                            Mitigation: {dossier.formation_wilson_stats[formName].display_insight}
+                          </span>
+                        )}
+                        <span className="text-xs text-slate-400 font-mono">
+                          {evList.length} incident(s)
+                        </span>
+                      </div>
                     </div>
 
                     <div className="space-y-2">

@@ -203,13 +203,20 @@ def test_hybrid_retrieval_formula_hand_calculated_assertion():
     )
     assert expected_hybrid_score == pytest.approx(0.845, abs=1e-6)
 
+    test_weights = {
+        "formation_match": 0.25,
+        "depth_proximity": 0.25,
+        "event_type_match": 0.20,
+        "bm25": 0.15,
+        "vector": 0.15
+    }
     res = compute_hybrid_relevance_score(
         formation_match=f_score,
         depth_proximity=d_score,
         event_type_match=e_score,
         bm25=bm25_score,
         vector=vec_score,
-        weights=DEFAULT_WEIGHTS
+        weights=test_weights
     )
 
     assert res["hybrid_score"] == pytest.approx(0.845, abs=1e-6)
@@ -218,6 +225,18 @@ def test_hybrid_retrieval_formula_hand_calculated_assertion():
     assert res["score_breakdown"]["event_type_match"] == 1.00
     assert res["score_breakdown"]["bm25"] == 0.60
     assert res["score_breakdown"]["vector"] == 0.70
+
+    # Also verify DEFAULT_WEIGHTS uses AHP eigenvector weights with valid consistency ratio
+    ahp_res = compute_hybrid_relevance_score(
+        formation_match=f_score,
+        depth_proximity=d_score,
+        event_type_match=e_score,
+        bm25=bm25_score,
+        vector=vec_score,
+        weights=DEFAULT_WEIGHTS
+    )
+    assert ahp_res["ahp_metadata"]["consistent"] is True
+    assert ahp_res["ahp_metadata"]["consistency_ratio"] < 0.10
 
 
 def test_hybrid_geological_match_outranks_pure_semantic_similarity():

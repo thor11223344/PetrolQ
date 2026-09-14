@@ -13,7 +13,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import cast
 from geoalchemy2.functions import ST_DWithin, ST_MakePoint, ST_SetSRID
 from geoalchemy2.types import Geography
-from typing import List, Optional
+import re
+from typing import List, Optional, Dict, Any
 import numpy as np
 from pydantic import BaseModel
 
@@ -29,13 +30,21 @@ from api.correlate import router as correlate_router
 from api.lookahead import router as lookahead_router
 from api.ppfg import router as ppfg_router
 from api.dossier import router as dossier_router
+from api.backtest import router as backtest_router
 from services.hybrid_retrieval import (
     DEFAULT_WEIGHTS,
     compute_bm25_score,
     compute_depth_proximity_score,
     compute_formation_match_score,
     compute_event_type_match_score,
-    compute_hybrid_relevance_score
+    compute_hybrid_relevance_score,
+    get_analog_wells
+)
+from services.ahp_weights import (
+    AHP_RETRIEVAL_RESULT,
+    AHP_WEIGHTS,
+    AHP_CONSISTENCY_RATIO,
+    AHP_IS_CONSISTENT
 )
 from guardrails.guardrails_service import GuardrailsService
 
@@ -57,6 +66,7 @@ class RAGSearchResponse(BaseModel):
     root_cause: str
     mitigation_applied: str
     guardrail_verified: bool = True
+    data_source: Optional[str] = "synthetic"
 
 def compute_cosine_similarity(vec1, vec2):
     v1 = np.array(vec1)
@@ -108,6 +118,7 @@ app.include_router(correlate_router)
 app.include_router(lookahead_router)
 app.include_router(ppfg_router)
 app.include_router(dossier_router)
+app.include_router(backtest_router)
 
 @app.get("/")
 def root():
@@ -235,17 +246,19 @@ def search_events(
     depth: Optional[float] = Query(None, description="Reference drilling depth TVD in meters for proximity scoring"),
     reference_depth: Optional[float] = Query(None, description="Alias for depth"),
     event_type: Optional[str] = Query(None, description="Optional target event type"),
+    well_id: Optional[str] = Query(None, description="Active reference well ID"),
+    pre_filter_to_analogs: bool = Query(False, description="Stage 1: Pre-filter candidate event pool to analog wells"),
     limit: int = 5,
     db: Session = Depends(get_db)
 ):
     """
-    Multi-Signal Hybrid RAG search endpoint.
-    Computes weighted multi-signal relevance:
-    - formation_match (weight 0.25)
-    - depth_proximity (weight 0.25)
-    - event_type_match (weight 0.20)
-    - bm25 lexical score (weight 0.15)
-    - vector semantic similarity (weight 0.15)
+    Multi-Signal Hybrid RAG search endpoint with optional Two-Stage Analog Pre-filtering.
+    Computes AHP-derived weighted multi-signal relevance:
+    - formation_match (Saaty AHP weight)
+    - depth_proximity (Saaty AHP weight)
+    - event_type_match (Saaty AHP weight)
+    - bm25 lexical score (Saaty AHP weight)
+    - vector semantic similarity (Saaty AHP weight)
     Validated by GuardrailsService before returning.
     """
     try:
@@ -265,6 +278,14 @@ def search_events(
 
     # Base query for events
     db_query = db.query(SyntheticEvent)
+    
+    # Prompt 4: Two-Stage Retrieval (Analog Pre-filter)
+    if pre_filter_to_analogs:
+        ref_well = well_id or "OIL-BAGHJAN-1"
+        analog_wells = get_analog_wells(target_well_id=ref_well, hazard_type=event_type or query, top_k=3, db=db)
+        if analog_wells:
+            db_query = db_query.filter(SyntheticEvent.well_id.in_(analog_wells))
+            
     events = db_query.all()
     
     results = []
@@ -290,7 +311,7 @@ def search_events(
         bm25_score = compute_bm25_score(query, doc_text)
         vec_score = float(sim)
 
-        # 3. Hybrid weighted combination
+        # 3. Hybrid weighted combination (AHP-derived weights)
         hybrid_calc = compute_hybrid_relevance_score(
             formation_match=f_score,
             depth_proximity=d_score,
@@ -317,6 +338,13 @@ def search_events(
         is_verified = guardrail_res["allowed"]
         mitigation_display = mitigation if is_verified else guardrail_res["validated_response"].get("recommendations", ["Crew manual review required."])[0]
 
+        # Prompt 2: Data Provenance on each search result
+        ev_source = getattr(event, "data_source", None) or (
+            "force2020_relabeled" if "NAHAR" in str(event.well_id)
+            else "volve_relabeled" if ("BAGHJAN" in str(event.well_id) or "MORAN" in str(event.well_id))
+            else "synthetic"
+        )
+
         results.append(
             RAGSearchResponse(
                 similarity_score=round(final_score, 4),
@@ -328,7 +356,8 @@ def search_events(
                 event_type=ev_type,
                 root_cause=root_cause,
                 mitigation_applied=mitigation_display,
-                guardrail_verified=is_verified
+                guardrail_verified=is_verified,
+                data_source=ev_source
             )
         )
         
@@ -336,6 +365,24 @@ def search_events(
     results.sort(key=lambda x: x.similarity_score, reverse=True)
     
     return results[:limit]
+
+@app.get("/api/retrieval/ahp-weights")
+def get_ahp_weights():
+    """
+    Returns the mathematically derived AHP feature weights (Saaty 1980),
+    the domain pairwise comparison matrix, and consistency verification metrics.
+    """
+    return {
+        "status": "success",
+        "method": "Saaty Analytic Hierarchy Process (AHP, 1980) Principal Eigenvector Method",
+        "weights": AHP_RETRIEVAL_RESULT["weights"],
+        "consistency_ratio": AHP_RETRIEVAL_RESULT["consistency_ratio"],
+        "consistent": AHP_RETRIEVAL_RESULT["consistent"],
+        "lambda_max": AHP_RETRIEVAL_RESULT["lambda_max"],
+        "criteria": AHP_RETRIEVAL_RESULT["criteria"],
+        "pairwise_matrix": AHP_RETRIEVAL_RESULT["pairwise_matrix"],
+        "domain_justification": "Stratigraphic formation match and TVD depth proximity are co-equal and dominate over raw NLP lexical matching."
+    }
 
 @app.post("/api/predict-risk", response_model=RiskPredictionResponse)
 def predict_risk(telemetry: TelemetryInput):
@@ -487,6 +534,22 @@ def get_demo_scenarios():
     """
     return DEMO_SCENARIOS
 
+@app.get("/api/graph/query")
+def query_knowledge_graph(
+    well_id: str = Query("OIL-BAGHJAN-1", description="Target Well ID"),
+    hazard_type: str = Query("stuck_pipe", description="Hazard type (e.g. stuck_pipe, mud_loss, gas_kick)"),
+    db: Session = Depends(get_db)
+):
+    """
+    Prompt 3: NetworkX Institutional Knowledge Graph query endpoint.
+    Returns entity-relationship subgraph (Wells, Formations, Events, Interventions, Outcomes)
+    and synthesized Wilson-confidence institutional insight narrative.
+    """
+    from services.knowledge_graph import KnowledgeGraphService
+    kg = KnowledgeGraphService()
+    kg.ensure_graph_built(db)
+    return kg.query_hazard_subgraph(well_id=well_id, hazard_type=hazard_type)
+
 @app.websocket("/api/ws/telemetry")
 async def websocket_telemetry(websocket: WebSocket):
     """
@@ -502,11 +565,17 @@ async def websocket_telemetry(websocket: WebSocket):
     current_params = current_status["current_params"]
     prediction = ml_svc.predict_risk(current_params)
     
+    from services.sequence_matcher import SequenceMatcherService
+    seq_matcher = SequenceMatcherService()
+    seq_matcher.add_reading(current_params)
+    initial_seq_match = seq_matcher.evaluate_window(similarity_threshold=75.0)
+
     try:
         await websocket.send_json({
             "status": "success",
             "data": current_params,
             "prediction": prediction,
+            "sequence_match": initial_seq_match,
             "scenario": current_status["active_scenario"],
             "is_running": current_status["is_running"]
         })
@@ -525,11 +594,16 @@ async def websocket_telemetry(websocket: WebSocket):
                 from fastapi.concurrency import run_in_threadpool
                 prediction = await run_in_threadpool(ml_svc.predict_risk, params)
                 
+                # Prompt 5: Temporal Sequence Matching evaluation
+                seq_matcher.add_reading(params)
+                seq_match = seq_matcher.evaluate_window(similarity_threshold=75.0)
+
                 # Send isolated prediction response back to THIS specific client connection
                 await websocket.send_json({
                     "status": "success",
                     "data": params,
                     "prediction": prediction,
+                    "sequence_match": seq_match,
                     "scenario": params.get("scenario", "normal")
                 })
             except json.JSONDecodeError:

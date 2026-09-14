@@ -6,6 +6,7 @@ import datetime
 from database import get_db
 from models import WellMaster, SyntheticEvent
 from trajectory_calc import compute_realistic_trajectory, compute_anti_collision
+from services.statistics_utils import format_wilson_insight, wilson_confidence_interval
 
 router = APIRouter()
 
@@ -56,29 +57,29 @@ def get_pre_spud_dossier(
 
     for ev in events:
         f_key = "General / Other"
-        form = ev.formation or ""
+        form = getattr(ev, "formation", "") or ""
         if "tipam" in form.lower(): f_key = "Tipam Sandstone"
         elif "barail" in form.lower(): f_key = "Barail Formation"
         elif "kopili" in form.lower(): f_key = "Kopili Formation"
 
-        npt = ev.npt_hours or 0.0
+        npt = float(getattr(ev, "npt_hours", 0.0) or 0.0)
         total_npt_hours += npt
-        if (ev.severity or "").upper() in ["HIGH", "CRITICAL"]:
+        if (getattr(ev, "severity", "") or "").upper() in ["HIGH", "CRITICAL"]:
             critical_events_count += 1
 
         events_by_formation[f_key].append({
-            "well_id": ev.well_id,
-            "event_type": ev.event_type,
-            "depth_tvd": ev.depth_start_tvd,
-            "severity": ev.severity or "MEDIUM",
-            "root_cause": ev.root_cause,
-            "mitigation_applied": ev.mitigation_applied,
+            "well_id": getattr(ev, "well_id", ""),
+            "event_type": getattr(ev, "event_type", ""),
+            "depth_tvd": getattr(ev, "depth_start_tvd", 0.0),
+            "severity": getattr(ev, "severity", "MEDIUM") or "MEDIUM",
+            "root_cause": getattr(ev, "root_cause", ""),
+            "mitigation_applied": getattr(ev, "mitigation_applied", ""),
             "npt_hours": npt
         })
 
     # 3. Directional 3D Anti-Collision Clearance (Correction #2: REUSE existing engine directly)
-    active_tvd = well.total_depth_tvd or 3500.0
-    active_events = [e for e in events if e.well_id == well_id]
+    active_tvd: float = float(getattr(well, "total_depth_tvd", 3500.0) or 3500.0)
+    active_events = [e for e in events if getattr(e, "well_id", "") == well_id]
     active_traj = compute_realistic_trajectory(well_id, active_tvd, is_active=True, db_events=active_events)
 
     anti_collision_evals = []
@@ -87,9 +88,10 @@ def get_pre_spud_dossier(
     most_critical_status = "SAFE"
 
     for off in offsets:
-        off_events = [e for e in events if e.well_id == off.well_id]
-        off_tvd = off.total_depth_tvd or 3400.0
-        off_traj = compute_realistic_trajectory(off.well_id, off_tvd, is_active=False, db_events=off_events)
+        off_well_id = str(getattr(off, "well_id", ""))
+        off_events = [e for e in events if getattr(e, "well_id", "") == off_well_id]
+        off_tvd: float = float(getattr(off, "total_depth_tvd", 3400.0) or 3400.0)
+        off_traj = compute_realistic_trajectory(off_well_id, off_tvd, is_active=False, db_events=off_events)
         
         ac = compute_anti_collision(active_traj, off_traj)
         anti_collision_evals.append({
@@ -132,12 +134,22 @@ def get_pre_spud_dossier(
         },
         {
             "string": 'Production Liner (7")',
-            "planned_depth_tvd": f"{round(active_tvd - 100, 0)} m",
+            "planned_depth_tvd": f"{round(float(active_tvd) - 100.0, 0)} m",
             "formation": "Barail Pay Sand into Kopili",
             "mud_weight": "11.8 - 12.4 ppg",
             "objective": "Isolate high-pressure hydrocarbon gas/condensate pay zones. Cement with gas-tight slurry."
         }
     ]
+
+    # 4. Wilson Score Confidence Interval on mitigation effectiveness (Prompt 8)
+    mitigated_events = [e for e in events if e.mitigation_applied and len(str(e.mitigation_applied).strip()) > 3]
+    total_events_count = len(events)
+    overall_wilson = format_wilson_insight(len(mitigated_events), total_events_count, "Overall offset mitigation success")
+
+    formation_stats = {}
+    for fname, fevents in events_by_formation.items():
+        f_mitigated = sum(1 for e in fevents if e.get("mitigation_applied") and len(str(e["mitigation_applied"]).strip()) > 3)
+        formation_stats[fname] = format_wilson_insight(f_mitigated, len(fevents), f"{fname} mitigation success")
 
     return {
         "report_metadata": {
@@ -164,10 +176,12 @@ def get_pre_spud_dossier(
             "closest_approach_distance_m": round(min_overall_dist, 1) if closest_well_id else None,
             "closest_approach_offset_well": closest_well_id,
             "overall_collision_status": most_critical_status,
-            "key_primary_threat": "Barail Formation Gas Kick & Abnormal Overpressure Ramp between 2,200m and 2,650m TVD."
+            "key_primary_threat": "Barail Formation Gas Kick & Abnormal Overpressure Ramp between 2,200m and 2,650m TVD.",
+            "mitigation_wilson_stats": overall_wilson
         },
         "offset_wells": offset_summaries,
         "formation_hazard_breakdown": events_by_formation,
+        "formation_wilson_stats": formation_stats,
         "anti_collision_clearance": anti_collision_evals,
         "casing_and_mud_program": casing_recommendations
     }

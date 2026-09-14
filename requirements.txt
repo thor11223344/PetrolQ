@@ -29,3 +29,4 @@ langchain-text-splitters
 python-multipart
 pytest-asyncio
 shapely
+networkx

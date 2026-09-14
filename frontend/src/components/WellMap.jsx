@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Target, AlertTriangle, Box, ChevronDown, ChevronUp } from 'lucide-react';
+import { Target, AlertTriangle, Box, ChevronDown, ChevronUp, Moon, Globe, Mountain } from 'lucide-react';
 import Map, { Marker, NavigationControl, Source, Layer } from 'react-map-gl/maplibre';
 import * as maplibregl from 'maplibre-gl';
 import axios from 'axios';
 import { API_BASE } from '../lib/api';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import Trajectory3DViewer from './Trajectory3DViewer';
+import SourceTag from './SourceTag';
 
 // Note: Mapbox requires an access token.
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
@@ -71,6 +72,44 @@ const offlineStyle = {
 
 const osmStyle = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
 
+const satelliteStyle = {
+    version: 8,
+    sources: {
+        'esri-satellite': {
+            type: 'raster',
+            tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+            tileSize: 256,
+            attribution: 'Esri, Maxar, Earthstar Geographics'
+        }
+    },
+    layers: [{ id: 'esri-satellite-layer', type: 'raster', source: 'esri-satellite', minzoom: 0, maxzoom: 19 }]
+};
+
+const terrainStyle = {
+    version: 8,
+    sources: {
+        'opentopo': {
+            type: 'raster',
+            tiles: [
+                'https://a.tile.opentopomap.org/{z}/{x}/{y}.png',
+                'https://b.tile.opentopomap.org/{z}/{x}/{y}.png',
+                'https://c.tile.opentopomap.org/{z}/{x}/{y}.png'
+            ],
+            tileSize: 256,
+            attribution: 'OpenTopoMap (CC-BY-SA)'
+        }
+    },
+    layers: [{ id: 'opentopo-layer', type: 'raster', source: 'opentopo', minzoom: 0, maxzoom: 17 }]
+};
+
+const BASEMAP_STORAGE_KEY = 'petrolq_basemap_style';
+
+const BASEMAP_OPTIONS = [
+    { id: 'dark', label: 'Dark', icon: Moon },
+    { id: 'satellite', label: 'Satellite', icon: Globe },
+    { id: 'terrain', label: 'Terrain', icon: Mountain }
+];
+
 export default function WellMap({ 
     activeWellId, 
     onSelectWell, 
@@ -85,6 +124,40 @@ export default function WellMap({
         zoom: 11,
         pitch: 30
     });
+
+    const [basemapStyle, setBasemapStyle] = useState(() => {
+        try {
+            const saved = localStorage.getItem(BASEMAP_STORAGE_KEY);
+            if (saved && ['dark', 'satellite', 'terrain'].includes(saved)) {
+                return saved;
+            }
+        } catch (e) {
+            console.warn("Could not read basemapStyle from localStorage", e);
+        }
+        return 'dark';
+    });
+
+    const handleBasemapChange = (styleKey) => {
+        setBasemapStyle(styleKey);
+        try {
+            localStorage.setItem(BASEMAP_STORAGE_KEY, styleKey);
+        } catch (e) {
+            console.warn("Could not save basemapStyle to localStorage", e);
+        }
+    };
+
+    const currentMapStyle = useMemo(() => {
+        if (isOffline) return offlineStyle;
+        switch (basemapStyle) {
+            case 'satellite':
+                return satelliteStyle;
+            case 'terrain':
+                return terrainStyle;
+            case 'dark':
+            default:
+                return osmStyle;
+        }
+    }, [basemapStyle]);
 
     const [radius, setRadius] = useState(50.0);
     const [wells, setWells] = useState([]);
@@ -197,14 +270,24 @@ export default function WellMap({
         }
     }, [mapRef.current]);
 
-    const handleMapLoad = (evt) => {
-        const map = evt.target;
+    const hideBorders = (map) => {
+        if (!map || !map.getLayer) return;
         const borderLayers = ['boundary_county', 'boundary_state', 'boundary_country_outline', 'boundary_country_inner'];
         borderLayers.forEach(layer => {
             if (map.getLayer(layer)) {
                 map.setLayoutProperty(layer, 'visibility', 'none');
             }
         });
+    };
+
+    const handleMapLoad = (evt) => {
+        const map = evt.target;
+        hideBorders(map);
+        if (map.on) {
+            map.on('style.load', () => {
+                hideBorders(map);
+            });
+        }
         // Initial fit to ensure default 50km radius circle is fully visible with padding
         const bounds = getCircleBoundingBox([searchCoords.lon, searchCoords.lat], radius);
         try {
@@ -216,6 +299,44 @@ export default function WellMap({
 
     return (
         <div className="relative w-full h-full flex-1">
+            {/* Basemap Style Switcher Control */}
+            <div 
+                id="basemap-style-switcher"
+                className="absolute top-3.5 left-3.5 z-20 flex items-center bg-[#0c1322]/85 backdrop-blur-md border border-slate-700/80 rounded-xl p-1 shadow-glass space-x-1 select-none"
+                role="group"
+                aria-label="Basemap style selection"
+            >
+                {BASEMAP_OPTIONS.map(opt => {
+                    const isSelected = basemapStyle === opt.id;
+                    const Icon = opt.icon;
+                    return (
+                        <button
+                            key={opt.id}
+                            type="button"
+                            id={`basemap-btn-${opt.id}`}
+                            onClick={() => handleBasemapChange(opt.id)}
+                            title={isOffline ? `${opt.label} (Offline mode active - serving local tiles)` : `Switch to ${opt.label} basemap`}
+                            className={`
+                                flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all
+                                ${isSelected 
+                                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm font-semibold' 
+                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border border-transparent'}
+                                ${isOffline ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                            `}
+                            disabled={isOffline}
+                        >
+                            <Icon size={13} className={isSelected ? 'text-cyan-400' : 'text-slate-400'} />
+                            <span>{opt.label}</span>
+                        </button>
+                    );
+                })}
+                {isOffline && (
+                    <span className="text-[10px] text-amber-400/90 font-mono px-1.5 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded">
+                        Offline
+                    </span>
+                )}
+            </div>
+
             <Map
                 mapLib={maplibregl}
                 ref={mapRef}
@@ -223,7 +344,7 @@ export default function WellMap({
                 {...viewState}
                 onMove={evt => setViewState(evt.viewState)}
                 onMoveEnd={evt => setViewState(evt.viewState)}
-                mapStyle={isOffline ? offlineStyle : osmStyle}
+                mapStyle={currentMapStyle}
                 style={{ width: '100%', height: '100%' }}
             >
                 <NavigationControl position="bottom-right" />
@@ -287,10 +408,11 @@ export default function WellMap({
                                 </div>
                                 
                                 {/* Tooltip */}
-                                <div className="absolute top-7 opacity-0 group-hover:opacity-100 transition-all duration-200 bg-[#0c1322]/95 border border-slate-700 text-slate-100 text-[11px] font-mono px-2.5 py-1 rounded-lg shadow-xl pointer-events-none whitespace-nowrap z-50 flex items-center space-x-1.5 backdrop-blur-md">
+                                <div className="absolute top-7 opacity-0 group-hover:opacity-100 transition-all duration-200 bg-[#0c1322]/95 border border-slate-700 text-slate-100 text-[11px] font-mono px-2.5 py-1.5 rounded-lg shadow-xl pointer-events-none whitespace-nowrap z-50 flex items-center space-x-2 backdrop-blur-md">
                                     <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-status-active' : 'bg-cyan-400'}`}></span>
                                     <span className="font-semibold">{well.well_id}</span>
                                     {isActive && <span className="text-[10px] text-emerald-400 font-sans font-bold">(ACTIVE)</span>}
+                                    <SourceTag source={well.data_source} compact={true} />
                                 </div>
                             </div>
                         </Marker>
