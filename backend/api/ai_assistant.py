@@ -66,13 +66,11 @@ def synthesize_incident_briefing(
     if not query_text:
         raise HTTPException(status_code=400, detail="Query cannot be empty.")
 
-    # 1. Retrieve historical incident evidence using hybrid vector/keyword search
-    events_query = db.query(SyntheticEvent)
-    if payload.well_id and "OIL-" in payload.well_id:
-        # Prioritize matching region or well
-        pass
+    from simulator import get_well_region_tag
+    target_region = get_well_region_tag(payload.well_id or "OIL-BAGHJAN-1")
 
-    all_events = events_query.all()
+    # 1. Retrieve historical incident evidence using hybrid vector/keyword search
+    all_events = db.query(SyntheticEvent).all()
     
     # Generate query embedding for similarity scoring
     scored_events = []
@@ -82,6 +80,17 @@ def synthesize_incident_briefing(
         for ev in all_events:
             if ev.embedding:
                 score = compute_cosine_similarity(q_vec, ev.embedding)
+                ev_region = get_well_region_tag(ev.well_id or "")
+                # Basin affinity boost: +0.15 for matching basin
+                if ev_region == target_region:
+                    score += 0.15
+                # Exact well match boost: +0.10
+                if payload.well_id and ev.well_id == payload.well_id:
+                    score += 0.10
+                # Target depth proximity boost
+                if payload.depth_tvd and ev.depth_start_tvd:
+                    diff = abs(float(payload.depth_tvd) - float(ev.depth_start_tvd))
+                    score += max(0.0, 0.10 * (1.0 - diff / 1000.0))
                 scored_events.append((score, ev))
         scored_events.sort(key=lambda x: x[0], reverse=True)
     except Exception as e:
@@ -91,6 +100,9 @@ def synthesize_incident_briefing(
         for ev in all_events:
             txt = f"{ev.event_type} {ev.formation} {ev.root_cause} {ev.mitigation_applied}".lower()
             score = 1.0 if any(term in txt for term in q_lower.split()) else 0.0
+            ev_region = get_well_region_tag(ev.well_id or "")
+            if ev_region == target_region:
+                score += 0.3
             scored_events.append((score, ev))
         scored_events.sort(key=lambda x: x[0], reverse=True)
 
@@ -113,8 +125,8 @@ def synthesize_incident_briefing(
             deterministic_recs.append(ev.mitigation_applied)
         
         evidence_lines.append(
-            f"[{idx+1}] Well: {ev.well_id} | Depth: {ev.depth_start_tvd}m | Formation: {ev.formation} | "
-            f"Hazard: {ev.event_type} | Cause: {ev.root_cause} | Mitigation: {ev.mitigation_applied}"
+            f"[{idx+1}] Well: {ev.well_id} (Basin: {get_well_region_tag(ev.well_id)}) | Depth: {ev.depth_start_tvd}m | "
+            f"Formation: {ev.formation} | Hazard: {ev.event_type} | Cause: {ev.root_cause} | Mitigation: {ev.mitigation_applied}"
         )
 
     evidence_context = "\n".join(evidence_lines) if evidence_lines else "No direct historical offset incident matches found."
@@ -135,11 +147,11 @@ def synthesize_incident_briefing(
         try:
             llm = get_llm(temperature=0.1, timeout=10.0)
             system_prompt = (
-                "You are an expert Senior Drilling Superintendent and Geomechanics Engineer for Oil India Limited. "
+                f"You are an expert Senior Drilling Superintendent and Geomechanics Engineer for Oil India Limited ({target_region.capitalize()} Basin). "
                 "Analyze the provided historical offset well evidence and synthesize an executive briefing. "
                 "Rules:\n"
                 "1. Base your summary strictly on the provided evidence. Cite source indices like [1], [2] when referencing events.\n"
-                "2. Provide exactly 2 to 3 actionable, physically grounded engineering recommendations.\n"
+                "2. Provide exactly 2 to 3 actionable, physically grounded engineering recommendations tailored to this basin's geology.\n"
                 "3. Never advise automated rig shutdown or autonomous BOP control.\n"
                 "Format your answer as:\n"
                 "SUMMARY: <2-3 sentences>\n"
@@ -150,7 +162,7 @@ def synthesize_incident_briefing(
             
             prompt_text = (
                 f"Operational Query: {query_text}\n"
-                f"Reference Well: {payload.well_id} | Depth: {payload.depth_tvd or 'Not specified'}m\n\n"
+                f"Reference Well: {payload.well_id} (Basin: {target_region.upper()}) | Depth: {payload.depth_tvd or 'Not specified'}m | Formation: {payload.formation or 'Auto-detected'}\n\n"
                 f"Historical Offset Evidence:\n{evidence_context}\n\n"
                 "Synthesize the briefing:"
             )

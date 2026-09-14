@@ -27,11 +27,22 @@ const WELL_DEFAULT_DEPTHS = {
   'OIL-KOTHALONI-1': 2200,
   'OIL-HAPJAN-1': 2230,
   'OIL-SHALMARI-1': 2080,
+  'OIL-KUSIJAN-1': 2280,
+  'OIL-HEBEDA-1': 2220,
   'OIL-RAJ-BAGHEWALA-1': 2100,
+  'OIL-RAJ-BAGHEWALA-2': 2150,
+  'OIL-RAJ-DANDEWALA-1': 2050,
   'OIL-RAJ-TANOT-1': 1950,
+  'OIL-RAJ-TANOT-2': 2000,
   'OIL-KG-DEEPWATER-1': 3200,
   'OIL-KG-DWN-98-2': 3350,
+  'OIL-KG-D6-OFFSHORE': 3450,
+  'OIL-KG-YANAM-1': 2950,
+  'OIL-KG-AMALAPURAM-1': 2850,
   'OIL-MZ-AIZAWL-1': 2800,
+  'OIL-MZ-CHAMPHAI-1': 3250,
+  'OIL-MZ-KOLASIB-1': 2750,
+  'OIL-MZ-LUNGLEI-1': 3100,
   'OIL-MZ-MAMIT-1': 2920,
 };
 
@@ -100,6 +111,13 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
 
   if (!isOpen) return null;
 
+  const distToNext = data?.distance_to_next_formation_m;
+  const nextFormation = data?.next_formation;
+  const currentRisk = data?.current_ml_risk || {};
+  const upcomingFormations = data?.upcoming_formations || [];
+  const offsetEvents = data?.events || [];
+  const recommendations = data?.recommendations || [];
+
   const ml = data?.ml_risk_assessment || {};
   const riskScore = ml.risk_score !== undefined ? ml.risk_score : 0.45;
   const isHighRisk = riskScore > 0.65;
@@ -115,14 +133,14 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
         {/* Header */}
         <div className="px-3 sm:px-6 py-3 sm:py-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center gap-2">
           <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
-            <div className={`p-2 rounded-lg border transition-all shrink-0 ${loading ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300 ring-2 ring-cyan-500/30' : 'bg-amber-500/10 border-amber-500/20 text-amber-400'}`}>
-              <Radar size={20} className={loading ? 'animate-spin' : ''} />
+            <div className="p-1.5 sm:p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 shrink-0">
+              <Radar size={22} className={loading ? "animate-spin" : ""} />
             </div>
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                <h2 className="text-sm sm:text-lg font-bold text-white tracking-wide truncate">
-                  Ahead-of-the-Bit Radar
-                </h2>
+              <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+                <h3 className="text-sm sm:text-base font-bold text-white tracking-wide truncate">
+                  Ahead-of-the-Bit Hazard Radar
+                </h3>
                 
                 {/* Active Well Selector */}
                 <select
@@ -141,17 +159,28 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
                     <option value="OIL-KOTHALONI-1">KOTHALONI-1</option>
                     <option value="OIL-HAPJAN-1">HAPJAN-1</option>
                     <option value="OIL-SHALMARI-1">SHALMARI-1</option>
+                    <option value="OIL-KUSIJAN-1">KUSIJAN-1</option>
+                    <option value="OIL-HEBEDA-1">HEBEDA-1</option>
                   </optgroup>
-                  <optgroup label="Rajasthan (Illustrative)">
+                  <optgroup label="Rajasthan (Illustrative / Uncalibrated)">
                     <option value="OIL-RAJ-BAGHEWALA-1">BAGHEWALA-1</option>
+                    <option value="OIL-RAJ-BAGHEWALA-2">BAGHEWALA-2</option>
                     <option value="OIL-RAJ-TANOT-1">TANOT-1</option>
+                    <option value="OIL-RAJ-TANOT-2">TANOT-2</option>
+                    <option value="OIL-RAJ-DANDEWALA-1">DANDEWALA-1</option>
                   </optgroup>
-                  <optgroup label="KG Deepwater (Illustrative)">
+                  <optgroup label="KG Deepwater (Illustrative / Uncalibrated)">
                     <option value="OIL-KG-DEEPWATER-1">KG-DEEPWATER-1</option>
                     <option value="OIL-KG-DWN-98-2">KG-DWN-98/2</option>
+                    <option value="OIL-KG-D6-OFFSHORE">KG-D6-OFFSHORE</option>
+                    <option value="OIL-KG-YANAM-1">KG-YANAM-1</option>
+                    <option value="OIL-KG-AMALAPURAM-1">KG-AMALAPURAM-1</option>
                   </optgroup>
-                  <optgroup label="Mizoram (Illustrative)">
+                  <optgroup label="Mizoram (Illustrative / Uncalibrated)">
                     <option value="OIL-MZ-AIZAWL-1">MZ-AIZAWL-1</option>
+                    <option value="OIL-MZ-CHAMPHAI-1">MZ-CHAMPHAI-1</option>
+                    <option value="OIL-MZ-KOLASIB-1">MZ-KOLASIB-1</option>
+                    <option value="OIL-MZ-LUNGLEI-1">MZ-LUNGLEI-1</option>
                     <option value="OIL-MZ-MAMIT-1">MZ-MAMIT-1</option>
                   </optgroup>
                 </select>

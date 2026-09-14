@@ -150,13 +150,14 @@ def get_lookahead_advisory(
     target_depth = current_depth + window_meters
 
     # 1. Identify upcoming formations specifically for this well
-    if well_id in WELL_FORMATION_HORIZONS:
-        horizons = WELL_FORMATION_HORIZONS[well_id]
-    elif well_id.startswith("OIL-RAJ-"):
+    wid = well_id.upper()
+    if wid in WELL_FORMATION_HORIZONS:
+        horizons = WELL_FORMATION_HORIZONS[wid]
+    elif "RAJ" in wid:
         horizons = RAJASTHAN_HORIZONS
-    elif well_id.startswith("OIL-KG-"):
+    elif "KG" in wid:
         horizons = KG_HORIZONS
-    elif well_id.startswith("OIL-MZ-"):
+    elif "MZ" in wid or "MIZO" in wid:
         horizons = MIZORAM_HORIZONS
     else:
         horizons = DEFAULT_HORIZONS
@@ -203,27 +204,35 @@ def get_lookahead_advisory(
             offset_distances[other_id] = 0.0
 
     # Query offset events in this depth window
-    # Exclude the active well itself from its own offset list, unless no offsets exist
     candidate_events = db.query(SyntheticEvent).filter(
         SyntheticEvent.depth_start_tvd <= target_depth,
         SyntheticEvent.depth_end_tvd >= current_depth
     ).all()
 
-    # Separate events into true offsets (other wells) and prioritize nearby wells
+    # Separate events into true offsets and prioritize wells within the same basin (< 300 km)
     scored_events = []
     for ev in candidate_events:
         dist_km = offset_distances.get(ev.well_id, 999.0)
         is_self = (ev.well_id == well_id)
-        scored_events.append({
-            "event": ev,
-            "distance_km": dist_km,
-            "is_self": is_self
-        })
+        # Prioritize same basin (distance < 350km)
+        if dist_km < 350.0 or is_self:
+            scored_events.append({
+                "event": ev,
+                "distance_km": dist_km,
+                "is_self": is_self
+            })
 
-    # Sort candidates by:
-    # 1. Non-self first (actual offset wells)
-    # 2. Proximity (closest distance_km)
-    # 3. Severity (CRITICAL > HIGH > MEDIUM)
+    # Fallback if no proximate offsets found
+    if not scored_events:
+        for ev in candidate_events:
+            dist_km = offset_distances.get(ev.well_id, 999.0)
+            scored_events.append({
+                "event": ev,
+                "distance_km": dist_km,
+                "is_self": (ev.well_id == well_id)
+            })
+
+    # Sort candidates: non-self first, proximity, severity
     severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
     scored_events.sort(key=lambda x: (
         1 if x["is_self"] else 0,
@@ -237,7 +246,7 @@ def get_lookahead_advisory(
     loss_count = 0
     stuck_count = 0
 
-    for item in scored_events:
+    for item in scored_events[:10]:
         ev = item["event"]
         dist_km = item["distance_km"]
         etype = ev.event_type or "Operational Incident"
@@ -248,47 +257,39 @@ def get_lookahead_advisory(
 
         horizon_events.append({
             "well_id": ev.well_id,
+            "depth_tvd": ev.depth_start_tvd,
+            "event_type": etype,
+            "severity": ev.severity or "MEDIUM",
+            "formation": ev.formation or "Unassigned Formation",
+            "root_cause": ev.root_cause or "Geological transition anomaly",
+            "mitigation_applied": ev.mitigation_applied or "Follow standard SOP",
             "offset_distance_km": dist_km,
             "is_offset": not item["is_self"],
-            "event_type": etype,
-            "depth_tvd": ev.depth_start_tvd,
-            "severity": ev.severity or "MEDIUM",
-            "formation": ev.formation or (next_formation or "Barail"),
-            "root_cause": ev.root_cause,
-            "mitigation": ev.mitigation_applied,
-            "npt_hours": ev.npt_hours or 0.0
+            "data_source": getattr(ev, "data_source", "synthetic")
         })
 
-    # 3. Retrieve latest telemetry to feed the shared ML Hazard model
+    # 3. Derive live ML hazard prediction
     latest_param = db.query(DrillingParam).filter(
         DrillingParam.well_id == well_id
     ).order_by(DrillingParam.timestamp.desc()).first()
 
     if latest_param:
         current_telemetry = {
-            "wob": latest_param.wob or 12.0,
-            "rpm": latest_param.rpm or 110.0,
-            "rop": latest_param.rop or 18.5,
-            "torque": latest_param.torque or 12500.0,
-            "mud_weight": latest_param.mud_weight or 10.8,
-            "ecd": latest_param.ecd or 11.2
+            "wob": latest_param.wob or 14.0,
+            "rpm": latest_param.rpm or 105.0,
+            "rop": latest_param.rop or 16.0,
+            "torque": latest_param.torque or 13200.0,
+            "mud_weight": latest_param.mud_weight or 11.2,
+            "ecd": latest_param.ecd or 11.6,
+            "depth_tvd": current_depth,
+            "well_id": well_id
         }
     else:
-        # Well-specific parameter baselines
-        well_telemetry_baselines = {
-            "OIL-BAGHJAN-1": {"wob": 14.0, "rpm": 110.0, "rop": 16.5, "torque": 13500.0, "mud_weight": 11.2, "ecd": 11.6},
-            "OIL-BAGHJAN-4": {"wob": 14.5, "rpm": 115.0, "rop": 17.0, "torque": 13800.0, "mud_weight": 11.4, "ecd": 11.8},
-            "OIL-NAHARKATIYA-1": {"wob": 11.0, "rpm": 95.0, "rop": 13.0, "torque": 10200.0, "mud_weight": 10.4, "ecd": 10.8},
-            "OIL-MORAN-1": {"wob": 16.0, "rpm": 120.0, "rop": 19.0, "torque": 15200.0, "mud_weight": 11.8, "ecd": 12.3},
-            "OIL-DIKOM-1": {"wob": 12.5, "rpm": 100.0, "rop": 14.5, "torque": 11500.0, "mud_weight": 10.6, "ecd": 11.0},
-            "OIL-TENGAKHAT-1": {"wob": 11.5, "rpm": 98.0, "rop": 13.8, "torque": 10800.0, "mud_weight": 10.5, "ecd": 10.9},
-            "OIL-KOTHALONI-1": {"wob": 13.0, "rpm": 105.0, "rop": 15.0, "torque": 12000.0, "mud_weight": 10.8, "ecd": 11.2},
-            "OIL-HAPJAN-1": {"wob": 13.5, "rpm": 108.0, "rop": 15.5, "torque": 12400.0, "mud_weight": 10.9, "ecd": 11.3},
-            "OIL-SHALMARI-1": {"wob": 12.0, "rpm": 102.0, "rop": 14.0, "torque": 11200.0, "mud_weight": 10.6, "ecd": 11.0},
-        }
-        current_telemetry = well_telemetry_baselines.get(well_id, {
-            "wob": 14.0, "rpm": 105.0, "rop": 16.0, "torque": 13200.0, "mud_weight": 11.0, "ecd": 11.4
-        })
+        # Load from calibrated baselines
+        from simulator import get_well_calibrated_baseline
+        current_telemetry = get_well_calibrated_baseline(well_id)
+        current_telemetry["depth_tvd"] = current_depth
+        current_telemetry["well_id"] = well_id
 
     # Format offset events for the ML hazard service
     ml_offset_records = [
@@ -310,10 +311,11 @@ def get_lookahead_advisory(
     hazard_level = ml_pred.get("hazard_level", "MODERATE")
     top_factors = ml_pred.get("top_factors", [])
 
-    # 4. Proactive Driller Advisory Recommendations
+    # 4. Proactive Driller Advisory Recommendations (Region & Formation Aware)
     advisory_actions = []
     if dist_to_next_formation is not None and dist_to_next_formation <= 250.0:
-        if "Barail" in (next_formation or ""):
+        nf_lower = (next_formation or "").lower()
+        if "barail" in nf_lower:
             advisory_actions.append({
                 "category": "MUD_SYSTEM",
                 "priority": "HIGH",
@@ -324,17 +326,53 @@ def get_lookahead_advisory(
                 "priority": "HIGH",
                 "action": "Line up trip tank, function-test annular BOP, and conduct flow check prior to top-of-formation."
             })
-        elif "Tipam" in (next_formation or ""):
+        elif "tipam" in nf_lower:
             advisory_actions.append({
                 "category": "DRILLING_FLUID",
                 "priority": "MEDIUM",
-                "action": f"Approaching high-permeability Tipam Sandstone in {dist_to_next_formation}m. Prepare 30 bbl LCM pill (calcium carbonate / mica) to prevent seepage."
+                "action": f"Approaching permeable Tipam Sandstone in {dist_to_next_formation}m. Prepare 30 bbl calcium carbonate LCM pill to prevent thief zone mud losses."
             })
-        elif "Kopili" in (next_formation or ""):
+        elif "kopili" in nf_lower:
             advisory_actions.append({
                 "category": "SHALE_STABILITY",
                 "priority": "HIGH",
                 "action": f"Entering reactive Kopili Shale in {dist_to_next_formation}m. Increase PHPA / glycol inhibitor levels to minimize swelling and packoff."
+            })
+        elif "bilara" in nf_lower:
+            advisory_actions.append({
+                "category": "LOST_CIRCULATION",
+                "priority": "CRITICAL",
+                "action": f"Approaching cavernous Bilara Carbonates in {dist_to_next_formation}m. Stage 50 bbl coarse walnut shell/mica LCM blend on rig floor; reduce pump rate."
+            })
+        elif "jodhpur" in nf_lower:
+            advisory_actions.append({
+                "category": "TORQUE_DRAG",
+                "priority": "HIGH",
+                "action": f"Entering Jodhpur heavy oil sand in {dist_to_next_formation}m. Monitor rotary torque for viscous drag; avoid prolonged stationary drillstring periods."
+            })
+        elif "ravva" in nf_lower:
+            advisory_actions.append({
+                "category": "WELL_CONTROL",
+                "priority": "CRITICAL",
+                "action": f"Approaching Ravva overpressured gas turbidite in {dist_to_next_formation}m. Narrow PP-FG window (<0.8 ppg). Pre-charge subsea accumulator and test chokes."
+            })
+        elif "gumbo" in nf_lower:
+            advisory_actions.append({
+                "category": "BIT_BALLING",
+                "priority": "HIGH",
+                "action": f"Entering highly reactive Godavari Gumbo in {dist_to_next_formation}m. Treat active mud with clouding anti-accretion polymer and increase shaker mesh monitoring."
+            })
+        elif "bhuban" in nf_lower:
+            advisory_actions.append({
+                "category": "MECHANICAL_STABILITY",
+                "priority": "CRITICAL",
+                "action": f"Approaching steeply dipping Bhuban shales in {dist_to_next_formation}m. High risk of bedding plane collapse. Limit reaming speed and stage high-viscosity sweeps."
+            })
+        elif "disang" in nf_lower:
+            advisory_actions.append({
+                "category": "PRESSURE_RAMP",
+                "priority": "CRITICAL",
+                "action": f"Entering tectonically sheared Disang Flysch in {dist_to_next_formation}m. Watch for abnormal pore pressure ramp and splintery cavings."
             })
     
     # Top nearby offset well info

@@ -20,9 +20,36 @@ import {
   CheckCircle2
 } from 'lucide-react';
 
+const ALL_REGIONAL_WELLS = {
+  "Upper Assam Shelf": [
+    'OIL-BAGHJAN-1', 'OIL-BAGHJAN-4', 'OIL-NAHARKATIYA-1', 'OIL-MORAN-1',
+    'OIL-DIKOM-1', 'OIL-DULIAJAN-1', 'OIL-KUMCHAI-1', 'OIL-KHARSANG-1'
+  ],
+  "Rajasthan Basin": [
+    'OIL-RAJ-BAGHEWALA-1', 'OIL-RAJ-TANOT-1', 'OIL-RAJ-DANDEWALA-1', 'OIL-RAJ-TAVRIWALA-1', 'OIL-RAJ-CHINNEWALA-1'
+  ],
+  "KG Deepwater": [
+    'OIL-KG-DEEPWATER-1', 'OIL-KG-DWN-1', 'OIL-KG-YANAM-1', 'OIL-KG-AMALAPURAM-1', 'OIL-KG-GODAVARI-1'
+  ],
+  "Mizoram Fold Belt": [
+    'OIL-MZ-AIZAWL-1', 'OIL-MZ-MAMIT-1', 'OIL-MZ-KOLASIB-1', 'OIL-MZ-LUNGLEI-1', 'OIL-MZ-CHAMPHAI-1'
+  ]
+};
+
 const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell }) => {
     const [activeTab, setActiveTab] = useState('dtw'); // 'dtw' | 'casing' | 'cross_section'
     
+    // Offset well selection state
+    const [selectedOffset, setSelectedOffset] = useState(offsetWell || 'OIL-NAHARKATIYA-1');
+
+    useEffect(() => {
+        if (offsetWell) {
+            setSelectedOffset(offsetWell);
+        }
+    }, [offsetWell]);
+
+    const currentOffset = (selectedOffset && selectedOffset !== activeWell) ? selectedOffset : offsetWell;
+
     // DTW state
     const [data, setData] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -47,7 +74,7 @@ const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell }) => {
             setError(null);
             try {
                 const response = await axios.get(`${API_BASE}/api/correlate`, {
-                    params: { active_well: activeWell, offset_well: offsetWell }
+                    params: { active_well: activeWell, offset_well: currentOffset }
                 });
                 setData(response.data);
             } catch (err) {
@@ -59,7 +86,7 @@ const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell }) => {
         };
 
         fetchCorrelation();
-    }, [isOpen, activeWell, offsetWell, activeTab]);
+    }, [isOpen, activeWell, currentOffset, activeTab]);
 
     // Fetch Casing & Cement
     useEffect(() => {
@@ -141,7 +168,7 @@ const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell }) => {
         traces.push({
             x: offsetGr,
             y: offsetDepths,
-            name: offsetWell,
+            name: currentOffset,
             type: 'scatter',
             mode: 'lines',
             line: { color: '#F59E0B', width: 2 },
@@ -281,10 +308,10 @@ const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell }) => {
                     <div className="flex-1 flex flex-col overflow-hidden">
                         {data && (
                             <>
-                                {(getWellDataSource(activeWell) === 'illustrative_uncalibrated' || getWellDataSource(offsetWell) === 'illustrative_uncalibrated') && (
+                                {(getWellDataSource(activeWell) === 'illustrative_uncalibrated' || getWellDataSource(currentOffset) === 'illustrative_uncalibrated') && (
                                     <div className="bg-rose-500/10 border-b border-rose-500/30 px-5 py-1.5 flex items-center space-x-2 text-[11px] text-rose-300">
                                         <AlertTriangle size={13} className="text-rose-400 shrink-0" />
-                                        <span><strong>Regional Data Notice:</strong> {getWellDataSource(activeWell) === 'illustrative_uncalibrated' && getWellDataSource(offsetWell) === 'illustrative_uncalibrated' ? 'Active and offset wells are' : getWellDataSource(activeWell) === 'illustrative_uncalibrated' ? 'Active well is' : 'Offset well is'} <strong>Illustrative / Not Yet Calibrated</strong> — architecture demonstration only, no real or Volve-analog data basis.</span>
+                                        <span><strong>Regional Data Notice:</strong> {getWellDataSource(activeWell) === 'illustrative_uncalibrated' && getWellDataSource(currentOffset) === 'illustrative_uncalibrated' ? 'Active and offset wells are' : getWellDataSource(activeWell) === 'illustrative_uncalibrated' ? 'Active well is' : 'Offset well is'} <strong>Illustrative / Not Yet Calibrated</strong> — architecture demonstration only, no real or Volve-analog data basis.</span>
                                     </div>
                                 )}
                                 <div className="bg-slate-950/70 border-b border-slate-800/80 px-5 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
@@ -297,9 +324,23 @@ const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell }) => {
                                         </div>
                                         <div className="flex items-center space-x-2">
                                             <span className="w-3.5 h-1 rounded bg-[#F59E0B] inline-block shadow-[0_0_8px_rgba(245,158,11,0.6)]"></span>
-                                            <span className="text-slate-400">Historical Offset:</span>
-                                            <span className="font-semibold text-amber-300 font-mono">{offsetWell}</span>
-                                            <SourceTag source={offsetWell} compact={true} />
+                                            <span className="text-slate-400">Offset Well:</span>
+                                            <select
+                                                value={currentOffset}
+                                                onChange={(e) => setSelectedOffset(e.target.value)}
+                                                className="bg-slate-900 text-amber-300 font-mono font-semibold text-xs border border-slate-700 rounded px-2 py-1 focus:outline-none focus:border-amber-500 cursor-pointer"
+                                            >
+                                                {Object.entries(ALL_REGIONAL_WELLS).map(([basin, wells]) => (
+                                                    <optgroup key={basin} label={basin} className="bg-slate-950 text-slate-300 font-sans">
+                                                        {wells.filter(w => w !== activeWell).map(w => (
+                                                            <option key={w} value={w} className="font-mono text-amber-200">
+                                                                {w}
+                                                            </option>
+                                                        ))}
+                                                    </optgroup>
+                                                ))}
+                                            </select>
+                                            <SourceTag source={currentOffset} compact={true} />
                                         </div>
                                         <div className="h-4 w-px bg-slate-800 hidden md:block"></div>
                                         <div className="text-slate-300">

@@ -93,8 +93,17 @@ def _extract_formation_set(formation_input: Any) -> Set[str]:
     if not raw_str:
         return set()
 
-    # Known regional formation names (Upper Assam Basin stratigraphy)
-    known_formations = ["dihing", "tipam", "surma", "barail", "kopili", "disang", "girujan", "jaintia"]
+    # Known regional formation names across all 4 Indian basins
+    known_formations = [
+        # Upper Assam Shelf
+        "dihing", "tipam", "surma", "barail", "kopili", "disang", "girujan", "jaintia",
+        # Rajasthan Basin
+        "pariwar", "baisakhi", "jodhpur", "bilara", "marwar", "shumar",
+        # KG Deepwater
+        "shallow marine", "gumbo", "godavari", "ravva", "cretaceous", "matsya", "vadaparru",
+        # Mizoram Fold Belt
+        "bokabil", "bhuban", "upper bhuban", "middle bhuban", "lower bhuban", "flysch"
+    ]
     detected = {k for k in known_formations if k in raw_str}
     if detected:
         return detected
@@ -103,7 +112,7 @@ def _extract_formation_set(formation_input: Any) -> Set[str]:
     tokens = [t.strip() for t in re.split(r"[,/;\+]+", raw_str) if t.strip()]
     cleaned = set()
     for token in tokens:
-        c = re.sub(r"\b(formation|sandstone|sand|shale|gravels|group|member|transition)\b", "", token).strip()
+        c = re.sub(r"\b(formation|sandstone|sand|shale|gravels|group|member|transition|sediments|carbonates|clay)\b", "", token).strip()
         cleaned.add(c if c else token)
     return cleaned
 
@@ -230,59 +239,97 @@ def get_analog_wells(
     db: Any = None
 ) -> List[str]:
     """
-    Ranks other wells by geological and hazard-specific similarity to target_well_id.
-    Combines stratigraphic basin correlation with historical hazard incidence
-    calibrated to AHP feature weights.
+    Ranks other wells by geological and hazard-specific similarity to target_well_id across India.
+    Combines basin affinity (strong preference for proximate wells within the same geologic basin)
+    with historical hazard incidence and formation correlation.
     """
-    all_candidate_wells = [
-        "OIL-BAGHJAN-1",
-        "OIL-BAGHJAN-4",
-        "OIL-MORAN-1",
-        "OIL-NAHARKATIYA-1",
-        "OIL-DIKOM-1"
-    ]
-    
+    all_candidate_wells = []
+    if db is not None:
+        try:
+            from models import WellMaster
+            db_wells = db.query(WellMaster.well_id).all()
+            all_candidate_wells = [w[0] for w in db_wells if w[0]]
+        except Exception:
+            all_candidate_wells = []
+
+    if not all_candidate_wells:
+        # Full pan-India 26 well inventory
+        all_candidate_wells = [
+            # Upper Assam (11 wells)
+            "OIL-BAGHJAN-1", "OIL-BAGHJAN-4", "OIL-MORAN-1", "OIL-NAHARKATIYA-1", "OIL-DIKOM-1",
+            "OIL-DULIAJAN-1", "OIL-KUMCHAI-1", "OIL-KHARSANG-1", "OIL-SHALMARI-1", "OIL-TENGAKHAT-1", "OIL-MAKUM-1",
+            # Rajasthan (5 wells)
+            "OIL-RAJ-BAGHEWALA-1", "OIL-RAJ-TANOT-1", "OIL-RAJ-DANDEWALA-1", "OIL-RAJ-TAVRIWALA-1", "OIL-RAJ-CHINNEWALA-1",
+            # KG Deepwater (5 wells)
+            "OIL-KG-DEEPWATER-1", "OIL-KG-DWN-1", "OIL-KG-YANAM-1", "OIL-KG-AMALAPURAM-1", "OIL-KG-GODAVARI-1",
+            # Mizoram Fold Belt (5 wells)
+            "OIL-MZ-AIZAWL-1", "OIL-MZ-MAMIT-1", "OIL-MZ-KOLASIB-1", "OIL-MZ-LUNGLEI-1", "OIL-MZ-CHAMPHAI-1"
+        ]
+
     # Filter out target well itself
     candidates = [w for w in all_candidate_wells if w != target_well_id]
     if not candidates:
         return all_candidate_wells[:top_k]
 
-    h_type = (hazard_type or "").lower()
-    
-    # Base geological field correlation matrix (Upper Assam Basin)
-    field_affinity = {
-        ("OIL-BAGHJAN-1", "OIL-BAGHJAN-4"): 0.95,
-        ("OIL-BAGHJAN-4", "OIL-BAGHJAN-1"): 0.95,
-        ("OIL-MORAN-1", "OIL-NAHARKATIYA-1"): 0.85,
-        ("OIL-NAHARKATIYA-1", "OIL-MORAN-1"): 0.85,
-        ("OIL-MORAN-1", "OIL-DIKOM-1"): 0.80,
-        ("OIL-BAGHJAN-1", "OIL-MORAN-1"): 0.75,
-        ("OIL-BAGHJAN-1", "OIL-NAHARKATIYA-1"): 0.78,
-    }
+    def _get_basin(wid: str) -> str:
+        u = wid.upper()
+        if "RAJ" in u or "BAGHEWALA" in u or "TANOT" in u or "DANDEWALA" in u:
+            return "rajasthan"
+        if "KG" in u or "DEEPWATER" in u or "DWN" in u or "YANAM" in u or "AMALAPURAM" in u:
+            return "kg"
+        if "MZ" in u or "MIZO" in u or "AIZAWL" in u or "MAMIT" in u or "KOLASIB" in u or "LUNGLEI" in u or "CHAMPHAI" in u:
+            return "mizoram"
+        return "assam"
 
-    # Documented hazard associations by well (from Golden PDF & historical DDRs)
+    target_basin = _get_basin(target_well_id)
+    h_type = (hazard_type or "").lower()
+
+    # Documented hazard associations by well
     hazard_affinity = {
-        "stuck_pipe": {"OIL-MORAN-1": 1.0, "OIL-DIKOM-1": 0.8, "OIL-BAGHJAN-1": 0.6},
-        "kick": {"OIL-NAHARKATIYA-1": 1.0, "OIL-BAGHJAN-1": 0.9, "OIL-BAGHJAN-4": 0.85},
-        "gas_kick": {"OIL-NAHARKATIYA-1": 1.0, "OIL-BAGHJAN-1": 0.9, "OIL-BAGHJAN-4": 0.85},
-        "lost_circulation": {"OIL-MORAN-1": 1.0, "OIL-BAGHJAN-4": 0.85, "OIL-DIKOM-1": 0.7},
-        "mud_loss": {"OIL-MORAN-1": 1.0, "OIL-BAGHJAN-4": 0.85, "OIL-DIKOM-1": 0.7}
+        "stuck_pipe": {
+            "OIL-MORAN-1": 1.0, "OIL-DIKOM-1": 0.85, "OIL-MZ-AIZAWL-1": 0.95,
+            "OIL-MZ-MAMIT-1": 0.90, "OIL-MZ-KOLASIB-1": 0.88, "OIL-RAJ-JODHPUR-1": 0.80
+        },
+        "kick": {
+            "OIL-NAHARKATIYA-1": 1.0, "OIL-BAGHJAN-1": 0.95, "OIL-BAGHJAN-4": 0.90,
+            "OIL-KG-DEEPWATER-1": 0.95, "OIL-KG-DWN-1": 0.92, "OIL-KG-YANAM-1": 0.88
+        },
+        "gas_kick": {
+            "OIL-NAHARKATIYA-1": 1.0, "OIL-BAGHJAN-1": 0.95, "OIL-BAGHJAN-4": 0.90,
+            "OIL-KG-DEEPWATER-1": 0.95, "OIL-KG-DWN-1": 0.92, "OIL-KG-YANAM-1": 0.88
+        },
+        "lost_circulation": {
+            "OIL-MORAN-1": 1.0, "OIL-BAGHJAN-4": 0.85, "OIL-RAJ-BAGHEWALA-1": 0.98,
+            "OIL-RAJ-TANOT-1": 0.92, "OIL-RAJ-DANDEWALA-1": 0.90
+        },
+        "mud_loss": {
+            "OIL-MORAN-1": 1.0, "OIL-BAGHJAN-4": 0.85, "OIL-RAJ-BAGHEWALA-1": 0.98,
+            "OIL-RAJ-TANOT-1": 0.92, "OIL-RAJ-DANDEWALA-1": 0.90
+        }
     }
 
     scored_wells = []
     for cand in candidates:
-        geo_score = field_affinity.get((target_well_id, cand), 0.70)
-        
-        # Hazard weighting
+        cand_basin = _get_basin(cand)
+        # 1. Geographic and stratigraphic basin affinity
+        if cand_basin == target_basin:
+            geo_score = 0.92  # Same basin -> strong stratigraphic analog
+        else:
+            geo_score = 0.35  # Cross-basin -> secondary analog
+
+        # 2. Hazard profile affinity
         haz_score = 0.5
         for key, aff_dict in hazard_affinity.items():
             if key in h_type or h_type in key:
-                haz_score = aff_dict.get(cand, 0.5)
-                break
-                
-        # AHP-proportioned composite score: 60% stratigraphy/basin affinity, 40% hazard history
-        composite = 0.60 * geo_score + 0.40 * haz_score
+                if cand in aff_dict:
+                    haz_score = aff_dict[cand]
+                    break
+                elif cand_basin == target_basin:
+                    haz_score = 0.7
+
+        composite = 0.65 * geo_score + 0.35 * haz_score
         scored_wells.append((cand, composite))
 
     scored_wells.sort(key=lambda x: x[1], reverse=True)
     return [w[0] for w in scored_wells][:top_k]
+

@@ -123,7 +123,7 @@ def compute_realistic_trajectory(well_id: str, tvd_max: float, is_active: bool =
         region = "rajasthan"
     elif "KG" in well_prefix:
         region = "kg"
-    elif "MZ" in well_prefix:
+    elif "MZ" in well_prefix or "MIZO" in well_prefix:
         region = "mizoram"
     else:
         region = "assam"
