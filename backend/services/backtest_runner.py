@@ -97,7 +97,39 @@ def load_historical_telemetry(
     Tries database / CSV first; falls back to the exact documented DDR lead-up profile
     for the reference case.
     """
-    # Check if this matches a curated documented incident
+    # 1. Attempt to query project's own DrillingParam database table first
+    try:
+        from database import SessionLocal
+        from models import DrillingParam
+        db = SessionLocal()
+        try:
+            db_params = db.query(DrillingParam).filter(
+                DrillingParam.well_id == well_id,
+                DrillingParam.depth_tvd <= incident_depth_m
+            ).order_by(DrillingParam.depth_tvd.asc()).all()
+            if len(db_params) >= 10:
+                return [
+                    {
+                        "well_id": well_id,
+                        "depth_tvd": float(getattr(p, "depth_tvd", 0.0) or 0.0),
+                        "depth_md": float(getattr(p, "depth_md", 0.0) or (getattr(p, "depth_tvd", 0.0) or 0.0) + 70.0),
+                        "rop": float(getattr(p, "rop", 15.0) or 15.0),
+                        "torque": float(getattr(p, "torque", 13000.0) or 13000.0),
+                        "wob": float(getattr(p, "wob", 14.0) or 14.0),
+                        "rpm": float(getattr(p, "rpm", 100.0) or 100.0),
+                        "flow_out_pct": float(getattr(p, "flow_out_pct", 100.0) or 100.0),
+                        "pit_gain_bbl": float(getattr(p, "pit_gain_bbl", 0.0) or 0.0),
+                        "mud_weight": float(getattr(p, "mud_weight", 11.5) or 11.5),
+                        "ecd": float(getattr(p, "ecd", 11.8) or 11.8)
+                    }
+                    for p in db_params
+                ]
+        finally:
+            db.close()
+    except Exception:
+        pass
+
+    # 2. Check if this matches our project's documented Golden PDF incident reference cases
     matched_case = None
     for case in HISTORICAL_INCIDENTS_CATALOG.values():
         if case["well_id"].upper() == well_id.upper() and abs(case["incident_depth_m"] - incident_depth_m) < 1.0:
