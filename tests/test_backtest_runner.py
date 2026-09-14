@@ -153,3 +153,68 @@ def test_available_cases_catalog():
         assert "incident_selection_rationale" in case
         assert len(case["incident_selection_rationale"].strip()) > 40
 
+
+def test_multi_incident_backtest_aggregate_wilson_interval():
+    """
+    Verifies that run_time_travel_backtest() evaluates multiple real historical incidents
+    independently, records actionable alert outcomes, and computes the Wilson score confidence
+    interval correctly on the actual documented cases.
+    """
+    from services.statistics_utils import wilson_confidence_interval
+
+    result = run_time_travel_backtest()
+
+    assert "individual_results" in result
+    assert "aggregate" in result
+
+    indiv = result["individual_results"]
+    agg = result["aggregate"]
+
+    # 1. Verify 5 real documented incidents were evaluated
+    assert len(indiv) == 5
+    assert agg["incidents_tested"] == 5
+
+    # 2. Check each individual incident structure
+    for single in indiv:
+        assert "well_id" in single
+        assert "incident_depth_m" in single
+        assert "actionable_alert_triggered" in single
+        assert "actionable_advance_warning_m" in single
+        assert "milestones" in single
+        assert "replay_curve" in single
+        assert "incident_selection_rationale" in single
+        assert len(single["replay_curve"]) > 0
+
+    # 3. Verify actual honest outcomes on the 5 Volve cases:
+    # 2 out of 5 cases triggered critical alerts before incident depth (F4 and F5)
+    successes = sum(1 for r in indiv if r["actionable_alert_triggered"])
+    assert agg["incidents_with_advance_warning"] == successes
+    assert successes == 2
+
+    # 4. Verify Wilson confidence interval is computed via wilson_confidence_interval()
+    expected_wilson = wilson_confidence_interval(successes, 5, confidence=0.95)
+    w_ci = agg["wilson_confidence_interval"]
+    assert w_ci["point_estimate"] == expected_wilson["point_estimate"]
+    assert w_ci["lower_bound"] == expected_wilson["lower_bound"]
+    assert w_ci["upper_bound"] == expected_wilson["upper_bound"]
+    assert w_ci["point_estimate"] == 0.4
+    assert 0.10 <= w_ci["lower_bound"] <= 0.15
+    assert 0.70 <= w_ci["upper_bound"] <= 0.80
+
+    # 5. Verify headline statement correctly formats honest findings
+    headline = agg["headline_statement"]
+    assert "Across 5 real documented drilling incidents" in headline
+    assert "provided actionable advance warning in 2 (40%" in headline
+    assert "95% CI:" in headline
+
+    # 6. Verify custom incident list execution with hand-calculated Wilson test
+    custom_hand_cases = [
+        {"well_id": "OIL-MORAN-1", "incident_depth_m": 2832.0, "incident_type": "stuck_pipe"}, # triggers at 2792m / 2820m / 2832m
+        {"well_id": "OIL-BAGHJAN-4", "incident_depth_m": 2460.0, "incident_type": "gas_kick"}, # triggers critical at 2454m (+6m)
+    ]
+    custom_res = run_time_travel_backtest(incidents=custom_hand_cases)
+    assert custom_res["aggregate"]["incidents_tested"] == 2
+    # At least gas kick is caught with +6m advance warning
+    assert custom_res["aggregate"]["incidents_with_advance_warning"] >= 1
+
+
