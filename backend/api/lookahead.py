@@ -60,27 +60,27 @@ WELL_FORMATION_HORIZONS: Dict[str, List[Dict[str, Any]]] = {
     ],
 }
 
-DEFAULT_HORIZONS = [
+DEFAULT_HORIZONS: List[Dict[str, Any]] = [
     {"name": "Tipam Sandstone", "tvd_top": 1200.0, "color": "#EAB308", "lithology": "Permeable Sandstone / Aquifer", "primary_risk": "Differential Sticking"},
     {"name": "Barail Formation", "tvd_top": 2400.0, "color": "#F97316", "lithology": "Overpressured Sandstone-Shale", "primary_risk": "Gas Kick & Lost Circulation"},
     {"name": "Kopili Formation", "tvd_top": 2950.0, "color": "#A855F7", "lithology": "Deep Marine Fissile Shale", "primary_risk": "Shale Swelling & Packoff"}
 ]
 
-RAJASTHAN_HORIZONS = [
+RAJASTHAN_HORIZONS: List[Dict[str, Any]] = [
     {"name": "Pariwar Formation", "tvd_top": 1200.0, "color": "#FCD34D", "lithology": "Abrasive Sandstone", "primary_risk": "Sand Abrasion & Bit Wear"},
     {"name": "Baisakhi Formation", "tvd_top": 1800.0, "color": "#9CA3AF", "lithology": "Tight Shale / Siltstone", "primary_risk": "Tight Hole & Overpull"},
     {"name": "Jodhpur Sandstone", "tvd_top": 2300.0, "color": "#D97706", "lithology": "Heavy Oil Sandstone", "primary_risk": "Viscous Drag & Differential Sticking"},
     {"name": "Bilara Carbonates", "tvd_top": 2800.0, "color": "#94A3B8", "lithology": "Cavernous Dolomite/Limestone", "primary_risk": "Catastrophic Lost Circulation"}
 ]
 
-KG_HORIZONS = [
+KG_HORIZONS: List[Dict[str, Any]] = [
     {"name": "Shallow Marine Sediments", "tvd_top": 800.0, "color": "#38BDF8", "lithology": "Unconsolidated Silt/Hydrates", "primary_risk": "Shallow Water Flow / Slumping"},
     {"name": "Godavari Gumbo", "tvd_top": 1800.0, "color": "#3F6212", "lithology": "Highly Reactive Gumbo Shale", "primary_risk": "Bit Balling & Annular Packing"},
     {"name": "Ravva Formation", "tvd_top": 3200.0, "color": "#DC2626", "lithology": "Deep Turbidite Sandstone", "primary_risk": "Narrow PP-FG Margin & Gas Influx"},
     {"name": "Cretaceous Basement", "tvd_top": 4200.0, "color": "#7C3AED", "lithology": "HPHT Fractured Shale-Sand", "primary_risk": "Overpressured HPHT Gas Kick"}
 ]
 
-MIZORAM_HORIZONS = [
+MIZORAM_HORIZONS: List[Dict[str, Any]] = [
     {"name": "Bokabil Formation", "tvd_top": 1500.0, "color": "#F59E0B", "lithology": "Interbedded Sand-Shale", "primary_risk": "Borehole Ovalization"},
     {"name": "Upper Bhuban", "tvd_top": 2500.0, "color": "#B45309", "lithology": "High Stress Marine Shale", "primary_risk": "Tectonic Stress Breakout"},
     {"name": "Middle Bhuban", "tvd_top": 3400.0, "color": "#78350F", "lithology": "Steeply Dipping Hard Shales", "primary_risk": "Bedding Plane Splintering & Severe Stuck Pipe"},
@@ -162,20 +162,21 @@ def get_lookahead_advisory(
     else:
         horizons = DEFAULT_HORIZONS
     upcoming_formations = []
-    next_formation = None
-    dist_to_next_formation = None
+    next_formation: Optional[str] = None
+    dist_to_next_formation: Optional[float] = None
 
     for f in horizons:
-        if f["tvd_top"] > current_depth:
-            dist = round(f["tvd_top"] - current_depth, 1)
-            if next_formation is None or dist < dist_to_next_formation:
-                next_formation = f["name"]
+        tvd_top = float(f["tvd_top"])
+        if tvd_top > current_depth:
+            dist = round(tvd_top - current_depth, 1)
+            if dist_to_next_formation is None or dist < dist_to_next_formation:
+                next_formation = str(f["name"])
                 dist_to_next_formation = dist
             
-            if f["tvd_top"] <= target_depth:
+            if tvd_top <= target_depth:
                 upcoming_formations.append({
                     "name": f["name"],
-                    "tvd_top": f["tvd_top"],
+                    "tvd_top": tvd_top,
                     "distance_ahead_m": dist,
                     "color": f["color"],
                     "lithology": f["lithology"],
@@ -186,10 +187,10 @@ def get_lookahead_advisory(
     well_coords: Dict[str, tuple] = {}
     all_wells = db.query(WellMaster).all()
     for w in all_wells:
-        if w.surface_location:
+        if w.surface_location is not None:
             try:
-                geom = to_shape(w.surface_location)
-                well_coords[w.well_id] = (geom.y, geom.x)  # (lat, lon)
+                geom: Any = to_shape(w.surface_location)  # type: ignore
+                well_coords[str(w.well_id)] = (float(geom.y), float(geom.x))  # (lat, lon)
             except Exception:
                 pass
 
@@ -212,8 +213,8 @@ def get_lookahead_advisory(
     # Separate events into true offsets and prioritize wells within the same basin (< 300 km)
     scored_events = []
     for ev in candidate_events:
-        dist_km = offset_distances.get(ev.well_id, 999.0)
-        is_self = (ev.well_id == well_id)
+        dist_km = offset_distances.get(str(ev.well_id), 999.0)
+        is_self = (str(ev.well_id) == well_id)
         # Prioritize same basin (distance < 350km)
         if dist_km < 350.0 or is_self:
             scored_events.append({
@@ -225,11 +226,11 @@ def get_lookahead_advisory(
     # Fallback if no proximate offsets found
     if not scored_events:
         for ev in candidate_events:
-            dist_km = offset_distances.get(ev.well_id, 999.0)
+            dist_km = offset_distances.get(str(ev.well_id), 999.0)
             scored_events.append({
                 "event": ev,
                 "distance_km": dist_km,
-                "is_self": (ev.well_id == well_id)
+                "is_self": (str(ev.well_id) == well_id)
             })
 
     # Sort candidates: non-self first, proximity, severity
@@ -314,7 +315,7 @@ def get_lookahead_advisory(
     # 4. Proactive Driller Advisory Recommendations (Region & Formation Aware)
     advisory_actions = []
     if dist_to_next_formation is not None and dist_to_next_formation <= 250.0:
-        nf_lower = (next_formation or "").lower()
+        nf_lower = str(next_formation or "").lower()
         if "barail" in nf_lower:
             advisory_actions.append({
                 "category": "MUD_SYSTEM",

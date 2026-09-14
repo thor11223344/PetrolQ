@@ -91,9 +91,14 @@ def extract_incidents_from_text(text: str) -> List[DrillingIncidentSchema]:
         ])
         
         chain = prompt | structured_llm
-        result: IncidentExtractionResult = chain.invoke({"text": text})
-        
-        return result.incidents if result else []
+        raw_result = chain.invoke({"text": text})
+        if isinstance(raw_result, IncidentExtractionResult):
+            return raw_result.incidents
+        elif isinstance(raw_result, dict):
+            return IncidentExtractionResult.model_validate(raw_result).incidents
+        elif hasattr(raw_result, "incidents"):
+            return getattr(raw_result, "incidents", [])
+        return []
         
     except Exception as e:
         logger.warning(f"LLM extraction unavailable ({e}). Engaging deterministic domain NLP fallback...")

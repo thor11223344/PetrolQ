@@ -234,6 +234,12 @@ class KnowledgeGraphService:
 
     def _build_fallback_graph(self):
         """Deterministic seed fallback ensuring graph queries never fail."""
+        if self.graph is None:
+            self.graph = nx.MultiDiGraph()
+        else:
+            self.graph.clear()
+        g = self.graph
+
         seed_wells = ["OIL-BAGHJAN-1", "OIL-BAGHJAN-4", "OIL-MORAN-1", "OIL-NAHARKATIYA-1", "OIL-DIKOM-1"]
         seed_events = [
             {"id": 101, "well_id": "OIL-MORAN-1", "depth": 1540.0, "type": "Severe Lost Circulation", "form": "Tipam Sandstone", "mit": "Pumped 40 bbl LCM pill with coarse nut plug and reduced pump rate to 350 gpm.", "cause": "Fractured permeable sand"},
@@ -244,7 +250,7 @@ class KnowledgeGraphService:
         ]
         
         for w in seed_wells:
-            self.graph.add_node(f"Well:{w}", type="Well", well_id=w, name=w)
+            g.add_node(f"Well:{w}", type="Well", well_id=w, name=w)
 
         for ev in seed_events:
             ev_id = f"Event:{ev['id']}"
@@ -257,17 +263,17 @@ class KnowledgeGraphService:
             outc = extract_outcome(ev['mit'])
             o_node = f"Outcome:{outc}"
 
-            self.graph.add_node(ev_id, type="Event", event_id=ev['id'], well_id=ev['well_id'], depth_tvd=ev['depth'], event_type=ev['type'], hazard_type=h_type, root_cause=ev['cause'], mitigation_applied=ev['mit'])
-            self.graph.add_node(form_node, type="Formation", name=ev['form'])
-            self.graph.add_node(h_node, type="Hazard", name=h_type)
-            self.graph.add_node(i_node, type="Intervention", name=interv)
-            self.graph.add_node(o_node, type="Outcome", name=outc)
+            g.add_node(ev_id, type="Event", event_id=ev['id'], well_id=ev['well_id'], depth_tvd=ev['depth'], event_type=ev['type'], hazard_type=h_type, root_cause=ev['cause'], mitigation_applied=ev['mit'])
+            g.add_node(form_node, type="Formation", name=ev['form'])
+            g.add_node(h_node, type="Hazard", name=h_type)
+            g.add_node(i_node, type="Intervention", name=interv)
+            g.add_node(o_node, type="Outcome", name=outc)
 
-            self.graph.add_edge(well_node, ev_id, relationship="HAD_EVENT")
-            self.graph.add_edge(ev_id, form_node, relationship="OCCURRED_IN")
-            self.graph.add_edge(ev_id, h_node, relationship="HAS_HAZARD")
-            self.graph.add_edge(ev_id, i_node, relationship="MITIGATED_BY")
-            self.graph.add_edge(ev_id, o_node, relationship="LED_TO")
+            g.add_edge(well_node, ev_id, relationship="HAD_EVENT")
+            g.add_edge(ev_id, form_node, relationship="OCCURRED_IN")
+            g.add_edge(ev_id, h_node, relationship="HAS_HAZARD")
+            g.add_edge(ev_id, i_node, relationship="MITIGATED_BY")
+            g.add_edge(ev_id, o_node, relationship="LED_TO")
 
     def query_hazard_subgraph(self, well_id: str, hazard_type: str = "") -> Dict[str, Any]:
         """

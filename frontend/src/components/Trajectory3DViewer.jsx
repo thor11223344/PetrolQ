@@ -883,11 +883,6 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [], c
                                     {activeWellId}
                                 </span>
                                 <SourceTag source={activeWellId} compact={true} />
-                                {getWellDataSource(activeWellId) === 'illustrative_uncalibrated' && (
-                                    <span className="text-[10px] text-rose-300 bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 rounded-full font-sans">
-                                        Illustrative / Not Yet Calibrated
-                                    </span>
-                                )}
                             </h2>
                             <p className="text-[11px] sm:text-xs text-slate-400 hidden sm:block">
                                 Directional anti-collision monitoring with ML hazard score & stratigraphic tops
@@ -1009,11 +1004,6 @@ const Trajectory3DViewer = ({ isOpen, onClose, activeWellId, offsetWells = [], c
                             </div>
                             <SourceTag source={activeWellId} compact={true} />
                         </div>
-                        {getWellDataSource(activeWellId) === 'illustrative_uncalibrated' && (
-                            <div className="mb-2 text-[9.5px] text-rose-300 font-sans bg-rose-500/10 border border-rose-500/30 px-2 py-1 rounded leading-snug">
-                                <strong>Illustrative / Not Yet Calibrated</strong> — architecture demonstration only, no real or Volve-analog data basis.
-                            </div>
-                        )}
                         <ul className="space-y-1.5 text-[10px] font-mono text-slate-300">
                             {(REGIONS_CONFIG[selectedRegion || 'Assam']?.hazards || []).map((h, i) => (
                                 <li key={i} className="flex items-start space-x-1.5">

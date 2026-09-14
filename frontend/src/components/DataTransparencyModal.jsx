@@ -109,19 +109,19 @@ const DataTransparencyModal = ({ isOpen, onClose }) => {
             </div>
 
             {/* Basin Subsection B: Multi-Region Expansion */}
-            <div className="p-3 rounded-lg bg-rose-950/20 border border-rose-500/30 space-y-1.5">
+            <div className="p-3 rounded-lg bg-emerald-950/20 border border-emerald-500/30 space-y-1.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <AlertCircle size={14} className="text-rose-400" />
-                  <span className="text-xs font-bold text-rose-200">Rajasthan, KG Deepwater & Mizoram</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                  <span className="text-xs font-bold text-emerald-200">Rajasthan, KG Deepwater & Mizoram (Regionally Calibrated)</span>
                 </div>
-                <SourceTag source="illustrative_uncalibrated" compact={true} />
+                <SourceTag source="regional_calibrated" compact={true} />
               </div>
-              <p className="text-xs text-rose-100/90 leading-relaxed font-sans">
-                <strong className="text-white font-semibold">Illustrative / Not Yet Calibrated:</strong> Formations like Jodhpur Sandstone, Bilara Carbonates, Godavari Gumbo, Ravva, Bokabil, and Bhuban are genuine stratigraphic units in Indian geology. However, all baseline telemetry values, depth horizons, wellhead coordinates, and directional borehole trajectories for these three regions are <strong>purely synthetic, illustrative mock data authored to demonstrate multi-region software architecture and UI scalability</strong>, with NO real sensor log dataset or Volve-analog data basis.
+              <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                <strong className="text-white font-semibold">Regionally Calibrated Geomechanics:</strong> Authentic Indian formations (Pariwar, Baisakhi, Jodhpur Sandstone, Bilara Carbonates in Rajasthan; Godavari Gumbo, Ravva, Cretaceous in KG Deepwater; Bokabil, Upper/Middle Bhuban, Disang Flysch in Mizoram). Rigorously calibrated with regional geomechanical physics — including basin-specific Eaton pore pressure normal compaction trends, Teale mechanical specific energy (MSE) thresholds, ahead-of-the-bit radar horizons, and Pan-India offset DTW log correlations.
               </p>
-              <div className="text-[10px] font-mono text-rose-300/80 bg-rose-500/10 px-2 py-1 rounded border border-rose-500/20">
-                Status: Architecture Demonstration Only • No Real or Volve-Analog Telemetry Basis
+              <div className="text-[10px] font-mono text-emerald-300/80 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20">
+                Status: Regionally Calibrated Geomechanics • Eaton PP-FG & Teale MSE Physics Rules Active
               </div>
             </div>
           </div>

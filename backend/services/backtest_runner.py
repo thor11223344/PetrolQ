@@ -25,7 +25,7 @@ except ImportError:
     try:
         from .statistics_utils import wilson_confidence_interval
     except ImportError:
-        from statistics_utils import wilson_confidence_interval
+        from statistics_utils import wilson_confidence_interval  # type: ignore
 
 
 HISTORICAL_INCIDENTS_CATALOG: Dict[str, Dict[str, Any]] = {
@@ -436,7 +436,7 @@ def _run_single_incident_replay(
     # at any point before the incident depth?
     crit_adv = results["first_critical_alert"]["advance_warning_m"]
     has_actionable_alert = bool(crit_adv is not None and crit_adv > 0.0)
-    actionable_adv_distance = float(crit_adv) if has_actionable_alert else 0.0
+    actionable_adv_distance = float(crit_adv) if crit_adv is not None and crit_adv > 0.0 else 0.0
 
     # Identify matching case metadata
     case_meta = None

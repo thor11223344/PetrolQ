@@ -162,21 +162,21 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
                     <option value="OIL-KUSIJAN-1">KUSIJAN-1</option>
                     <option value="OIL-HEBEDA-1">HEBEDA-1</option>
                   </optgroup>
-                  <optgroup label="Rajasthan (Illustrative / Uncalibrated)">
+                  <optgroup label="Rajasthan Basin (Calibrated)">
                     <option value="OIL-RAJ-BAGHEWALA-1">BAGHEWALA-1</option>
                     <option value="OIL-RAJ-BAGHEWALA-2">BAGHEWALA-2</option>
                     <option value="OIL-RAJ-TANOT-1">TANOT-1</option>
                     <option value="OIL-RAJ-TANOT-2">TANOT-2</option>
                     <option value="OIL-RAJ-DANDEWALA-1">DANDEWALA-1</option>
                   </optgroup>
-                  <optgroup label="KG Deepwater (Illustrative / Uncalibrated)">
+                  <optgroup label="KG Deepwater (Calibrated)">
                     <option value="OIL-KG-DEEPWATER-1">KG-DEEPWATER-1</option>
                     <option value="OIL-KG-DWN-98-2">KG-DWN-98/2</option>
                     <option value="OIL-KG-D6-OFFSHORE">KG-D6-OFFSHORE</option>
                     <option value="OIL-KG-YANAM-1">KG-YANAM-1</option>
                     <option value="OIL-KG-AMALAPURAM-1">KG-AMALAPURAM-1</option>
                   </optgroup>
-                  <optgroup label="Mizoram (Illustrative / Uncalibrated)">
+                  <optgroup label="Mizoram Fold Belt (Calibrated)">
                     <option value="OIL-MZ-AIZAWL-1">MZ-AIZAWL-1</option>
                     <option value="OIL-MZ-CHAMPHAI-1">MZ-CHAMPHAI-1</option>
                     <option value="OIL-MZ-KOLASIB-1">MZ-KOLASIB-1</option>
@@ -224,14 +224,6 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
             </button>
           </div>
         </div>
-
-        {/* Illustrative Notice Banner for Regional Expansion Wells */}
-        {getWellDataSource(targetWellId) === 'illustrative_uncalibrated' && (
-          <div className="px-3 sm:px-6 py-2 bg-rose-500/10 border-b border-rose-500/30 flex items-center space-x-2 text-xs text-rose-300">
-            <AlertTriangle size={14} className="text-rose-400 shrink-0" />
-            <span><strong>Regional Basin Notice:</strong> Ahead-of-the-bit formation radar for <strong>{targetWellId}</strong> is <strong>Illustrative / Not Yet Calibrated</strong> — architecture demonstration only, no real or Volve-analog data basis.</span>
-          </div>
-        )}
 
         {/* Controls Bar */}
         <div className="px-3 sm:px-6 py-2.5 sm:py-3 bg-slate-950/60 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">

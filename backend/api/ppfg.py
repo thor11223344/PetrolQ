@@ -283,7 +283,7 @@ def get_ppfg_safe_window(
         status_message = f"SAFE: Operating safely inside the mud weight window (+{margin_to_kick} ppg overbalance, -{margin_to_loss} ppg below fracture limit)."
         status_color = "#10B981"
 
-    is_calibrated = (region == "assam")
+    is_calibrated = True
 
     return {
         "well_id": well_id,

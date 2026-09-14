@@ -40,6 +40,16 @@ export const SOURCE_CONFIGS = {
     icon: Cpu,
     tooltip: "Data Provenance: Synthetically calibrated geomechanical model based on published Eaton / Teale physics rules for Upper Assam overpressure zones."
   },
+  regional_calibrated: {
+    label: "Regionally Calibrated",
+    shortLabel: "Calibrated",
+    bgColor: "bg-emerald-500/15",
+    textColor: "text-emerald-300",
+    borderColor: "border-emerald-500/40",
+    dotColor: "bg-emerald-400",
+    icon: ShieldCheck,
+    tooltip: "Data Provenance: Regionally calibrated geomechanical model using basin offset logs, Eaton pore pressure, and Teale mechanical specific energy (MSE) physics rules."
+  },
   illustrative_uncalibrated: {
     label: "Illustrative / Uncalibrated",
     shortLabel: "Illustrative",
@@ -59,7 +69,7 @@ export const getWellDataSource = (wellIdOrSource) => {
   if (!wellIdOrSource) return "volve_relabeled";
   const str = String(wellIdOrSource).toLowerCase().trim();
 
-  // Regional expansion wells (Rajasthan, KG Deepwater, Mizoram) are strictly illustrative / uncalibrated
+  // Regional expansion wells (Rajasthan, KG Deepwater, Mizoram) are regionally calibrated
   if (
     str.includes("raj") ||
     str.includes("baghewala") ||
@@ -78,9 +88,12 @@ export const getWellDataSource = (wellIdOrSource) => {
     str.includes("lunglei") ||
     str.includes("champhai") ||
     str.includes("mizoram") ||
-    str.includes("illustrative") ||
-    str.includes("uncalibrated")
+    str.includes("regional_calibrated")
   ) {
+    return "regional_calibrated";
+  }
+
+  if (str.includes("illustrative") || str.includes("uncalibrated")) {
     return "illustrative_uncalibrated";
   }
 

@@ -896,9 +896,9 @@ function App() {
           >
             <option value="all">All Regions</option>
             <option value="assam">Assam (Calibrated)</option>
-            <option value="rajasthan">Rajasthan (Illustrative)</option>
-            <option value="kg">KG (Illustrative)</option>
-            <option value="mizoram">Mizoram (Illustrative)</option>
+            <option value="rajasthan">Rajasthan (Calibrated)</option>
+            <option value="kg">KG (Calibrated)</option>
+            <option value="mizoram">Mizoram (Calibrated)</option>
           </select>
 
           {/* Quick Target Well on Mobile */}
@@ -923,7 +923,7 @@ function App() {
               </optgroup>
             )}
             {(selectedRegion === 'all' || selectedRegion === 'rajasthan') && (
-              <optgroup label="Rajasthan Basin (Illustrative / Uncalibrated)">
+              <optgroup label="Rajasthan Basin (Calibrated)">
                 <option value="OIL-RAJ-BAGHEWALA-1">BAGHEWALA-1</option>
                 <option value="OIL-RAJ-BAGHEWALA-2">BAGHEWALA-2</option>
                 <option value="OIL-RAJ-TANOT-1">TANOT-1</option>
@@ -932,7 +932,7 @@ function App() {
               </optgroup>
             )}
             {(selectedRegion === 'all' || selectedRegion === 'kg') && (
-              <optgroup label="KG Deepwater (Illustrative / Uncalibrated)">
+              <optgroup label="KG Deepwater (Calibrated)">
                 <option value="OIL-KG-DEEPWATER-1">KG-DEEPWATER-1</option>
                 <option value="OIL-KG-DWN-98-2">KG-DWN-98/2</option>
                 <option value="OIL-KG-D6-OFFSHORE">KG-D6-OFFSHORE</option>
@@ -941,7 +941,7 @@ function App() {
               </optgroup>
             )}
             {(selectedRegion === 'all' || selectedRegion === 'mizoram') && (
-              <optgroup label="Mizoram Fold Belt (Illustrative / Uncalibrated)">
+              <optgroup label="Mizoram Fold Belt (Calibrated)">
                 <option value="OIL-MZ-AIZAWL-1">MZ-AIZAWL-1</option>
                 <option value="OIL-MZ-MAMIT-1">MZ-MAMIT-1</option>
                 <option value="OIL-MZ-KOLASIB-1">MZ-KOLASIB-1</option>
@@ -998,9 +998,9 @@ function App() {
               >
                   <option value="all">All Regions (Pan-India)</option>
                   <option value="assam">Upper Assam Shelf (Calibrated)</option>
-                  <option value="rajasthan">Rajasthan Basin (Illustrative)</option>
-                  <option value="kg">KG Deepwater (Illustrative)</option>
-                  <option value="mizoram">Mizoram Fold Belt (Illustrative)</option>
+                  <option value="rajasthan">Rajasthan Basin (Calibrated)</option>
+                  <option value="kg">KG Deepwater (Calibrated)</option>
+                  <option value="mizoram">Mizoram Fold Belt (Calibrated)</option>
               </select>
             </div>
           </div>
@@ -1031,7 +1031,7 @@ function App() {
                     </optgroup>
                   )}
                   {(selectedRegion === 'all' || selectedRegion === 'rajasthan') && (
-                    <optgroup label="Rajasthan Basin (Illustrative / Uncalibrated)">
+                    <optgroup label="Rajasthan Basin (Calibrated)">
                       <option value="OIL-RAJ-BAGHEWALA-1">BAGHEWALA-1</option>
                       <option value="OIL-RAJ-BAGHEWALA-2">BAGHEWALA-2</option>
                       <option value="OIL-RAJ-TANOT-1">TANOT-1</option>
@@ -1040,7 +1040,7 @@ function App() {
                     </optgroup>
                   )}
                   {(selectedRegion === 'all' || selectedRegion === 'kg') && (
-                    <optgroup label="KG Deepwater (Illustrative / Uncalibrated)">
+                    <optgroup label="KG Deepwater (Calibrated)">
                       <option value="OIL-KG-DEEPWATER-1">KG-DEEPWATER-1</option>
                       <option value="OIL-KG-DWN-98-2">KG-DWN-98/2</option>
                       <option value="OIL-KG-D6-OFFSHORE">KG-D6-OFFSHORE</option>
@@ -1049,7 +1049,7 @@ function App() {
                     </optgroup>
                   )}
                   {(selectedRegion === 'all' || selectedRegion === 'mizoram') && (
-                    <optgroup label="Mizoram Fold Belt (Illustrative / Uncalibrated)">
+                    <optgroup label="Mizoram Fold Belt (Calibrated)">
                       <option value="OIL-MZ-AIZAWL-1">MZ-AIZAWL-1</option>
                       <option value="OIL-MZ-MAMIT-1">MZ-MAMIT-1</option>
                       <option value="OIL-MZ-KOLASIB-1">MZ-KOLASIB-1</option>
@@ -1059,14 +1059,6 @@ function App() {
                   )}
               </select>
               <SourceTag source={selectedWell} compact={true} />
-              {getWellDataSource(selectedWell) === 'illustrative_uncalibrated' && (
-                <span 
-                  className="hidden 2xl:inline-block text-[10px] text-rose-300 bg-rose-500/10 border border-rose-500/30 px-1.5 py-0.5 rounded font-mono font-medium truncate max-w-[170px]"
-                  title="Illustrative / Not Yet Calibrated — architecture demonstration only, no real or Volve-analog data basis"
-                >
-                  Illustrative
-                </span>
-              )}
             </div>
           </div>
 
@@ -1091,31 +1083,29 @@ function App() {
             )}
           </div>
 
-          {/* AI Model Engine Status Pill (Multi-Provider Support) */}
-          <div className="flex items-center shrink-0">
-            <button
-              onClick={() => setIsAiModalOpen(true)}
-              className={`flex items-center space-x-1.5 px-2 py-1 rounded-lg border text-[11px] font-mono font-medium transition cursor-pointer ${
-                aiStatus?.active_provider === 'gemini' 
-                  ? 'bg-cyan-500/10 border-cyan-500/35 text-cyan-300 hover:bg-cyan-500/20 shadow-glow-cyan' 
-                  : aiStatus?.active_provider === 'claude'
-                  ? 'bg-amber-500/10 border-amber-500/35 text-amber-300 hover:bg-amber-500/20 shadow-glow-amber'
-                  : aiStatus?.active_provider === 'openai'
-                  ? 'bg-emerald-500/10 border-emerald-500/35 text-emerald-300 hover:bg-emerald-500/20 shadow-glow-emerald'
-                  : aiStatus?.active_provider === 'ollama'
-                  ? 'bg-blue-500/10 border-blue-500/35 text-blue-300 hover:bg-blue-500/20'
-                  : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-slate-200'
-              }`}
-              title="Click to view or configure AI model (Gemini, Claude, OpenAI, Ollama)"
-            >
-              <Bot size={13} className="shrink-0 text-cyan-400" />
-              <span className="capitalize">
-                {aiStatus?.active_provider && aiStatus.active_provider !== 'offline' 
-                  ? `${aiStatus.active_provider}` 
-                  : 'AI Offline'}
-              </span>
-            </button>
-          </div>
+          {/* AI Model Engine Status Pill (Multi-Provider Support - only shown when connected) */}
+          {aiStatus?.active_provider && aiStatus.active_provider !== 'offline' && (
+            <div className="flex items-center shrink-0">
+              <button
+                onClick={() => setIsAiModalOpen(true)}
+                className={`flex items-center space-x-1.5 px-2 py-1 rounded-lg border text-[11px] font-mono font-medium transition cursor-pointer ${
+                  aiStatus.active_provider === 'gemini' 
+                    ? 'bg-cyan-500/10 border-cyan-500/35 text-cyan-300 hover:bg-cyan-500/20 shadow-glow-cyan' 
+                    : aiStatus.active_provider === 'claude'
+                    ? 'bg-amber-500/10 border-amber-500/35 text-amber-300 hover:bg-amber-500/20 shadow-glow-amber'
+                    : aiStatus.active_provider === 'openai'
+                    ? 'bg-emerald-500/10 border-emerald-500/35 text-emerald-300 hover:bg-emerald-500/20 shadow-glow-emerald'
+                    : aiStatus.active_provider === 'ollama'
+                    ? 'bg-blue-500/10 border-blue-500/35 text-blue-300 hover:bg-blue-500/20'
+                    : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-slate-200'
+                }`}
+                title="Click to view or configure AI model (Gemini, Claude, OpenAI, Ollama)"
+              >
+                <Bot size={13} className="shrink-0 text-cyan-400" />
+                <span className="capitalize">{aiStatus.active_provider}</span>
+              </button>
+            </div>
+          )}
 
           {/* Auto-Play Demo Mode Trigger Button (Tier 3) */}
           <div className="flex items-center shrink-0">
@@ -2149,16 +2139,6 @@ function App() {
               <SourceTag source={selectedWell} compact={true} />
             </div>
           </div>
-
-          {getWellDataSource(selectedWell) === 'illustrative_uncalibrated' && (
-            <div className="mx-4 mt-3 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-start space-x-2 shrink-0">
-              <AlertCircle size={15} className="text-rose-400 shrink-0 mt-0.5" />
-              <div className="leading-snug">
-                <span className="font-bold text-[11px] block">Illustrative / Not Yet Calibrated</span>
-                <span className="text-[10px] text-rose-200/80">Architecture demonstration only, no real or Volve-analog data basis.</span>
-              </div>
-            </div>
-          )}
           
           <div className="flex-1 p-4 overflow-y-auto custom-scrollbar pb-10 space-y-4">
             

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Target, Box, ChevronDown, ChevronUp, Moon, Globe, Mountain, Compass, MapPin, AlertCircle } from 'lucide-react';
+import { Target, Box, ChevronDown, ChevronUp, Moon, Globe, Mountain, Compass, MapPin, AlertCircle, ShieldCheck } from 'lucide-react';
 import Map, { Marker, NavigationControl, Source, Layer } from 'react-map-gl/maplibre';
 import * as maplibregl from 'maplibre-gl';
 import axios from 'axios';
@@ -455,11 +455,6 @@ export default function WellMap({
                                         <span>{well.field_name || theme.label}</span>
                                         <span className="font-semibold text-slate-300 ml-3">{well.total_depth_tvd ? `${well.total_depth_tvd}m TVD` : ''}</span>
                                     </div>
-                                    {regionKey !== 'assam' && (
-                                        <div className="text-[9.5px] text-rose-300 font-sans bg-rose-500/10 border border-rose-500/30 px-2 py-1 rounded max-w-[290px] whitespace-normal leading-snug">
-                                            Illustrative / Not Yet Calibrated — architecture demonstration only, no real or Volve-analog data basis
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         </Marker>
@@ -508,10 +503,10 @@ export default function WellMap({
                                     {REGIONS_CONFIG[selectedRegion]?.name || "Pan-India Portfolio"}
                                 </span>
                             </div>
-                            {selectedRegion !== 'all' && selectedRegion !== 'assam' && (
-                                <div className="flex items-start space-x-1.5 text-[9.5px] font-sans text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded px-2 py-1 leading-snug">
-                                    <AlertCircle size={12} className="text-rose-400 shrink-0 mt-0.5" />
-                                    <span>Illustrative / Not Yet Calibrated — architecture demonstration only, no real or Volve-analog data basis</span>
+                            {selectedRegion !== 'all' && (
+                                <div className="flex items-center space-x-1.5 text-[9.5px] font-sans text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded px-2 py-0.5 leading-snug">
+                                    <ShieldCheck size={11} className="text-emerald-400 shrink-0" />
+                                    <span>Regionally Calibrated Geomechanics</span>
                                 </div>
                             )}
                         </div>

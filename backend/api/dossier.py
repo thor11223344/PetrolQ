@@ -32,9 +32,9 @@ def get_pre_spud_dossier(
 
     # 1. Fetch nearby offset wells within the active regional basin
     all_wells = db.query(WellMaster).all()
-    offsets = [w for w in all_wells if w.well_id != well_id and get_well_region_tag(w.well_id) == region]
+    offsets = [w for w in all_wells if str(w.well_id) != well_id and get_well_region_tag(str(w.well_id)) == region]
     if not offsets:
-        offsets = [w for w in all_wells if w.well_id != well_id]
+        offsets = [w for w in all_wells if str(w.well_id) != well_id]
 
     offset_summaries = []
     for off in offsets:
@@ -42,7 +42,7 @@ def get_pre_spud_dossier(
             "well_id": off.well_id,
             "field_name": off.field_name or f"{region.capitalize()} Field",
             "total_depth_tvd": off.total_depth_tvd or 3600.0,
-            "spud_date": str(off.spud_date) if off.spud_date else "Historical",
+            "spud_date": str(off.spud_date) if off.spud_date is not None else "Historical",
             "kb_elevation": off.kb_elevation or 115.0
         })
 
@@ -258,7 +258,7 @@ def get_pre_spud_dossier(
             most_critical_status = ac["status"]
 
     # 4. Wilson Score Confidence Interval on mitigation effectiveness
-    mitigated_events = [e for e in events if e.mitigation_applied and len(str(e.mitigation_applied).strip()) > 3]
+    mitigated_events = [e for e in events if e.mitigation_applied is not None and len(str(e.mitigation_applied).strip()) > 3]
     total_events_count = len(events)
     overall_wilson = format_wilson_insight(len(mitigated_events), total_events_count, "Overall offset mitigation success")
 
@@ -283,7 +283,7 @@ def get_pre_spud_dossier(
             "planned_td_tvd_m": active_tvd,
             "planned_td_md_m": active_traj["total_md"],
             "kb_elevation_m": well.kb_elevation or 115.0,
-            "spud_date": str(well.spud_date) if well.spud_date else "Planned Q3",
+            "spud_date": str(well.spud_date) if well.spud_date is not None else "Planned Q3",
             "search_radius_km": radius_km
         },
         "executive_summary": {

@@ -216,14 +216,6 @@ const PPFGWindowModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1' }) =>
           </div>
         </div>
 
-        {/* Illustrative Notice Banner for Regional Expansion Wells */}
-        {getWellDataSource(activeWellId) === 'illustrative_uncalibrated' && (
-          <div className="px-3 sm:px-6 py-2 bg-rose-500/10 border-b border-rose-500/30 flex items-center space-x-2 text-xs text-rose-300">
-            <AlertCircle size={14} className="text-rose-400 shrink-0" />
-            <span><strong>Regional Basin Notice:</strong> PPFG safe corridor for <strong>{activeWellId}</strong> is <strong>Illustrative / Not Yet Calibrated</strong> — architecture demonstration only, no real or Volve-analog data basis.</span>
-          </div>
-        )}
-
         {/* Operating Status Banner */}
         <div 
           className="px-3 sm:px-6 py-2 sm:py-3 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs transition"

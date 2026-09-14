@@ -1,7 +1,12 @@
 import hashlib
 import numpy as np
+from typing import Dict, List, Tuple, Callable, Any, Optional, TypedDict
 
-REGIONAL_GEOLOGY_CONFIG = {
+class RegionGeology(TypedDict):
+    formations: List[Tuple[str, float, str, str]]
+    risk_curve: Callable[[Any], Any]
+
+REGIONAL_GEOLOGY_CONFIG: Dict[str, RegionGeology] = {
     "assam": {
         "formations": [
             ("Tipam Sandstone", 1450.0, "#EAB308", "Freshwater permeable sand reservoir, severe thief-bed mud loss"),
@@ -60,7 +65,7 @@ REGIONAL_GEOLOGY_CONFIG = {
     }
 }
 
-def compute_realistic_trajectory(well_id: str, tvd_max: float, is_active: bool = False, db_events: list = None):
+def compute_realistic_trajectory(well_id: str, tvd_max: float, is_active: bool = False, db_events: Optional[list] = None):
     """
     Computes a realistic 3D directional borehole trajectory.
     Uses deterministic pseudo-random seed from well_id so each well has a unique,

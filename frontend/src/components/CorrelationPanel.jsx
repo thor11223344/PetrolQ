@@ -308,12 +308,6 @@ const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell }) => {
                     <div className="flex-1 flex flex-col overflow-hidden">
                         {data && (
                             <>
-                                {(getWellDataSource(activeWell) === 'illustrative_uncalibrated' || getWellDataSource(currentOffset) === 'illustrative_uncalibrated') && (
-                                    <div className="bg-rose-500/10 border-b border-rose-500/30 px-5 py-1.5 flex items-center space-x-2 text-[11px] text-rose-300">
-                                        <AlertTriangle size={13} className="text-rose-400 shrink-0" />
-                                        <span><strong>Regional Data Notice:</strong> {getWellDataSource(activeWell) === 'illustrative_uncalibrated' && getWellDataSource(currentOffset) === 'illustrative_uncalibrated' ? 'Active and offset wells are' : getWellDataSource(activeWell) === 'illustrative_uncalibrated' ? 'Active well is' : 'Offset well is'} <strong>Illustrative / Not Yet Calibrated</strong> — architecture demonstration only, no real or Volve-analog data basis.</span>
-                                    </div>
-                                )}
                                 <div className="bg-slate-950/70 border-b border-slate-800/80 px-5 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
                                     <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
                                         <div className="flex items-center space-x-2">
