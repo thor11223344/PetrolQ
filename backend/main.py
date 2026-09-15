@@ -217,6 +217,14 @@ def get_regions(db: Session = Depends(get_db)):
         }
     ]
 
+@app.get("/api/wells/{well_id}", response_model=WellResponse)
+def get_well_by_id(well_id: str, db: Session = Depends(get_db)):
+    """Fetch details and surface location for a specific well."""
+    well = db.query(WellMaster).filter(WellMaster.well_id == well_id).first()
+    if not well:
+        raise HTTPException(status_code=404, detail=f"Well {well_id} not found")
+    return well
+
 @app.get("/api/wells/{well_id}/history")
 def get_well_history(
     well_id: str,

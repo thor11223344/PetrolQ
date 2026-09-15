@@ -70,7 +70,7 @@ def synthesize_incident_briefing(
     target_region = get_well_region_tag(payload.well_id or "OIL-BAGHJAN-1")
 
     # 1. Retrieve historical incident evidence using hybrid vector/keyword search
-    all_events = db.query(SyntheticEvent).all()
+    all_events: List[Any] = db.query(SyntheticEvent).all()
     
     # Generate query embedding for similarity scoring
     scored_events = []
@@ -80,7 +80,7 @@ def synthesize_incident_briefing(
         for ev in all_events:
             if ev.embedding:
                 score = compute_cosine_similarity(q_vec, ev.embedding)
-                ev_region = get_well_region_tag(ev.well_id or "")
+                ev_region = get_well_region_tag(str(ev.well_id or ""))
                 # Basin affinity boost: +0.15 for matching basin
                 if ev_region == target_region:
                     score += 0.15
@@ -100,7 +100,7 @@ def synthesize_incident_briefing(
         for ev in all_events:
             txt = f"{ev.event_type} {ev.formation} {ev.root_cause} {ev.mitigation_applied}".lower()
             score = 1.0 if any(term in txt for term in q_lower.split()) else 0.0
-            ev_region = get_well_region_tag(ev.well_id or "")
+            ev_region = get_well_region_tag(str(ev.well_id or ""))
             if ev_region == target_region:
                 score += 0.3
             scored_events.append((score, ev))
@@ -171,7 +171,16 @@ def synthesize_incident_briefing(
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt_text}
             ])
-            raw_text = response.content if hasattr(response, "content") else str(response)
+            content = getattr(response, "content", response)
+            if isinstance(content, str):
+                raw_text = content
+            elif isinstance(content, list):
+                raw_text = "\n".join(
+                    c if isinstance(c, str) else str(c.get("text", "")) if isinstance(c, dict) else str(c)
+                    for c in content
+                )
+            else:
+                raw_text = str(content)
 
             # Parse LLM response
             summary_part = ""

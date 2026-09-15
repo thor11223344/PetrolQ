@@ -315,7 +315,7 @@ def get_lookahead_advisory(
     # 4. Proactive Driller Advisory Recommendations (Region & Formation Aware)
     advisory_actions = []
     if dist_to_next_formation is not None and dist_to_next_formation <= 250.0:
-        nf_lower = str(next_formation or "").lower()
+        nf_lower = (next_formation or "").lower()
         if "barail" in nf_lower:
             advisory_actions.append({
                 "category": "MUD_SYSTEM",

@@ -42,7 +42,7 @@ import axios from 'axios';
 import { API_BASE, WS_BASE } from './lib/api';
 import Plot from 'react-plotly.js';
 
-import WellMap from './components/WellMap';
+import WellMap, { BASEMAP_OPTIONS, BASEMAP_STORAGE_KEY } from './components/WellMap';
 import DocumentUploadModal from './components/DocumentUploadModal';
 import KnowledgeSearch from './components/KnowledgeSearch';
 import CorrelationPanel from './components/CorrelationPanel';
@@ -151,6 +151,28 @@ function App() {
       console.warn("Could not save theme to localStorage", e);
     }
   }, [dashboardTheme]);
+
+  // Basemap style state ('dark' | 'satellite' | 'terrain')
+  const [basemapStyle, setBasemapStyle] = useState(() => {
+    try {
+      const saved = localStorage.getItem(BASEMAP_STORAGE_KEY);
+      if (saved && ['dark', 'satellite', 'terrain'].includes(saved)) {
+        return saved;
+      }
+    } catch (e) {
+      console.warn("Could not read basemapStyle from localStorage", e);
+    }
+    return 'dark';
+  });
+
+  const handleBasemapChange = (styleId) => {
+    setBasemapStyle(styleId);
+    try {
+      localStorage.setItem(BASEMAP_STORAGE_KEY, styleId);
+    } catch (e) {
+      console.warn("Could not save basemapStyle to localStorage", e);
+    }
+  };
 
   // Pre-configured Demo Scenarios (Golden PDF Documented Well Incidents)
   const [demoScenarios, setDemoScenarios] = useState([
@@ -1534,6 +1556,16 @@ function App() {
                 <Radar size={15} />
               </button>
               <button
+                onClick={() => {
+                  const nextStyle = basemapStyle === 'dark' ? 'satellite' : basemapStyle === 'satellite' ? 'terrain' : 'dark';
+                  handleBasemapChange(nextStyle);
+                }}
+                className="p-2 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 active:bg-cyan-500/20"
+                title={`Current map: ${basemapStyle}. Tap to toggle map type.`}
+              >
+                <MapIcon size={15} />
+              </button>
+              <button
                 onClick={() => handleSimControl(simStatus.is_running ? 'pause' : 'play')}
                 className={`p-2 rounded-lg font-bold text-xs transition active:scale-95 ${
                   simStatus.is_running
@@ -1548,7 +1580,7 @@ function App() {
           </div>
 
           {/* Active Drilling Status Card overlay (Hidden on < sm) */}
-          <div className="absolute top-4 left-4 z-10 hidden sm:flex gap-3">
+          <div className="absolute top-4 left-4 z-10 hidden sm:flex gap-3 items-start flex-wrap">
             {/* TVD */}
             <div className="glass-panel p-3.5 sm:p-4 rounded-xl shadow-glass border-slate-750 min-w-[180px] relative overflow-hidden group">
               <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent" />
@@ -1646,6 +1678,47 @@ function App() {
                 </button>
               );
             })()}
+
+            {/* Map Types / Basemap Switcher Card (Placed directly next to Lookahead Radar) */}
+            <div 
+              id="basemap-style-switcher"
+              className="glass-panel p-3.5 rounded-xl shadow-glass border-slate-750 min-w-[215px] relative overflow-hidden group flex flex-col justify-between"
+            >
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent" />
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] uppercase text-cyan-400 font-mono font-bold tracking-wider flex items-center gap-1.5">
+                  <MapIcon size={12} className="text-cyan-400" />
+                  <span>Map Types</span>
+                </span>
+                <span className="text-[10px] bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 px-2 py-0.5 rounded-full font-mono capitalize font-bold">
+                  {basemapStyle}
+                </span>
+              </div>
+              <div className="flex items-center gap-1 bg-slate-900/90 p-1 rounded-lg border border-slate-800 mt-1">
+                {BASEMAP_OPTIONS.map(opt => {
+                  const isSelected = basemapStyle === opt.id;
+                  const Icon = opt.icon;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      id={`basemap-btn-${opt.id}`}
+                      onClick={() => handleBasemapChange(opt.id)}
+                      title={`Switch to ${opt.label} basemap`}
+                      className={`
+                        flex-1 flex items-center justify-center space-x-1 py-1.5 px-2 rounded-md text-[11px] font-medium transition-all cursor-pointer
+                        ${isSelected 
+                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-sm font-semibold' 
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border border-transparent'}
+                      `}
+                    >
+                      <Icon size={12} className={isSelected ? 'text-cyan-400' : 'text-slate-400'} />
+                      <span>{opt.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           {/* In-App Telemetry Feed Controller (Desktop Tactical Cyber-Console) */}
@@ -1818,6 +1891,8 @@ function App() {
              activeScenario={simStatus.active_scenario}
              is3DViewerOpen={is3DViewerOpen}
              setIs3DViewerOpen={setIs3DViewerOpen}
+             basemapStyle={basemapStyle}
+             onBasemapChange={handleBasemapChange}
           />
         </div>
 

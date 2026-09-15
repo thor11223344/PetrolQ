@@ -89,10 +89,6 @@ const ImpactStatCards = ({ className = "" }) => {
                     </div>
 
                     <div className="text-[10.5px] font-mono flex items-center gap-1 truncate">
-                      <span className="text-slate-400 line-through decoration-slate-600 text-[9.5px] truncate max-w-[85px] xl:max-w-none">
-                        {item.before}
-                      </span>
-                      <span className="text-slate-500 font-bold">→</span>
                       <span className={`font-semibold ${item.accentColor} truncate`}>
                         {item.after}
                       </span>

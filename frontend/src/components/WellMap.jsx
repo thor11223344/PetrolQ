@@ -81,9 +81,9 @@ const terrainStyle = {
     layers: [{ id: 'opentopo-layer', type: 'raster', source: 'opentopo', minzoom: 0, maxzoom: 17 }]
 };
 
-const BASEMAP_STORAGE_KEY = 'petrolq_basemap_style';
+export const BASEMAP_STORAGE_KEY = 'petrolq_basemap_style';
 
-const BASEMAP_OPTIONS = [
+export const BASEMAP_OPTIONS = [
     { id: 'dark', label: 'Dark', icon: Moon },
     { id: 'satellite', label: 'Satellite', icon: Globe },
     { id: 'terrain', label: 'Terrain', icon: Mountain }
@@ -128,7 +128,9 @@ export default function WellMap({
     currentDepth, 
     activeScenario,
     is3DViewerOpen: external3DOpen,
-    setIs3DViewerOpen: setExternal3DOpen
+    setIs3DViewerOpen: setExternal3DOpen,
+    basemapStyle: externalBasemapStyle,
+    onBasemapChange: externalOnBasemapChange
 }) {
     const mapRef = useRef(null);
     const initialConfig = REGIONS_CONFIG[selectedRegion] || REGIONS_CONFIG.assam;
@@ -140,7 +142,7 @@ export default function WellMap({
         pitch: 25
     });
 
-    const [basemapStyle, setBasemapStyle] = useState(() => {
+    const [internalBasemapStyle, setInternalBasemapStyle] = useState(() => {
         try {
             const saved = localStorage.getItem(BASEMAP_STORAGE_KEY);
             if (saved && ['dark', 'satellite', 'terrain'].includes(saved)) {
@@ -151,6 +153,8 @@ export default function WellMap({
         }
         return 'dark';
     });
+
+    const basemapStyle = externalBasemapStyle !== undefined ? externalBasemapStyle : internalBasemapStyle;
 
     const [wells, setWells] = useState([]);
     const [radius, setRadius] = useState(50);
@@ -190,50 +194,21 @@ export default function WellMap({
         fetchWells();
     }, [selectedRegion, searchCoords.lat, searchCoords.lon, radius]);
 
-    // 2. Synchronize map camera viewport whenever selectedRegion changes
-    useEffect(() => {
-        const config = REGIONS_CONFIG[selectedRegion] || REGIONS_CONFIG.all;
-        if (config) {
-            const targetLat = config.center[0];
-            const targetLon = config.center[1];
-            const targetZoom = config.zoom || 8;
+    // Center map helper: smoothly animates and centers camera on a target well
+    const centerOnWell = useCallback((wellOrId, customZoom = 11) => {
+        if (!wellOrId) return;
 
-            setSearchCoords({ lat: targetLat, lon: targetLon });
-            setRadius(selectedRegion === 'all' ? 1200 : selectedRegion === 'assam' ? 60 : 250);
+        const targetId = typeof wellOrId === 'string' ? wellOrId : wellOrId.well_id;
+        const wellObj = typeof wellOrId === 'object' ? wellOrId : wells.find(w => w.well_id === targetId);
 
-            setViewState(prev => ({
-                ...prev,
-                latitude: targetLat,
-                longitude: targetLon,
-                zoom: targetZoom
-            }));
-
-            const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
-            if (map && map.flyTo) {
-                map.flyTo({
-                    center: [targetLon, targetLat],
-                    zoom: targetZoom,
-                    duration: 1000,
-                    essential: true
-                });
-            }
-        }
-    }, [selectedRegion]);
-
-    // 3. Center smoothly on active well whenever activeWellId changes
-    useEffect(() => {
-        if (!activeWellId || wells.length === 0) return;
-        const active = wells.find(w => w.well_id === activeWellId);
-        if (active && active.surface_location) {
-            const lat = active.surface_location.lat;
-            const lon = active.surface_location.lon;
-
+        const doFly = (lon, lat) => {
+            const targetZoom = Math.max(customZoom, 10.5);
             const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
             if (map && map.flyTo) {
                 map.flyTo({
                     center: [lon, lat],
-                    zoom: Math.max(viewState.zoom, 9.5),
-                    duration: 900,
+                    zoom: targetZoom,
+                    duration: 1000,
                     essential: true
                 });
             }
@@ -241,10 +216,71 @@ export default function WellMap({
                 ...prev,
                 latitude: lat,
                 longitude: lon,
-                zoom: Math.max(prev.zoom, 9.5)
+                zoom: targetZoom
             }));
+            setSearchCoords({ lat, lon });
+        };
+
+        if (wellObj?.surface_location) {
+            const { lat, lon } = wellObj.surface_location;
+            if (lat !== undefined && lon !== undefined) {
+                doFly(lon, lat);
+                return;
+            }
         }
-    }, [activeWellId, wells]);
+
+        // Fallback: if not yet in local wells array, use regional calibrated center coordinates
+        const regKey = getRegionIdFromWellId(targetId);
+        const regConfig = REGIONS_CONFIG[regKey];
+        if (regConfig?.center) {
+            doFly(regConfig.center[1], regConfig.center[0], 9.5);
+        }
+    }, [wells]);
+
+    // 2. Synchronize search radius & fallback camera when region changes
+    useEffect(() => {
+        const config = REGIONS_CONFIG[selectedRegion] || REGIONS_CONFIG.all;
+        if (config) {
+            const targetLat = config.center[0];
+            const targetLon = config.center[1];
+            const targetZoom = config.zoom || 8;
+
+            setRadius(selectedRegion === 'all' ? 1200 : selectedRegion === 'assam' ? 60 : 250);
+
+            // If active well already belongs to this region, let centerOnWell handle camera
+            const activeWellRegion = getRegionIdFromWellId(activeWellId);
+            const wellBelongsToRegion = activeWellRegion === selectedRegion;
+            
+            if (!activeWellId || !wellBelongsToRegion) {
+                setSearchCoords({ lat: targetLat, lon: targetLon });
+                setViewState(prev => ({
+                    ...prev,
+                    latitude: targetLat,
+                    longitude: targetLon,
+                    zoom: targetZoom
+                }));
+
+                const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
+                if (map && map.flyTo) {
+                    map.flyTo({
+                        center: [targetLon, targetLat],
+                        zoom: targetZoom,
+                        duration: 1000,
+                        essential: true
+                    });
+                }
+            }
+        }
+    }, [selectedRegion, activeWellId]);
+
+    // 3. Center automatically on active well whenever activeWellId changes OR when wells load
+    useEffect(() => {
+        if (!activeWellId || wells.length === 0) return;
+        const active = wells.find(w => w.well_id === activeWellId);
+        if (active && active.surface_location) {
+            centerOnWell(active, 11);
+        }
+    }, [activeWellId, wells, centerOnWell]);
 
     const circleGeoJSON = useMemo(() => {
         if (selectedRegion === 'all') return null;
@@ -289,7 +325,11 @@ export default function WellMap({
     };
 
     const handleBasemapChange = (styleId) => {
-        setBasemapStyle(styleId);
+        if (externalOnBasemapChange) {
+            externalOnBasemapChange(styleId);
+        } else {
+            setInternalBasemapStyle(styleId);
+        }
         try {
             localStorage.setItem(BASEMAP_STORAGE_KEY, styleId);
         } catch (e) {
@@ -314,9 +354,7 @@ export default function WellMap({
         const borderLayers = ['boundary_county', 'boundary_state', 'boundary_country_outline', 'boundary_country_inner'];
         borderLayers.forEach(layer => {
             if (map.getLayer(layer)) {
-                try {
-                    map.setLayoutProperty(layer, 'visibility', 'none');
-                } catch (e) {}
+                map.setLayoutProperty(layer, 'visibility', 'none');
             }
         });
     };
@@ -331,39 +369,6 @@ export default function WellMap({
 
     return (
         <div className="relative w-full h-full flex-1 overflow-hidden">
-            {/* Basemap Style Switcher Control */}
-            <div 
-                id="basemap-style-switcher"
-                className="absolute top-3.5 left-3.5 z-20 flex items-center bg-[#0c1322]/85 backdrop-blur-md border border-slate-700/80 rounded-xl p-1 shadow-glass space-x-1 select-none"
-                role="group"
-                aria-label="Basemap style selection"
-            >
-                {BASEMAP_OPTIONS.map(opt => {
-                    const isSelected = basemapStyle === opt.id;
-                    const Icon = opt.icon;
-                    return (
-                        <button
-                            key={opt.id}
-                            type="button"
-                            id={`basemap-btn-${opt.id}`}
-                            onClick={() => handleBasemapChange(opt.id)}
-                            title={isOffline ? `${opt.label} (Offline mode)` : `Switch to ${opt.label} basemap`}
-                            className={`
-                                flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all
-                                ${isSelected 
-                                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm font-semibold' 
-                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border border-transparent'}
-                                ${isOffline ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-                            `}
-                            disabled={isOffline}
-                        >
-                            <Icon size={13} className={isSelected ? 'text-cyan-400' : 'text-slate-400'} />
-                            <span>{opt.label}</span>
-                        </button>
-                    );
-                })}
-            </div>
-
             <Map
                 mapLib={maplibregl}
                 ref={mapRef}
@@ -420,6 +425,7 @@ export default function WellMap({
                             onClick={e => {
                                 e.originalEvent.stopPropagation();
                                 onSelectWell(well.well_id);
+                                centerOnWell(well, 11.5);
                             }}
                         >
                             <div className="relative flex items-center justify-center cursor-pointer group">
