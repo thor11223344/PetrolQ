@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Target, Box, ChevronDown, ChevronUp, Moon, Globe, Mountain, Compass, MapPin, AlertCircle, ShieldCheck } from 'lucide-react';
+import { Target, Box, ChevronDown, ChevronUp, Moon, Globe, Mountain, Compass, MapPin, AlertCircle, ShieldCheck, Radar, Radio } from 'lucide-react';
 import Map, { Marker, NavigationControl, Source, Layer } from 'react-map-gl/maplibre';
 import * as maplibregl from 'maplibre-gl';
 import axios from 'axios';
@@ -45,6 +45,19 @@ function getCircleBoundingBox(center, radiusInKm) {
         [coords.longitude - distanceX, coords.latitude - distanceY],
         [coords.longitude + distanceX, coords.latitude + distanceY]
     ];
+}
+
+function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+    if (lat1 === undefined || lon1 === undefined || lat2 === undefined || lon2 === undefined) return Infinity;
+    const R = 6371; // Earth radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
 }
 
 const isOffline = import.meta.env.VITE_OFFLINE_MODE === 'true';
@@ -245,7 +258,7 @@ export default function WellMap({
             const targetLon = config.center[1];
             const targetZoom = config.zoom || 8;
 
-            setRadius(selectedRegion === 'all' ? 1200 : selectedRegion === 'assam' ? 60 : 250);
+            setRadius(selectedRegion === 'all' ? 1200 : 40);
 
             // If active well already belongs to this region, let centerOnWell handle camera
             const activeWellRegion = getRegionIdFromWellId(activeWellId);
@@ -286,6 +299,33 @@ export default function WellMap({
         if (selectedRegion === 'all') return null;
         return createGeoJSONCircle([searchCoords.lon, searchCoords.lat], radius);
     }, [searchCoords, radius, selectedRegion]);
+
+    // Calculate exact distance of every well to the active radius search center
+    const wellsWithDistance = useMemo(() => {
+        return wells.map(w => {
+            const loc = w.surface_location;
+            if (!loc || typeof loc !== 'object' || loc.lat === undefined || loc.lon === undefined) {
+                return { ...w, distanceKm: Infinity, isInsideRadius: false };
+            }
+            const dist = calculateDistanceKm(searchCoords.lat, searchCoords.lon, loc.lat, loc.lon);
+            const isInside = selectedRegion === 'all' ? true : dist <= radius;
+            return {
+                ...w,
+                distanceKm: dist,
+                isInsideRadius: isInside
+            };
+        });
+    }, [wells, searchCoords, radius, selectedRegion]);
+
+    const innerWells = useMemo(() => {
+        return wellsWithDistance.filter(w => w.isInsideRadius && w.well_id !== activeWellId);
+    }, [wellsWithDistance, activeWellId]);
+
+    const nearestOffset = useMemo(() => {
+        if (innerWells.length === 0) return null;
+        const sorted = [...innerWells].sort((a, b) => a.distanceKm - b.distanceKm);
+        return sorted[0];
+    }, [innerWells]);
 
     const setAsActiveRig = () => {
         const active = wells.find(w => w.well_id === activeWellId);
@@ -407,12 +447,13 @@ export default function WellMap({
                     </>
                 )}
 
-                {/* Regional Well Markers */}
-                {wells.map(well => {
+                {/* Regional Well Markers with Inside/Outside Radius Coloring */}
+                {wellsWithDistance.map(well => {
                     const loc = well.surface_location;
                     if (!loc || typeof loc !== 'object' || loc.lat === undefined || loc.lon === undefined) return null;
                     
                     const isActive = well.well_id === activeWellId;
+                    const isInside = well.isInsideRadius;
                     const regionKey = getRegionIdFromWellId(well.well_id);
                     const theme = REGION_THEME[regionKey] || REGION_THEME.assam;
                     
@@ -428,38 +469,60 @@ export default function WellMap({
                                 centerOnWell(well, 11.5);
                             }}
                         >
-                            <div className="relative flex items-center justify-center cursor-pointer group">
+                            <div className={`relative flex items-center justify-center cursor-pointer group transition-all duration-300 ${!isInside && !isActive ? 'opacity-55 hover:opacity-100 scale-90' : 'opacity-100 scale-100'}`}>
                                 {isActive && (
                                     <>
                                         <span className="animate-ping absolute inline-flex h-10 w-10 rounded-full bg-emerald-400 opacity-60"></span>
                                         <span className="absolute inline-flex h-7 w-7 rounded-full bg-emerald-500/30 border border-emerald-400"></span>
                                     </>
                                 )}
+
+                                {/* Inner concentric pulse for offset wells inside inspection radius */}
+                                {!isActive && isInside && selectedRegion !== 'all' && (
+                                    <span className="absolute inline-flex h-6 w-6 rounded-full bg-cyan-500/25 border border-cyan-400/60 animate-pulse"></span>
+                                )}
                                 
                                 <div className={`
                                     relative z-10 rounded-full border-2 transition-all transform group-hover:scale-125 flex items-center justify-center
                                     ${isActive 
-                                        ? 'bg-emerald-400 border-white w-5 h-5 shadow-[0_0_15px_rgba(52,211,153,0.9)]' 
-                                        : `${theme.bg} ${theme.border} ${theme.glow} w-3.5 h-3.5 hover:scale-110`}
+                                        ? 'bg-emerald-400 border-white w-5 h-5 shadow-[0_0_18px_rgba(52,211,153,0.95)] ring-2 ring-emerald-400/50' 
+                                        : isInside 
+                                            ? 'bg-cyan-400 border-white w-4 h-4 shadow-[0_0_14px_rgba(6,182,212,0.9)] ring-2 ring-cyan-500/40' 
+                                            : 'bg-slate-700 border-slate-500/70 w-3 h-3 hover:scale-110 shadow-none'}
                                 `}>
                                     {isActive ? (
                                         <div className="w-1.5 h-1.5 rounded-full bg-slate-950"></div>
+                                    ) : isInside ? (
+                                        <div className="w-1.5 h-1.5 rounded-full bg-slate-900"></div>
                                     ) : (
-                                        <div className="w-1 h-1 rounded-full bg-white/70"></div>
+                                        <div className="w-1 h-1 rounded-full bg-slate-400"></div>
                                     )}
                                 </div>
                                 
                                 {/* Rich Interactive Tooltip */}
                                 <div className="absolute bottom-8 opacity-0 group-hover:opacity-100 transition-all duration-200 bg-[#0c1322]/95 border border-slate-700 text-slate-100 text-[11px] font-mono px-3 py-2 rounded-xl shadow-2xl pointer-events-none whitespace-nowrap z-50 flex flex-col space-y-1.5 backdrop-blur-md">
                                     <div className="flex items-center space-x-2">
-                                        <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-400' : theme.bg}`}></span>
+                                        <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-400' : isInside ? 'bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]' : 'bg-slate-500'}`}></span>
                                         <span className="font-bold tracking-wide">{well.well_id}</span>
                                         {isActive && <span className="text-[9px] text-emerald-400 font-sans font-extrabold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/30">ACTIVE RIG</span>}
+                                        {!isActive && isInside && selectedRegion !== 'all' && (
+                                            <span className="text-[9px] text-cyan-300 font-sans font-semibold bg-cyan-500/15 px-1.5 py-0.5 rounded border border-cyan-500/40">IN RADIUS</span>
+                                        )}
+                                        {!isActive && !isInside && selectedRegion !== 'all' && (
+                                            <span className="text-[9px] text-slate-400 font-sans bg-slate-800/80 px-1.5 py-0.5 rounded border border-slate-700">OUTSIDE RADIUS</span>
+                                        )}
                                         <SourceTag source={well.well_id} compact={true} />
                                     </div>
                                     <div className="flex items-center justify-between text-[10px] text-slate-400 border-t border-slate-800 pt-1">
                                         <span>{well.field_name || theme.label}</span>
-                                        <span className="font-semibold text-slate-300 ml-3">{well.total_depth_tvd ? `${well.total_depth_tvd}m TVD` : ''}</span>
+                                        <div className="flex items-center space-x-2 ml-3">
+                                            {well.distanceKm !== undefined && isFinite(well.distanceKm) && !isActive && (
+                                                <span className={`font-mono font-semibold ${isInside ? 'text-cyan-300' : 'text-slate-400'}`}>
+                                                    {well.distanceKm.toFixed(1)} km away
+                                                </span>
+                                            )}
+                                            <span className="font-semibold text-slate-300">{well.total_depth_tvd ? `${well.total_depth_tvd}m TVD` : ''}</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -518,20 +581,82 @@ export default function WellMap({
                         </div>
 
                         {selectedRegion !== 'all' && (
-                            <div>
-                                <div className="flex justify-between text-xs font-mono text-slate-400 mb-1.5">
-                                    <span>Inspection Radius:</span>
-                                    <span className="text-cyan-400 font-bold">{radius.toFixed(0)} km</span>
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center text-xs font-mono text-slate-400">
+                                    <span className="flex items-center text-slate-300">
+                                        <Radar size={13} className="mr-1.5 text-cyan-400 animate-spin" style={{ animationDuration: '6s' }} />
+                                        Inspection Radius:
+                                    </span>
+                                    <span className="text-cyan-400 font-bold bg-cyan-950/70 border border-cyan-500/40 px-2 py-0.5 rounded text-[11px]">
+                                        {radius.toFixed(0)} km
+                                    </span>
                                 </div>
+
+                                {/* Quick Operational Presets for Field Engineers */}
+                                <div className="grid grid-cols-3 gap-1.5 pt-0.5">
+                                    {[
+                                        { label: 'Pad (15km)', val: 15 },
+                                        { label: 'Cluster (30km)', val: 30 },
+                                        { label: 'Basin (60km)', val: 60 }
+                                    ].map(preset => (
+                                        <button
+                                            key={preset.val}
+                                            type="button"
+                                            onClick={() => setRadius(preset.val)}
+                                            className={`text-[10px] py-1 px-1.5 rounded-lg border font-mono transition-all text-center ${
+                                                Math.abs(radius - preset.val) < 2
+                                                    ? 'bg-cyan-500/25 border-cyan-400 text-cyan-200 font-bold shadow-[0_0_8px_rgba(6,182,212,0.4)]'
+                                                    : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600'
+                                            }`}
+                                        >
+                                            {preset.label}
+                                        </button>
+                                    ))}
+                                </div>
+
                                 <input 
                                     type="range" 
-                                    min="20.0" 
-                                    max="500.0" 
-                                    step="10.0" 
+                                    min="10.0" 
+                                    max="120.0" 
+                                    step="5.0" 
                                     value={radius}
                                     onChange={(e) => setRadius(parseFloat(e.target.value))}
-                                    className="w-full accent-cyan-500 bg-slate-800 rounded-lg appearance-none cursor-pointer h-1.5"
+                                    className="w-full accent-cyan-400 bg-slate-800 rounded-lg appearance-none cursor-pointer h-1.5 mt-1"
                                 />
+
+                                {/* Live Dynamic Inspection HUD */}
+                                <div className="bg-slate-900/90 border border-slate-750 rounded-xl p-2 space-y-1 text-[11px] font-mono">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-slate-400 flex items-center">
+                                            <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.8)] mr-1.5"></span>
+                                            In-Radius Offsets:
+                                        </span>
+                                        <span className="text-cyan-300 font-bold font-sans">
+                                            {innerWells.length} of {wells.length > 0 ? wells.length - 1 : 0} Wells
+                                        </span>
+                                    </div>
+                                    {nearestOffset && (
+                                        <div className="flex items-center justify-between text-[10px] text-slate-400 border-t border-slate-800/80 pt-1">
+                                            <span className="truncate">Nearest: {nearestOffset.well_id.replace('OIL-', '')}</span>
+                                            <span className="text-emerald-400 font-semibold ml-1">
+                                                {nearestOffset.distanceKm.toFixed(1)} km
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Map Rig Color Legend */}
+                                <div className="flex items-center justify-between text-[9.5px] font-mono text-slate-400 px-1 pt-0.5">
+                                    <span className="flex items-center">
+                                        <span className="w-2 h-2 rounded-full bg-emerald-400 mr-1"></span> Active Rig
+                                    </span>
+                                    <span className="flex items-center">
+                                        <span className="w-2 h-2 rounded-full bg-cyan-400 mr-1"></span> Inside Radius
+                                    </span>
+                                    <span className="flex items-center">
+                                        <span className="w-2 h-2 rounded-full bg-slate-600 mr-1"></span> Outside
+                                    </span>
+                                </div>
                             </div>
                         )}
 
