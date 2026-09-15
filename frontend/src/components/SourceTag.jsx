@@ -69,7 +69,7 @@ export const getWellDataSource = (wellIdOrSource) => {
   if (!wellIdOrSource) return "volve_relabeled";
   const str = String(wellIdOrSource).toLowerCase().trim();
 
-  // Regional expansion wells (Rajasthan, KG Deepwater, Mizoram) are regionally calibrated
+  // Regional expansion wells (Rajasthan, KG Deepwater, Mizoram) are illustrative only
   if (
     str.includes("raj") ||
     str.includes("baghewala") ||
@@ -88,13 +88,14 @@ export const getWellDataSource = (wellIdOrSource) => {
     str.includes("lunglei") ||
     str.includes("champhai") ||
     str.includes("mizoram") ||
-    str.includes("regional_calibrated")
+    str.includes("illustrative") ||
+    str.includes("uncalibrated")
   ) {
-    return "regional_calibrated";
+    return "illustrative_uncalibrated";
   }
 
-  if (str.includes("illustrative") || str.includes("uncalibrated")) {
-    return "illustrative_uncalibrated";
+  if (str.includes("regional_calibrated")) {
+    return "regional_calibrated";
   }
 
   if (str.includes("nahar") || str.includes("force")) {
