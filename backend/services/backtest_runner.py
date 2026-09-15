@@ -499,8 +499,8 @@ def run_time_travel_backtest(
             "incident_type": incident_type or "stuck_pipe"
         }]
     else:
-        # Default: run against the 5 real documented incidents sourced from Volve field reports
-        target_incidents = get_curated_historical_incidents()
+        # Default: run against all documented incidents
+        target_incidents = get_available_cases()
 
     individual_results: List[Dict[str, Any]] = []
     for inc in target_incidents:
