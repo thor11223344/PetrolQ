@@ -62,6 +62,11 @@ class WellResponse(BaseModel):
     total_depth_tvd: Optional[float] = None
     spud_date: Optional[str] = None
     data_source: Optional[str] = "volve_relabeled"
+    source: Optional[str] = None
+    is_synthetic: Optional[bool] = False
+    formation_count: Optional[int] = None
+    total_depth_m: Optional[float] = None
+    bha_type: Optional[str] = None
     
     # We will output this as a dictionary {"lat": y, "lon": x}
     surface_location: Any = None

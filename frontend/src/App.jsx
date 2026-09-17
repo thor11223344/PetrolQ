@@ -921,6 +921,7 @@ function App() {
             <option value="rajasthan">Rajasthan (Calibrated)</option>
             <option value="kg">KG (Calibrated)</option>
             <option value="mizoram">Mizoram (Calibrated)</option>
+            <option value="north_sea">North Sea (159 FORCE & Volve)</option>
           </select>
 
           {/* Quick Target Well on Mobile */}
@@ -969,6 +970,23 @@ function App() {
                 <option value="OIL-MZ-KOLASIB-1">MZ-KOLASIB-1</option>
                 <option value="OIL-MZ-LUNGLEI-1">MZ-LUNGLEI-1</option>
                 <option value="OIL-MZ-CHAMPHAI-1">MZ-CHAMPHAI-1</option>
+              </optgroup>
+            )}
+            {(selectedRegion === 'all' || selectedRegion === 'north_sea') && (
+              <optgroup label="North Sea (FORCE 2020 / Volve Open Data)">
+                <option value="16/7-6">16/7-6 (Flagship)</option>
+                <option value="16/7-5">16/7-5</option>
+                <option value="16/7-4">16/7-4</option>
+                <option value="16/8-1">16/8-1</option>
+                <option value="16/2-6">16/2-6</option>
+                <option value="16/2-7">16/2-7</option>
+                <option value="7/1-1">7/1-1</option>
+                <option value="7/1-2 S">7/1-2 S</option>
+                <option value="35/9-7">35/9-7</option>
+                <option value="35/9-8">35/9-8</option>
+                <option value="VOLVE-15/9-F-12">VOLVE-15/9-F-12</option>
+                <option value="VOLVE-15/9-F-14">VOLVE-15/9-F-14</option>
+                <option value="VOLVE-15/9-F-1">VOLVE-15/9-F-1</option>
               </optgroup>
             )}
           </select>
@@ -1023,6 +1041,7 @@ function App() {
                   <option value="rajasthan">Rajasthan Basin (Calibrated)</option>
                   <option value="kg">KG Deepwater (Calibrated)</option>
                   <option value="mizoram">Mizoram Fold Belt (Calibrated)</option>
+                  <option value="north_sea">North Sea (159 FORCE & Volve)</option>
               </select>
             </div>
           </div>
@@ -1077,6 +1096,23 @@ function App() {
                       <option value="OIL-MZ-KOLASIB-1">MZ-KOLASIB-1</option>
                       <option value="OIL-MZ-LUNGLEI-1">MZ-LUNGLEI-1</option>
                       <option value="OIL-MZ-CHAMPHAI-1">MZ-CHAMPHAI-1</option>
+                    </optgroup>
+                  )}
+                  {(selectedRegion === 'all' || selectedRegion === 'north_sea') && (
+                    <optgroup label="North Sea (FORCE 2020 / Volve Open Data)">
+                      <option value="16/7-6">16/7-6 (Flagship)</option>
+                      <option value="16/7-5">16/7-5</option>
+                      <option value="16/7-4">16/7-4</option>
+                      <option value="16/8-1">16/8-1</option>
+                      <option value="16/2-6">16/2-6</option>
+                      <option value="16/2-7">16/2-7</option>
+                      <option value="7/1-1">7/1-1</option>
+                      <option value="7/1-2 S">7/1-2 S</option>
+                      <option value="35/9-7">35/9-7</option>
+                      <option value="35/9-8">35/9-8</option>
+                      <option value="VOLVE-15/9-F-12">VOLVE-15/9-F-12</option>
+                      <option value="VOLVE-15/9-F-14">VOLVE-15/9-F-14</option>
+                      <option value="VOLVE-15/9-F-1">VOLVE-15/9-F-1</option>
                     </optgroup>
                   )}
               </select>

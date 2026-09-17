@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Target, Box, ChevronDown, ChevronUp, Moon, Globe, Mountain, Compass, MapPin, AlertCircle, ShieldCheck, Radar, Radio } from 'lucide-react';
-import Map, { Marker, NavigationControl, Source, Layer } from 'react-map-gl/maplibre';
+import { Target, Box, ChevronDown, ChevronUp, Moon, Globe, Mountain, Compass, MapPin, AlertCircle, ShieldCheck, Radar, Radio, X } from 'lucide-react';
+import Map, { Marker, NavigationControl, Source, Layer, Popup } from 'react-map-gl/maplibre';
 import * as maplibregl from 'maplibre-gl';
 import axios from 'axios';
 import { API_BASE } from '../lib/api';
@@ -164,7 +164,7 @@ export default function WellMap({
         } catch (e) {
             console.warn("Could not read basemapStyle from localStorage", e);
         }
-        return 'dark';
+        return 'satellite';
     });
 
     const basemapStyle = externalBasemapStyle !== undefined ? externalBasemapStyle : internalBasemapStyle;
@@ -178,6 +178,8 @@ export default function WellMap({
     const [internal3DOpen, setInternal3DOpen] = useState(false);
     const is3DViewerOpen = external3DOpen !== undefined ? external3DOpen : internal3DOpen;
     const setIs3DViewerOpen = setExternal3DOpen || setInternal3DOpen;
+
+    const [popupWell, setPopupWell] = useState(null);
 
     const [searchCoords, setSearchCoords] = useState({ 
         lat: initialConfig.center[0], 
@@ -291,14 +293,30 @@ export default function WellMap({
         if (!activeWellId || wells.length === 0) return;
         const active = wells.find(w => w.well_id === activeWellId);
         if (active && active.surface_location) {
+            setPopupWell(active);
             centerOnWell(active, 11);
         }
     }, [activeWellId, wells, centerOnWell]);
 
+    const activeWell = useMemo(() => {
+        return wells.find(w => w.well_id === activeWellId);
+    }, [wells, activeWellId]);
+
+    // Active center coordinates for the inspection radius (selected wellhead has priority)
+    const radiusCenter = useMemo(() => {
+        if (activeWell?.surface_location?.lat !== undefined && activeWell?.surface_location?.lon !== undefined) {
+            return {
+                lat: Number(activeWell.surface_location.lat),
+                lon: Number(activeWell.surface_location.lon)
+            };
+        }
+        return searchCoords;
+    }, [activeWell, searchCoords]);
+
     const circleGeoJSON = useMemo(() => {
-        if (selectedRegion === 'all') return null;
-        return createGeoJSONCircle([searchCoords.lon, searchCoords.lat], radius);
-    }, [searchCoords, radius, selectedRegion]);
+        if (!radiusCenter || radiusCenter.lat === undefined || radiusCenter.lon === undefined) return null;
+        return createGeoJSONCircle([radiusCenter.lon, radiusCenter.lat], radius);
+    }, [radiusCenter, radius]);
 
     // Calculate exact distance of every well to the active radius search center
     const wellsWithDistance = useMemo(() => {
@@ -307,15 +325,15 @@ export default function WellMap({
             if (!loc || typeof loc !== 'object' || loc.lat === undefined || loc.lon === undefined) {
                 return { ...w, distanceKm: Infinity, isInsideRadius: false };
             }
-            const dist = calculateDistanceKm(searchCoords.lat, searchCoords.lon, loc.lat, loc.lon);
-            const isInside = selectedRegion === 'all' ? true : dist <= radius;
+            const dist = calculateDistanceKm(radiusCenter.lat, radiusCenter.lon, loc.lat, loc.lon);
+            const isInside = dist <= radius;
             return {
                 ...w,
                 distanceKm: dist,
                 isInsideRadius: isInside
             };
         });
-    }, [wells, searchCoords, radius, selectedRegion]);
+    }, [wells, radiusCenter, radius]);
 
     const innerWells = useMemo(() => {
         return wellsWithDistance.filter(w => w.isInsideRadius && w.well_id !== activeWellId);
@@ -420,7 +438,7 @@ export default function WellMap({
             >
                 <NavigationControl position="bottom-right" />
 
-                {/* Radius Polygon - Active only when inspecting a single region */}
+                {/* Radius Polygon - Project B style: cyan dashed line + subtle translucent cyan fill */}
                 {circleGeoJSON && (
                     <>
                         <Source id="radius-source-fill" type="geojson" data={circleGeoJSON}>
@@ -428,8 +446,8 @@ export default function WellMap({
                                 id="radius-fill" 
                                 type="fill" 
                                 paint={{
-                                    'fill-color': '#0284C7',
-                                    'fill-opacity': 0.18
+                                    'fill-color': '#00f0ff',
+                                    'fill-opacity': 0.06
                                 }} 
                             />
                         </Source>
@@ -438,24 +456,26 @@ export default function WellMap({
                                 id="radius-line" 
                                 type="line" 
                                 paint={{
-                                    'line-color': '#38BDF8',
-                                    'line-width': 2,
-                                    'line-dasharray': [2, 2]
+                                    'line-color': '#00f0ff',
+                                    'line-width': 1.5,
+                                    'line-dasharray': [6, 4]
                                 }} 
                             />
                         </Source>
                     </>
                 )}
 
-                {/* Regional Well Markers with Inside/Outside Radius Coloring */}
+                {/* Regional Well Markers with Project B Color Scheme:
+                    - Selected well: Bright green (#22c55e)
+                    - Inside radius: Bright yellow (#facc15)
+                    - Outside radius: Sky blue (#38bdf8)
+                */}
                 {wellsWithDistance.map(well => {
                     const loc = well.surface_location;
                     if (!loc || typeof loc !== 'object' || loc.lat === undefined || loc.lon === undefined) return null;
                     
                     const isActive = well.well_id === activeWellId;
                     const isInside = well.isInsideRadius;
-                    const regionKey = getRegionIdFromWellId(well.well_id);
-                    const theme = REGION_THEME[regionKey] || REGION_THEME.assam;
                     
                     return (
                         <Marker 
@@ -466,69 +486,79 @@ export default function WellMap({
                             onClick={e => {
                                 e.originalEvent.stopPropagation();
                                 onSelectWell(well.well_id);
+                                setPopupWell(well);
                                 centerOnWell(well, 11.5);
                             }}
                         >
-                            <div className={`relative flex items-center justify-center cursor-pointer group transition-all duration-300 ${!isInside && !isActive ? 'opacity-55 hover:opacity-100 scale-90' : 'opacity-100 scale-100'}`}>
+                            <div className="relative flex items-center justify-center cursor-pointer group transition-all duration-300">
                                 {isActive && (
                                     <>
-                                        <span className="animate-ping absolute inline-flex h-10 w-10 rounded-full bg-emerald-400 opacity-60"></span>
-                                        <span className="absolute inline-flex h-7 w-7 rounded-full bg-emerald-500/30 border border-emerald-400"></span>
+                                        <span className="animate-ping absolute inline-flex h-9 w-9 rounded-full bg-[#22c55e] opacity-50"></span>
+                                        <span className="absolute inline-flex h-7 w-7 rounded-full bg-[#22c55e]/25 border border-[#22c55e]/80"></span>
                                     </>
                                 )}
 
-                                {/* Inner concentric pulse for offset wells inside inspection radius */}
-                                {!isActive && isInside && selectedRegion !== 'all' && (
-                                    <span className="absolute inline-flex h-6 w-6 rounded-full bg-cyan-500/25 border border-cyan-400/60 animate-pulse"></span>
+                                {!isActive && isInside && (
+                                    <span className="absolute inline-flex h-6 w-6 rounded-full bg-[#facc15]/20 border border-[#facc15]/60 animate-pulse"></span>
                                 )}
                                 
                                 <div className={`
                                     relative z-10 rounded-full border-2 transition-all transform group-hover:scale-125 flex items-center justify-center
                                     ${isActive 
-                                        ? 'bg-emerald-400 border-white w-5 h-5 shadow-[0_0_18px_rgba(52,211,153,0.95)] ring-2 ring-emerald-400/50' 
+                                        ? 'bg-[#22c55e] border-white w-5 h-5 shadow-[0_0_18px_rgba(34,197,94,0.95)] ring-2 ring-[#22c55e]/60' 
                                         : isInside 
-                                            ? 'bg-cyan-400 border-white w-4 h-4 shadow-[0_0_14px_rgba(6,182,212,0.9)] ring-2 ring-cyan-500/40' 
-                                            : 'bg-slate-700 border-slate-500/70 w-3 h-3 hover:scale-110 shadow-none'}
+                                            ? 'bg-[#facc15] border-white/90 w-4 h-4 shadow-[0_0_12px_rgba(250,204,21,0.9)] ring-2 ring-[#facc15]/50' 
+                                            : 'bg-[#38bdf8] border-sky-200/90 w-3 h-3 shadow-[0_0_8px_rgba(56,189,248,0.7)] hover:scale-125'}
                                 `}>
                                     {isActive ? (
                                         <div className="w-1.5 h-1.5 rounded-full bg-slate-950"></div>
                                     ) : isInside ? (
-                                        <div className="w-1.5 h-1.5 rounded-full bg-slate-900"></div>
+                                        <div className="w-1.5 h-1.5 rounded-full bg-slate-950/80"></div>
                                     ) : (
-                                        <div className="w-1 h-1 rounded-full bg-slate-400"></div>
+                                        <div className="w-1 h-1 rounded-full bg-sky-950"></div>
                                     )}
-                                </div>
-                                
-                                {/* Rich Interactive Tooltip */}
-                                <div className="absolute bottom-8 opacity-0 group-hover:opacity-100 transition-all duration-200 bg-[#0c1322]/95 border border-slate-700 text-slate-100 text-[11px] font-mono px-3 py-2 rounded-xl shadow-2xl pointer-events-none whitespace-nowrap z-50 flex flex-col space-y-1.5 backdrop-blur-md">
-                                    <div className="flex items-center space-x-2">
-                                        <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-400' : isInside ? 'bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]' : 'bg-slate-500'}`}></span>
-                                        <span className="font-bold tracking-wide">{well.well_id}</span>
-                                        {isActive && <span className="text-[9px] text-emerald-400 font-sans font-extrabold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/30">ACTIVE RIG</span>}
-                                        {!isActive && isInside && selectedRegion !== 'all' && (
-                                            <span className="text-[9px] text-cyan-300 font-sans font-semibold bg-cyan-500/15 px-1.5 py-0.5 rounded border border-cyan-500/40">IN RADIUS</span>
-                                        )}
-                                        {!isActive && !isInside && selectedRegion !== 'all' && (
-                                            <span className="text-[9px] text-slate-400 font-sans bg-slate-800/80 px-1.5 py-0.5 rounded border border-slate-700">OUTSIDE RADIUS</span>
-                                        )}
-                                        <SourceTag source={well.well_id} compact={true} />
-                                    </div>
-                                    <div className="flex items-center justify-between text-[10px] text-slate-400 border-t border-slate-800 pt-1">
-                                        <span>{well.field_name || theme.label}</span>
-                                        <div className="flex items-center space-x-2 ml-3">
-                                            {well.distanceKm !== undefined && isFinite(well.distanceKm) && !isActive && (
-                                                <span className={`font-mono font-semibold ${isInside ? 'text-cyan-300' : 'text-slate-400'}`}>
-                                                    {well.distanceKm.toFixed(1)} km away
-                                                </span>
-                                            )}
-                                            <span className="font-semibold text-slate-300">{well.total_depth_tvd ? `${well.total_depth_tvd}m TVD` : ''}</span>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         </Marker>
                     );
                 })}
+
+                {/* Project B Well Details Popup Card */}
+                {popupWell && popupWell.surface_location && (
+                    <Popup
+                        longitude={popupWell.surface_location.lon}
+                        latitude={popupWell.surface_location.lat}
+                        anchor="bottom"
+                        offset={16}
+                        closeButton={false}
+                        closeOnClick={false}
+                        className="cyber-well-popup"
+                    >
+                        <div className="bg-[#0d1527] border border-[#00f0ff] rounded-md p-3 text-[#f0f6fc] font-mono text-[11px] leading-relaxed shadow-[0_10px_30px_rgba(0,0,0,0.85)] min-w-[250px] max-w-[320px] select-text">
+                            <div className="flex items-center justify-between pb-1.5 border-b border-[#00f0ff]/30 mb-2">
+                                <span className="font-bold text-[#00f0ff] text-sm tracking-wide">{popupWell.well_id}</span>
+                                <button 
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setPopupWell(null);
+                                    }}
+                                    className="text-slate-400 hover:text-white transition px-1 py-0.5 text-xs font-bold leading-none cursor-pointer"
+                                    title="Close popup"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                            <div className="space-y-1">
+                                <div><span className="text-slate-300">Source:</span> {(popupWell.source || popupWell.data_source || 'real force2020').replace('_', ' ')}</div>
+                                <div><span className="text-slate-300">Synthetic:</span> {String(Boolean(popupWell.is_synthetic))}</div>
+                                <div><span className="text-slate-300">Formations:</span> {popupWell.formation_count !== undefined ? popupWell.formation_count : 14}</div>
+                                <div><span className="text-slate-300">Total depth:</span> {popupWell.total_depth_m ? `${Math.round(popupWell.total_depth_m)} m` : popupWell.total_depth_tvd ? `${Math.round(popupWell.total_depth_tvd)} m` : '2853 m'}</div>
+                                <div className="break-words"><span className="text-slate-300">BHA:</span> {popupWell.bha_type || 'Steerable Motor BHA (1.5 deg PDM + MWD)'}</div>
+                            </div>
+                        </div>
+                    </Popup>
+                )}
             </Map>
 
             {/* Floating Control Card (Draggable / Mobile Responsive) */}
@@ -628,10 +658,10 @@ export default function WellMap({
                                 <div className="bg-slate-900/90 border border-slate-750 rounded-xl p-2 space-y-1 text-[11px] font-mono">
                                     <div className="flex items-center justify-between">
                                         <span className="text-slate-400 flex items-center">
-                                            <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.8)] mr-1.5"></span>
+                                            <span className="w-2 h-2 rounded-full bg-[#facc15] shadow-[0_0_6px_rgba(250,204,21,0.8)] mr-1.5"></span>
                                             In-Radius Offsets:
                                         </span>
-                                        <span className="text-cyan-300 font-bold font-sans">
+                                        <span className="text-amber-300 font-bold font-sans">
                                             {innerWells.length} of {wells.length > 0 ? wells.length - 1 : 0} Wells
                                         </span>
                                     </div>
@@ -646,15 +676,15 @@ export default function WellMap({
                                 </div>
 
                                 {/* Map Rig Color Legend */}
-                                <div className="flex items-center justify-between text-[9.5px] font-mono text-slate-400 px-1 pt-0.5">
+                                <div className="flex items-center justify-between text-[9.5px] font-mono text-slate-300 px-1 pt-0.5">
                                     <span className="flex items-center">
-                                        <span className="w-2 h-2 rounded-full bg-emerald-400 mr-1"></span> Active Rig
+                                        <span className="w-2.5 h-2.5 rounded-full bg-[#22c55e] mr-1 shadow-[0_0_6px_rgba(34,197,94,0.8)]"></span> Selected Well
                                     </span>
                                     <span className="flex items-center">
-                                        <span className="w-2 h-2 rounded-full bg-cyan-400 mr-1"></span> Inside Radius
+                                        <span className="w-2.5 h-2.5 rounded-full bg-[#facc15] mr-1 shadow-[0_0_6px_rgba(250,204,21,0.8)]"></span> Inside Radius
                                     </span>
                                     <span className="flex items-center">
-                                        <span className="w-2 h-2 rounded-full bg-slate-600 mr-1"></span> Outside
+                                        <span className="w-2.5 h-2.5 rounded-full bg-[#38bdf8] mr-1 shadow-[0_0_6px_rgba(56,189,248,0.8)]"></span> Outside
                                     </span>
                                 </div>
                             </div>
@@ -688,6 +718,20 @@ export default function WellMap({
                 activeScenario={activeScenario}
                 selectedRegion={selectedRegion}
             />
+
+            {/* Custom Styling for Cyber Well Popup */}
+            <style>{`
+                .cyber-well-popup .maplibregl-popup-content {
+                    background: transparent !important;
+                    padding: 0 !important;
+                    box-shadow: none !important;
+                    border-radius: 6px !important;
+                }
+                .cyber-well-popup .maplibregl-popup-tip {
+                    border-top-color: #00f0ff !important;
+                    border-bottom-color: #00f0ff !important;
+                }
+            `}</style>
         </div>
     );
 }

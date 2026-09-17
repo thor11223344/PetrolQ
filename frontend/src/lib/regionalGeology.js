@@ -89,6 +89,25 @@ export const REGIONS_CONFIG = {
       { from: 3400, to: 4500, color: "#475569", label: "Disang Flysch", problemDescription: "Tectonic crushed rock overpressure & sudden wellbore collapse", hazardType: "gas_kick", severity: "high" }
     ],
     defaultWell: "OIL-MZ-AIZAWL-1"
+  },
+  north_sea: {
+    id: "north_sea",
+    name: "North Sea (FORCE 2020 & Volve)",
+    center: [58.262, 8.043],
+    zoom: 7.8,
+    badgeColor: "bg-sky-950/60 text-sky-300 border-sky-500/40",
+    markerColor: "#38BDF8",
+    isCalibrated: true,
+    dataSource: "real_force2020",
+    provenanceLabel: "FORCE 2020 Lithology Benchmark & Equinor Volve Open Data (159 Wells)",
+    description: "Offshore North Sea Continental Shelf with 159 real benchmark wells including FORCE 2020 lithologies, formation tops, and Volve operations.",
+    layers: [
+      { from: 0, to: 2000, color: "#38BDF8", label: "Tertiary Sediments", problemDescription: "Shallow gas hazard & reactive gumbo shales", hazardType: "gas_kick", severity: "medium" },
+      { from: 2000, to: 2500, color: "#F59E0B", label: "Cretaceous Chalk & Shales", problemDescription: "Tight hole & differential sticking risk", hazardType: "stuck_pipe", severity: "high" },
+      { from: 2500, to: 3200, color: "#EF4444", label: "Jurassic Draupne & Heather", problemDescription: "Severe overpressure kick & thief-zone losses", hazardType: "lost_circulation", severity: "critical" },
+      { from: 3200, to: 4500, color: "#8B5CF6", label: "Triassic Skagerrak Formation", problemDescription: "High quartz abrasion & hard-stringer bit vibration", hazardType: "wear", severity: "medium" }
+    ],
+    defaultWell: "16/7-6"
   }
 };
 
@@ -98,6 +117,7 @@ export const getRegionIdFromWellId = (wellId) => {
   if (upper.includes("OIL-RAJ") || upper.includes("BAGHEWALA") || upper.includes("TANOT") || upper.includes("DANDEWALA")) return "rajasthan";
   if (upper.includes("OIL-KG") || upper.includes("DEEPWATER") || upper.includes("DWN") || upper.includes("YANAM") || upper.includes("AMALAPURAM")) return "kg";
   if (upper.includes("OIL-MZ") || upper.includes("AIZAWL") || upper.includes("MAMIT") || upper.includes("KOLASIB") || upper.includes("LUNGLEI") || upper.includes("CHAMPHAI")) return "mizoram";
+  if (upper.includes("VOLVE") || upper.includes("FORCE") || upper.includes("SYNTH-") || /^\d+\/\d+/.test(upper)) return "north_sea";
   return "assam";
 };
 
