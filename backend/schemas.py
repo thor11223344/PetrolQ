@@ -63,8 +63,11 @@ class WellResponse(BaseModel):
     spud_date: Optional[str] = None
     data_source: Optional[str] = "volve_relabeled"
     source: Optional[str] = None
+    operator: Optional[str] = None
     is_synthetic: Optional[bool] = False
     formation_count: Optional[int] = None
+    target_formation: Optional[str] = None
+    primary_hazard: Optional[str] = None
     total_depth_m: Optional[float] = None
     bha_type: Optional[str] = None
     

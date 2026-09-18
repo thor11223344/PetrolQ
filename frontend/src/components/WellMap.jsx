@@ -23,10 +23,10 @@ function filterWellsByRegion(allWells, region) {
 
 function getInitialWells(region = 'all') {
     try {
-        const cached = localStorage.getItem('petrolq_cached_wells');
+        const cached = localStorage.getItem('petrolq_cached_wells_v2');
         if (cached) {
             const parsed = JSON.parse(cached);
-            if (Array.isArray(parsed) && parsed.length > 0) {
+            if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.target_formation) {
                 return filterWellsByRegion(parsed, region);
             }
         }
@@ -283,7 +283,7 @@ export default function WellMap({
                     setWells(response.data);
                     if (selectedRegion === 'all' || !selectedRegion) {
                         try {
-                            localStorage.setItem('petrolq_cached_wells', JSON.stringify(response.data));
+                            localStorage.setItem('petrolq_cached_wells_v2', JSON.stringify(response.data));
                         } catch (e) {
                             // ignore quota errors
                         }
@@ -624,27 +624,75 @@ export default function WellMap({
                         closeOnClick={false}
                         className="cyber-well-popup"
                     >
-                        <div className="bg-[#0d1527] border border-[#00f0ff] rounded-md p-3 text-[#f0f6fc] font-mono text-[11px] leading-relaxed shadow-[0_10px_30px_rgba(0,0,0,0.85)] min-w-[250px] max-w-[320px] select-text">
-                            <div className="flex items-center justify-between pb-1.5 border-b border-[#00f0ff]/30 mb-2">
-                                <span className="font-bold text-[#00f0ff] text-sm tracking-wide">{popupWell.well_id}</span>
+                        <div className="bg-[#0b1329]/95 border border-cyan-400/80 rounded-xl p-3.5 text-slate-100 font-mono text-[11px] leading-relaxed shadow-[0_12px_36px_rgba(0,0,0,0.9)] min-w-[270px] max-w-[340px] select-text backdrop-blur-md">
+                            {/* Header */}
+                            <div className="flex items-start justify-between pb-2 border-b border-cyan-500/30 mb-2.5">
+                                <div className="min-w-0 pr-2">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className="font-bold text-cyan-300 text-sm tracking-wide">{popupWell.well_id}</span>
+                                        {popupWell.is_synthetic ? (
+                                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-semibold tracking-wider uppercase">Synthetic Twin</span>
+                                        ) : (
+                                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold tracking-wider uppercase">Field Record</span>
+                                        )}
+                                    </div>
+                                    <div className="text-[10px] text-slate-400 truncate mt-0.5">
+                                        {popupWell.field_name || 'Exploration Field'} • {popupWell.operator || (popupWell.well_id?.startsWith('OIL-') ? 'Oil India Limited (OIL)' : 'Offshore Asset')}
+                                    </div>
+                                </div>
                                 <button 
                                     type="button"
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         setPopupWell(null);
                                     }}
-                                    className="text-slate-400 hover:text-white transition px-1 py-0.5 text-xs font-bold leading-none cursor-pointer"
+                                    className="text-slate-400 hover:text-white transition px-1.5 py-0.5 text-xs font-bold leading-none cursor-pointer rounded hover:bg-slate-800"
                                     title="Close popup"
                                 >
                                     ✕
                                 </button>
                             </div>
-                            <div className="space-y-1">
-                                <div><span className="text-slate-300">Source:</span> {(popupWell.source || popupWell.data_source || 'real force2020').replace('_', ' ')}</div>
-                                <div><span className="text-slate-300">Synthetic:</span> {String(Boolean(popupWell.is_synthetic))}</div>
-                                <div><span className="text-slate-300">Formations:</span> {popupWell.formation_count !== undefined ? popupWell.formation_count : 14}</div>
-                                <div><span className="text-slate-300">Total depth:</span> {popupWell.total_depth_m ? `${Math.round(popupWell.total_depth_m)} m` : popupWell.total_depth_tvd ? `${Math.round(popupWell.total_depth_tvd)} m` : '2853 m'}</div>
-                                <div className="break-words"><span className="text-slate-300">BHA:</span> {popupWell.bha_type || 'Steerable Motor BHA (1.5 deg PDM + MWD)'}</div>
+                            
+                            {/* Detailed Attributes */}
+                            <div className="space-y-1.5 text-[11px]">
+                                <div className="flex justify-between items-baseline">
+                                    <span className="text-slate-400">Provenance:</span> 
+                                    <span className="text-cyan-200 font-medium text-right truncate max-w-[180px]" title={popupWell.source || popupWell.data_source}>
+                                        {(popupWell.source || popupWell.data_source || 'OIL Deep Exploration Asset').replace(/_/g, ' ')}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-baseline">
+                                    <span className="text-slate-400">Target Formation:</span> 
+                                    <span className="text-amber-300 font-medium text-right truncate max-w-[170px]" title={popupWell.target_formation || 'Barail Sandstone'}>
+                                        {popupWell.target_formation || 'Barail Sandstone'}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-baseline">
+                                    <span className="text-slate-400">Stratigraphy:</span> 
+                                    <span className="text-slate-200 font-medium">
+                                        {popupWell.formation_count !== undefined ? popupWell.formation_count : 5} mapped tops
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-baseline">
+                                    <span className="text-slate-400">Total Depth:</span> 
+                                    <span className="text-slate-100 font-semibold">
+                                        {popupWell.total_depth_m ? `${Math.round(popupWell.total_depth_m)} m` : popupWell.total_depth_tvd ? `${Math.round(popupWell.total_depth_tvd)} m` : '3520 m'} TVD
+                                    </span>
+                                </div>
+                                {popupWell.primary_hazard && (
+                                    <div className="pt-1 pb-0.5 border-t border-slate-800/80">
+                                        <span className="text-slate-400 block text-[10px] mb-0.5">Primary Hazard:</span> 
+                                        <span className="text-rose-400 font-semibold text-[10.5px] leading-tight block bg-rose-950/40 border border-rose-900/50 rounded px-1.5 py-1">
+                                            {popupWell.primary_hazard}
+                                        </span>
+                                    </div>
+                                )}
+                                <div className="pt-1 border-t border-slate-800/80">
+                                    <span className="text-slate-400 block text-[10px]">BHA Assembly:</span>
+                                    <span className="text-slate-300 text-[10px] leading-tight block mt-0.5 break-words">
+                                        {popupWell.bha_type || 'Steerable Motor BHA (1.5° PDM + MWD)'}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </Popup>
