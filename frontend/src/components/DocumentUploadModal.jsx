@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import axios from 'axios';
 import { API_BASE } from '../lib/api';
+import { parseOfflineLasOrPdf } from '../lib/offlinePhysicsEngine';
 import { 
   UploadCloud, 
   File, 
@@ -12,7 +13,8 @@ import {
   Sparkles, 
   FileSpreadsheet,
   AlertTriangle,
-  ShieldCheck
+  ShieldCheck,
+  HardDrive
 } from 'lucide-react';
 
 const DocumentUploadModal = ({ 
@@ -37,6 +39,7 @@ const DocumentUploadModal = ({
     const [isUploading, setIsUploading] = useState(false);
     const [uploadResult, setUploadResult] = useState(null);
     const [errorMsg, setErrorMsg] = useState(null);
+    const [isOfflineEngine, setIsOfflineEngine] = useState(false);
     const fileInputRef = useRef(null);
 
     React.useEffect(() => {
@@ -107,15 +110,27 @@ const DocumentUploadModal = ({
 
         try {
             const res = await axios.post(`${API_BASE}/api/upload-report`, formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
+                headers: { 'Content-Type': 'multipart/form-data' },
+                timeout: 4000
             });
             setUploadResult(res.data);
+            setIsOfflineEngine(false);
             if (onUploadSuccess) {
                 onUploadSuccess(res.data, targetWell || activeWellId);
             }
         } catch (error) {
-            console.error('Upload failed:', error);
-            setErrorMsg(error.response?.data?.detail || 'Failed to upload and parse file.');
+            console.warn('Network upload unreachable or offline, engaging local Rig Edge document engine:', error.message);
+            try {
+                const offlineRes = await parseOfflineLasOrPdf(file, targetWell || activeWellId || 'OIL-BAGHJAN-1');
+                setUploadResult(offlineRes);
+                setIsOfflineEngine(true);
+                if (onUploadSuccess) {
+                    onUploadSuccess(offlineRes, targetWell || activeWellId);
+                }
+            } catch (offlineErr) {
+                console.error('Offline parser also failed:', offlineErr);
+                setErrorMsg('Failed to process file locally.');
+            }
         } finally {
             setIsUploading(false);
         }
@@ -249,6 +264,13 @@ const DocumentUploadModal = ({
                                             <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
                                                 File: {uploadResult.filename}
                                             </span>
+
+                                            {isOfflineEngine && (
+                                                <span className="flex items-center space-x-1 text-[10px] bg-cyan-950 text-cyan-400 border border-cyan-700/50 px-2 py-0.5 rounded font-mono font-bold">
+                                                    <HardDrive size={10} />
+                                                    <span>Rig Edge Onboard Parser</span>
+                                                </span>
+                                            )}
 
                                             {/* OCR Triggered Badge (Correction #6) */}
                                             {uploadResult.file_type === 'pdf' && (

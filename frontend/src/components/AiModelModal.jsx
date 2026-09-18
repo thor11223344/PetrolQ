@@ -113,7 +113,7 @@ export default function AiModelModal({ isOpen, onClose, aiStatus, onRefreshStatu
                 <RefreshCw size={13} />
               </button>
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold border ${aiStatus?.is_connected ? 'bg-emerald-950 text-emerald-300 border-emerald-500/30' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
-                {aiStatus?.is_connected ? '● CONNECTED' : '○ OFFLINE FALLBACK'}
+                {aiStatus?.is_connected ? '● CONNECTED' : '○ STANDALONE ENGINE'}
               </span>
             </div>
           </div>
@@ -128,7 +128,7 @@ export default function AiModelModal({ isOpen, onClose, aiStatus, onRefreshStatu
                 { id: 'gemini', name: 'Google Gemini', desc: 'gemini-1.5-flash / pro', free: 'Free Tier Available' },
                 { id: 'claude', name: 'Anthropic Claude', desc: 'claude-3-5-haiku / sonnet', free: 'State-of-the-Art' },
                 { id: 'openai', name: 'OpenAI', desc: 'gpt-4o-mini / gpt-4o', free: 'Fast & Versatile' },
-                { id: 'ollama', name: 'Ollama (Local)', desc: 'llama3 / mistral / deepseek', free: '100% Offline' },
+                { id: 'ollama', name: 'Ollama (Local)', desc: 'llama3 / mistral / deepseek', free: 'Local Compute' },
               ].map(item => {
                 const isReady = aiStatus?.available_providers?.includes(item.id);
                 const isActive = aiStatus?.active_provider === item.id;

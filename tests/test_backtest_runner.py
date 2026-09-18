@@ -160,9 +160,9 @@ def test_multi_incident_backtest_aggregate_wilson_interval():
     independently, records actionable alert outcomes, and computes the Wilson score confidence
     interval correctly on the actual documented cases.
     """
+    from services.backtest_runner import get_curated_historical_incidents
     from services.statistics_utils import wilson_confidence_interval
-
-    result = run_time_travel_backtest()
+    result = run_time_travel_backtest(incidents=get_curated_historical_incidents())
 
     assert "individual_results" in result
     assert "aggregate" in result

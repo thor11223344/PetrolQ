@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE } from '../lib/api';
 import SourceTag, { getWellDataSource } from './SourceTag';
+import { generateOfflineDossier } from '../lib/offlinePhysicsEngine';
 import { 
   FileText, 
   Printer, 
@@ -15,21 +16,65 @@ import {
   Building2,
   Calendar,
   MapPin,
-  RefreshCw
+  RefreshCw,
+  Maximize2,
+  Minimize2,
+  ExternalLink
 } from 'lucide-react';
 
-const PreSpudDossierModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1' }) => {
+const PreSpudDossierModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', isFullScreen: propFullScreen = false }) => {
   const [dossier, setDossier] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search);
+      return propFullScreen || p.get('fullscreen') === 'true' || p.get('module') === 'dossier';
+    }
+    return propFullScreen;
+  });
+
+  useEffect(() => {
+    if (propFullScreen) setIsFullScreen(true);
+  }, [propFullScreen]);
+
+  const handleToggleFullscreen = () => {
+    if (!isFullScreen) {
+      setIsFullScreen(true);
+      if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+    } else {
+      setIsFullScreen(false);
+      if (document.exitFullscreen && document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+  };
+
+  // Close or exit tab on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        if (typeof window !== 'undefined' && window.location.search.includes('module=')) {
+          window.close();
+        }
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   const fetchDossier = async () => {
     if (!isOpen) return;
     setLoading(true);
     try {
-      const res = await axios.get(`${API_BASE}/api/wells/${activeWellId}/pre-spud-dossier`);
+      const res = await axios.get(`${API_BASE}/api/wells/${activeWellId}/pre-spud-dossier`, { timeout: 3000 });
       setDossier(res.data);
     } catch (err) {
-      console.error('Failed to fetch pre-spud dossier:', err);
+      console.warn('API Pre-Spud Dossier unreachable, generating local Rig Edge Dossier:', err);
+      const offlineDossier = generateOfflineDossier(activeWellId);
+      setDossier(offlineDossier);
     } finally {
       setLoading(false);
     }
@@ -53,8 +98,8 @@ const PreSpudDossierModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1' }
   const formBreakdown = dossier?.formation_hazard_breakdown || {};
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 sm:p-4 animate-in fade-in duration-200 print:p-0 print:bg-white print:static">
-      <div className="bg-slate-900 border border-slate-700 w-full max-w-5xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[96vh] sm:max-h-[94vh] print:max-h-none print:border-none print:shadow-none print:bg-white print:text-black">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200 print:p-0 print:bg-white print:static ${isFullScreen ? 'p-0 w-screen h-screen' : 'p-2 sm:p-4'}`}>
+      <div className={`bg-slate-900 border border-slate-700 shadow-2xl overflow-hidden flex flex-col print:max-h-none print:border-none print:shadow-none print:bg-white print:text-black ${isFullScreen ? 'w-screen h-screen rounded-none border-none max-h-none h-full' : 'w-full max-w-5xl rounded-xl max-h-[96vh] sm:max-h-[94vh]'}`}>
         
         {/* Header - Screen only */}
         <div className="px-3 sm:px-6 py-3 sm:py-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center gap-2 print:hidden">
@@ -84,7 +129,7 @@ const PreSpudDossierModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1' }
           <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
             <button 
               onClick={handlePrint}
-              className="px-2.5 sm:px-3.5 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs flex items-center space-x-1 sm:space-x-1.5 transition shadow-lg shadow-cyan-500/20 min-h-[36px]"
+              className="px-2.5 sm:px-3.5 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs flex items-center space-x-1 sm:space-x-1.5 transition shadow-lg shadow-cyan-500/20 min-h-[36px] cursor-pointer"
             >
               <Printer size={14} />
               <span className="hidden sm:inline">Print / Save PDF</span>
@@ -92,14 +137,39 @@ const PreSpudDossierModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1' }
             </button>
             <button 
               onClick={fetchDossier}
-              className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition min-h-[36px] min-w-[36px] flex items-center justify-center"
+              className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition min-h-[36px] min-w-[36px] flex items-center justify-center cursor-pointer"
               title="Reload Dossier"
             >
               <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
             </button>
+
+            {/* Toggle Fullscreen */}
+            <button
+              onClick={handleToggleFullscreen}
+              className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition min-h-[36px] min-w-[36px] flex items-center justify-center cursor-pointer"
+              title={isFullScreen ? "Window Mode" : "Full Screen"}
+            >
+              {isFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            </button>
+
+            {/* Pop out to New Tab */}
+            <button
+              onClick={() => window.open(`${window.location.origin}${window.location.pathname}?module=dossier&well=${encodeURIComponent(activeWellId)}&fullscreen=true`, '_blank')}
+              className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition min-h-[36px] min-w-[36px] flex items-center justify-center cursor-pointer"
+              title="Open in Dedicated Browser Tab (Full Screen)"
+            >
+              <ExternalLink size={16} />
+            </button>
+
             <button 
-              onClick={onClose}
-              className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition min-h-[36px] min-w-[36px] flex items-center justify-center"
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.location.search.includes('module=')) {
+                  window.close();
+                }
+                onClose();
+              }}
+              className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition min-h-[36px] min-w-[36px] flex items-center justify-center cursor-pointer"
+              title="Close View"
             >
               <X size={18} />
             </button>

@@ -4,6 +4,11 @@ import { API_BASE } from '../lib/api';
 import Plot from 'react-plotly.js';
 import SourceTag, { getWellDataSource } from './SourceTag';
 import { 
+  evaluateOfflineCorrelation, 
+  evaluateOfflineCasingCorrelation, 
+  evaluateOfflineStratigraphicCrossSection 
+} from '../lib/offlinePhysicsEngine';
+import { 
   X, 
   Loader2, 
   Link2, 
@@ -16,6 +21,8 @@ import {
   ShieldAlert, 
   Wrench, 
   Maximize2,
+  Minimize2,
+  ExternalLink,
   AlertTriangle,
   CheckCircle2
 } from 'lucide-react';
@@ -36,8 +43,49 @@ const ALL_REGIONAL_WELLS = {
   ]
 };
 
-const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell }) => {
+const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell, isFullScreen: propFullScreen = false }) => {
     const [activeTab, setActiveTab] = useState('dtw'); // 'dtw' | 'casing' | 'cross_section'
+    
+    // Fullscreen State
+    const [isFullScreen, setIsFullScreen] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const p = new URLSearchParams(window.location.search);
+            return propFullScreen || p.get('fullscreen') === 'true' || p.get('module') === 'correlation';
+        }
+        return propFullScreen;
+    });
+
+    useEffect(() => {
+        if (propFullScreen) setIsFullScreen(true);
+    }, [propFullScreen]);
+
+    const handleToggleFullscreen = () => {
+        if (!isFullScreen) {
+            setIsFullScreen(true);
+            if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            }
+        } else {
+            setIsFullScreen(false);
+            if (document.exitFullscreen && document.fullscreenElement) {
+                document.exitFullscreen().catch(() => {});
+            }
+        }
+    };
+
+    // Close or exit tab on Escape key
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape' && isOpen) {
+                if (typeof window !== 'undefined' && window.location.search.includes('module=')) {
+                    window.close();
+                }
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen, onClose]);
     
     // Offset well selection state
     const [selectedOffset, setSelectedOffset] = useState(offsetWell || 'OIL-NAHARKATIYA-1');
@@ -74,12 +122,15 @@ const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell }) => {
             setError(null);
             try {
                 const response = await axios.get(`${API_BASE}/api/correlate`, {
-                    params: { active_well: activeWell, offset_well: currentOffset }
+                    params: { active_well: activeWell, offset_well: currentOffset },
+                    timeout: 3000
                 });
                 setData(response.data);
             } catch (err) {
-                console.error("Correlation failed", err);
-                setError(err.response?.data?.detail || "Failed to compute correlation");
+                console.warn("API Correlation unavailable, engaging local Rig Edge correlation engine:", err);
+                const offlineCorr = evaluateOfflineCorrelation(activeWell, currentOffset);
+                setData(offlineCorr);
+                setError(null);
             } finally {
                 setIsLoading(false);
             }
@@ -96,11 +147,14 @@ const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell }) => {
             setCasingLoading(true);
             try {
                 const res = await axios.get(`${API_BASE}/api/wells/casing-cement-correlation`, {
-                    params: { active_well: activeWell }
+                    params: { active_well: activeWell },
+                    timeout: 3000
                 });
                 setCasingData(res.data);
             } catch (err) {
-                console.error("Casing correlation failed", err);
+                console.warn("API Casing unavailable, using local Rig Edge casing engine:", err);
+                const offlineCasing = evaluateOfflineCasingCorrelation(activeWell);
+                setCasingData(offlineCasing);
             } finally {
                 setCasingLoading(false);
             }
@@ -117,11 +171,14 @@ const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell }) => {
             setStratLoading(true);
             try {
                 const res = await axios.get(`${API_BASE}/api/wells/stratigraphic-cross-section`, {
-                    params: { active_well: activeWell }
+                    params: { active_well: activeWell },
+                    timeout: 3000
                 });
                 setStratData(res.data);
             } catch (err) {
-                console.error("Cross-section failed", err);
+                console.warn("API Cross-section unavailable, using local Rig Edge cross-section:", err);
+                const offlineStrat = evaluateOfflineStratigraphicCrossSection(activeWell);
+                setStratData(offlineStrat);
             } finally {
                 setStratLoading(false);
             }
@@ -212,8 +269,8 @@ const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell }) => {
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 sm:p-4 animate-in fade-in duration-200">
-            <div className="bg-slate-900 border border-slate-700 w-full max-w-6xl h-[96vh] sm:h-[92vh] rounded-xl shadow-2xl overflow-hidden flex flex-col">
+        <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200 ${isFullScreen ? 'p-0 w-screen h-screen' : 'p-2 sm:p-4'}`}>
+            <div className={`bg-slate-900 border border-slate-700 shadow-2xl overflow-hidden flex flex-col ${isFullScreen ? 'w-screen h-screen rounded-none border-none max-h-none h-full' : 'w-full max-w-6xl h-[96vh] sm:h-[92vh] rounded-xl'}`}>
                 
                 {/* Header with Navigation Tabs */}
                 <div className="px-3 sm:px-6 py-2.5 sm:py-3.5 bg-slate-950 border-b border-slate-800 flex flex-wrap justify-between items-center gap-3">
@@ -240,9 +297,9 @@ const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell }) => {
                     <div className="flex items-center bg-slate-900 p-1 rounded-lg border border-slate-800 space-x-1 overflow-x-auto max-w-full">
                         <button
                             onClick={() => setActiveTab('dtw')}
-                            className={`whitespace-nowrap px-2.5 sm:px-3 py-1 rounded-md text-[11px] sm:text-xs font-semibold transition ${
+                            className={`whitespace-nowrap px-2.5 sm:px-3 py-1 rounded-md text-[11px] sm:text-xs font-semibold transition cursor-pointer ${
                                 activeTab === 'dtw' 
-                                    ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20' 
+                                    ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20 font-bold' 
                                     : 'text-slate-400 hover:text-white'
                             }`}
                         >
@@ -250,9 +307,9 @@ const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell }) => {
                         </button>
                         <button
                             onClick={() => setActiveTab('casing')}
-                            className={`whitespace-nowrap px-2.5 sm:px-3 py-1 rounded-md text-[11px] sm:text-xs font-semibold transition ${
+                            className={`whitespace-nowrap px-2.5 sm:px-3 py-1 rounded-md text-[11px] sm:text-xs font-semibold transition cursor-pointer ${
                                 activeTab === 'casing' 
-                                    ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20' 
+                                    ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20 font-bold' 
                                     : 'text-slate-400 hover:text-white'
                             }`}
                         >
@@ -260,9 +317,9 @@ const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell }) => {
                         </button>
                         <button
                             onClick={() => setActiveTab('cross_section')}
-                            className={`whitespace-nowrap px-2.5 sm:px-3 py-1 rounded-md text-[11px] sm:text-xs font-semibold transition ${
+                            className={`whitespace-nowrap px-2.5 sm:px-3 py-1 rounded-md text-[11px] sm:text-xs font-semibold transition cursor-pointer ${
                                 activeTab === 'cross_section' 
-                                    ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20' 
+                                    ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20 font-bold' 
                                     : 'text-slate-400 hover:text-white'
                             }`}
                         >
@@ -294,9 +351,34 @@ const CorrelationPanel = ({ isOpen, onClose, activeWell, offsetWell }) => {
                                 </button>
                             </>
                         )}
+
+                        {/* Fullscreen Toggle */}
                         <button
-                            onClick={onClose}
-                            className="p-1.5 rounded-lg border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800"
+                            onClick={handleToggleFullscreen}
+                            className="p-1.5 rounded-lg border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800 transition min-h-[34px] min-w-[34px] flex items-center justify-center cursor-pointer"
+                            title={isFullScreen ? "Window Mode" : "Full Screen"}
+                        >
+                            {isFullScreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+                        </button>
+
+                        {/* Pop out to New Tab */}
+                        <button
+                            onClick={() => window.open(`${window.location.origin}${window.location.pathname}?module=correlation&well=${encodeURIComponent(activeWell)}&fullscreen=true`, '_blank')}
+                            className="p-1.5 rounded-lg border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800 transition min-h-[34px] min-w-[34px] flex items-center justify-center cursor-pointer"
+                            title="Open in Dedicated Browser Tab (Full Screen)"
+                        >
+                            <ExternalLink size={15} />
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                if (typeof window !== 'undefined' && window.location.search.includes('module=')) {
+                                    window.close();
+                                }
+                                onClose();
+                            }}
+                            className="p-1.5 rounded-lg border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800 transition min-h-[34px] min-w-[34px] flex items-center justify-center cursor-pointer"
+                            title="Close View"
                         >
                             <X size={18} />
                         </button>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE } from '../lib/api';
 import SourceTag, { getWellDataSource } from './SourceTag';
+import { evaluateOfflineLookahead } from '../lib/offlinePhysicsEngine';
 import { 
   Radar, 
   AlertTriangle, 
@@ -14,7 +15,11 @@ import {
   X,
   Compass,
   Zap,
-  Info
+  Info,
+  HardDrive,
+  Maximize2,
+  Minimize2,
+  ExternalLink
 } from 'lucide-react';
 
 const WELL_DEFAULT_DEPTHS = {
@@ -46,7 +51,7 @@ const WELL_DEFAULT_DEPTHS = {
   'OIL-MZ-MAMIT-1': 2920,
 };
 
-const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', currentDepth = 2240.0 }) => {
+const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', currentDepth = 2240.0, isFullScreen: propFullScreen = false }) => {
   const [targetWellId, setTargetWellId] = useState(activeWellId);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -54,6 +59,46 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
   const [simulatedDepth, setSimulatedDepth] = useState(currentDepth);
   const [lastScanned, setLastScanned] = useState(null);
   const [scanNotice, setScanNotice] = useState(false);
+  const [isOfflineEngine, setIsOfflineEngine] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search);
+      return propFullScreen || p.get('fullscreen') === 'true' || p.get('module') === 'radar';
+    }
+    return propFullScreen;
+  });
+
+  useEffect(() => {
+    if (propFullScreen) setIsFullScreen(true);
+  }, [propFullScreen]);
+
+  const handleToggleFullscreen = () => {
+    if (!isFullScreen) {
+      setIsFullScreen(true);
+      if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+    } else {
+      setIsFullScreen(false);
+      if (document.exitFullscreen && document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+  };
+
+  // Close or exit tab on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        if (typeof window !== 'undefined' && window.location.search.includes('module=')) {
+          window.close();
+        }
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   // Sync to initial well and depth when modal opens or activeWellId changes
   useEffect(() => {
@@ -84,15 +129,24 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
           current_depth: depthToUse,
           window_meters: windowMeters,
           _t: Date.now() // Cache-busting parameter
-        }
+        },
+        timeout: 3000
       });
       setData(res.data);
+      setIsOfflineEngine(false);
       const now = new Date();
       setLastScanned(now.toLocaleTimeString());
       setScanNotice(true);
       setTimeout(() => setScanNotice(false), 2500);
     } catch (err) {
-      console.error('Failed to fetch lookahead data:', err);
+      console.warn('Network lookahead fetch failed; activating onboard offline physics engine:', err.message);
+      const fallbackData = evaluateOfflineLookahead(wellToUse, depthToUse, windowMeters);
+      setData(fallbackData);
+      setIsOfflineEngine(true);
+      const now = new Date();
+      setLastScanned(`${now.toLocaleTimeString()} (Offline Edge)`);
+      setScanNotice(true);
+      setTimeout(() => setScanNotice(false), 2500);
     } finally {
       // Ensure the scan animation is visibly perceived (minimum 400ms)
       const elapsed = Date.now() - startTime;
@@ -127,8 +181,8 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
   const riskLabel = isHighRisk ? 'CRITICAL AHEAD' : (isModerateRisk ? 'ELEVATED HAZARD' : 'SAFE CORRIDOR');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 sm:p-4 animate-in fade-in duration-200">
-      <div className="bg-slate-900 border border-slate-700 w-full max-w-5xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[96vh] sm:max-h-[92vh]">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200 ${isFullScreen ? 'p-0 w-screen h-screen' : 'p-2 sm:p-4'}`}>
+      <div className={`bg-slate-900 border border-slate-700 shadow-2xl overflow-hidden flex flex-col ${isFullScreen ? 'w-screen h-screen rounded-none border-none max-h-none h-full' : 'w-full max-w-5xl rounded-xl max-h-[96vh] sm:max-h-[92vh]'}`}>
         
         {/* Header */}
         <div className="px-3 sm:px-6 py-3 sm:py-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center gap-2">
@@ -190,6 +244,12 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
                 <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 font-mono">
                   {Math.round(simulatedDepth)}m
                 </span>
+                {isOfflineEngine && (
+                  <span className="flex items-center space-x-1 text-[10px] bg-cyan-950/80 text-cyan-400 border border-cyan-700/50 px-2 py-0.5 rounded-full font-mono">
+                    <HardDrive size={10} />
+                    <span>Rig Edge Offline</span>
+                  </span>
+                )}
                 {scanNotice && (
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-medium">
                     ✓ Updated
@@ -216,9 +276,33 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
               <span className="sm:hidden">{loading ? '...' : 'Scan'}</span>
             </button>
 
-            <button 
-              onClick={onClose}
+            {/* Toggle Fullscreen Button */}
+            <button
+              onClick={handleToggleFullscreen}
+              className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition min-h-[36px] min-w-[36px] flex items-center justify-center cursor-pointer"
+              title={isFullScreen ? "Exit Fullscreen (Window Mode)" : "Expand to Full Screen"}
+            >
+              {isFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            </button>
+
+            {/* Pop out to New Tab */}
+            <button
+              onClick={() => window.open(`${window.location.origin}${window.location.pathname}?module=radar&well=${encodeURIComponent(targetWellId)}&fullscreen=true`, '_blank')}
               className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition min-h-[36px] min-w-[36px] flex items-center justify-center"
+              title="Open in Dedicated Browser Tab (Full Screen)"
+            >
+              <ExternalLink size={16} />
+            </button>
+
+            <button 
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.location.search.includes('module=')) {
+                  window.close();
+                }
+                onClose();
+              }}
+              className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition min-h-[36px] min-w-[36px] flex items-center justify-center"
+              title="Close View"
             >
               <X size={18} />
             </button>

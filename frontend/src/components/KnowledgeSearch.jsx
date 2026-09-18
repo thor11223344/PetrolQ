@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE } from '../lib/api';
-import { Search, X, BookOpen, ChevronRight, Loader2, ShieldCheck, Filter, Sparkles, Bot, CheckCircle2 } from 'lucide-react';
+import { Search, X, BookOpen, ChevronRight, Loader2, ShieldCheck, Filter, Sparkles, Bot, CheckCircle2, HardDrive } from 'lucide-react';
 import SourceTag from './SourceTag';
+import { searchOfflineIncidents, generateOfflineBriefing } from '../lib/offlinePhysicsEngine';
 
 const KnowledgeSearch = ({ isOpen, onClose, suggestedQuery = '', activeWellId = 'OIL-BAGHJAN-1' }) => {
     const [query, setQuery] = useState(suggestedQuery || '');
@@ -12,6 +13,7 @@ const KnowledgeSearch = ({ isOpen, onClose, suggestedQuery = '', activeWellId = 
     const [preFilterToAnalogs, setPreFilterToAnalogs] = useState(false);
     const [aiBriefing, setAiBriefing] = useState(null);
     const [isSynthesizing, setIsSynthesizing] = useState(false);
+    const [isOfflineMode, setIsOfflineMode] = useState(false);
 
     useEffect(() => {
         if (suggestedQuery) {
@@ -32,13 +34,25 @@ const KnowledgeSearch = ({ isOpen, onClose, suggestedQuery = '', activeWellId = 
                     limit: 5,
                     well_id: activeWellId,
                     pre_filter_to_analogs: preFilterToAnalogs
-                }
+                },
+                timeout: 3000
             });
-            setResults(response.data || []);
+            if (response.data && response.data.length > 0) {
+                setResults(response.data);
+                setIsOfflineMode(false);
+            } else {
+                // If API returned empty, check local offline repository
+                const offlineMatches = searchOfflineIncidents(targetQuery.trim(), activeWellId, 5);
+                setResults(offlineMatches);
+                setIsOfflineMode(true);
+            }
             setAiBriefing(null);
         } catch (error) {
-            console.error("Search failed:", error);
-            setResults([]);
+            console.warn("Cloud RAG search unreachable, engaging local Rig Edge incident repository:", error);
+            const offlineMatches = searchOfflineIncidents(targetQuery.trim(), activeWellId, 5);
+            setResults(offlineMatches);
+            setIsOfflineMode(true);
+            setAiBriefing(null);
         } finally {
             setIsSearching(false);
         }
@@ -52,10 +66,12 @@ const KnowledgeSearch = ({ isOpen, onClose, suggestedQuery = '', activeWellId = 
                 query: query.trim(),
                 well_id: activeWellId,
                 max_records: 5
-            });
+            }, { timeout: 3500 });
             setAiBriefing(resp.data);
         } catch (err) {
-            console.error("AI synthesis error:", err);
+            console.warn("Cloud AI synthesis unreachable, generating deterministic offline briefing:", err);
+            const offlineBriefing = generateOfflineBriefing(query.trim(), activeWellId);
+            setAiBriefing(offlineBriefing);
         } finally {
             setIsSynthesizing(false);
         }
@@ -74,6 +90,12 @@ const KnowledgeSearch = ({ isOpen, onClose, suggestedQuery = '', activeWellId = 
                 <div className="flex items-center space-x-2 text-slate-200">
                     <BookOpen size={18} className="text-status-fluid" />
                     <h2 className="font-semibold tracking-wide">Knowledge Base (Hybrid RAG)</h2>
+                    {isOfflineMode && (
+                        <span className="flex items-center space-x-1 text-[10px] bg-cyan-950/80 text-cyan-400 border border-cyan-700/50 px-2 py-0.5 rounded-full font-mono">
+                            <HardDrive size={10} />
+                            <span>Rig Edge Offline</span>
+                        </span>
+                    )}
                 </div>
                 <button onClick={onClose} className="text-slate-500 hover:text-slate-300 transition-colors">
                     <X size={20} />

@@ -8,6 +8,33 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import Trajectory3DViewer from './Trajectory3DViewer';
 import SourceTag from './SourceTag';
 import { REGIONS_CONFIG, getRegionIdFromWellId } from '../lib/regionalGeology';
+import defaultWells from '../data/defaultWells.json';
+
+function filterWellsByRegion(allWells, region) {
+    if (!Array.isArray(allWells) || allWells.length === 0) return [];
+    if (!region || region === 'all') return allWells;
+    if (region === 'rajasthan') return allWells.filter(w => w.well_id?.startsWith('OIL-RAJ-'));
+    if (region === 'kg') return allWells.filter(w => w.well_id?.startsWith('OIL-KG-'));
+    if (region === 'mizoram') return allWells.filter(w => w.well_id?.startsWith('OIL-MZ-'));
+    if (region === 'assam') return allWells.filter(w => !w.well_id?.startsWith('OIL-RAJ-') && !w.well_id?.startsWith('OIL-KG-') && !w.well_id?.startsWith('OIL-MZ-') && w.field_name !== 'North Sea');
+    if (region === 'north_sea') return allWells.filter(w => w.field_name === 'North Sea');
+    return allWells;
+}
+
+function getInitialWells(region = 'all') {
+    try {
+        const cached = localStorage.getItem('petrolq_cached_wells');
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                return filterWellsByRegion(parsed, region);
+            }
+        }
+    } catch (e) {
+        console.warn("Could not read wells from localStorage", e);
+    }
+    return filterWellsByRegion(defaultWells, region);
+}
 
 function createGeoJSONCircle(center, radiusInKm, points = 64) {
     const coords = { latitude: center[1], longitude: center[0] };
@@ -60,8 +87,6 @@ function calculateDistanceKm(lat1, lon1, lat2, lon2) {
     return R * c;
 }
 
-const isOffline = import.meta.env.VITE_OFFLINE_MODE === 'true';
-
 const osmStyle = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
 
 const satelliteStyle = {
@@ -94,12 +119,28 @@ const terrainStyle = {
     layers: [{ id: 'opentopo-layer', type: 'raster', source: 'opentopo', minzoom: 0, maxzoom: 17 }]
 };
 
+const tacticalGridStyle = {
+    version: 8,
+    name: 'Tactical Edge Grid',
+    sources: {},
+    layers: [
+        {
+            id: 'background',
+            type: 'background',
+            paint: {
+                'background-color': '#070b14'
+            }
+        }
+    ]
+};
+
 export const BASEMAP_STORAGE_KEY = 'petrolq_basemap_style';
 
 export const BASEMAP_OPTIONS = [
     { id: 'dark', label: 'Dark', icon: Moon },
     { id: 'satellite', label: 'Satellite', icon: Globe },
-    { id: 'terrain', label: 'Terrain', icon: Mountain }
+    { id: 'terrain', label: 'Terrain', icon: Mountain },
+    { id: 'edge_grid', label: 'Edge Grid', icon: Radar }
 ];
 
 const REGION_THEME = {
@@ -169,7 +210,7 @@ export default function WellMap({
 
     const basemapStyle = externalBasemapStyle !== undefined ? externalBasemapStyle : internalBasemapStyle;
 
-    const [wells, setWells] = useState([]);
+    const [wells, setWells] = useState(() => getInitialWells(selectedRegion));
     const [radius, setRadius] = useState(50);
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [position, setPosition] = useState({ x: 24, y: 150 });
@@ -188,26 +229,73 @@ export default function WellMap({
 
     // 1. Fetch nearby/regional wells whenever region or search parameters change
     useEffect(() => {
+        // Immediately display cached/preloaded wells for zero-latency initial render
+        const instantWells = getInitialWells(selectedRegion);
+        if (instantWells && instantWells.length > 0) {
+            setWells(instantWells);
+        }
+
         const fetchWells = async () => {
+            const active = instantWells.find(w => w.well_id === activeWellId);
+            const centerLat = active?.surface_location?.lat ?? searchCoords.lat;
+            const centerLon = active?.surface_location?.lon ?? searchCoords.lon;
+
+            const runClientFilter = () => {
+                const allLoaded = getInitialWells(selectedRegion);
+                if (radius && radius < 200 && centerLat !== undefined && centerLon !== undefined) {
+                    const filtered = allLoaded.filter(w => {
+                        const loc = w.surface_location;
+                        if (!loc || loc.lat === undefined || loc.lon === undefined) return false;
+                        const R = 6371.0;
+                        const dLat = (loc.lat - centerLat) * Math.PI / 180.0;
+                        const dLon = (loc.lon - centerLon) * Math.PI / 180.0;
+                        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                                  Math.cos(centerLat * Math.PI / 180.0) * Math.cos(loc.lat * Math.PI / 180.0) *
+                                  Math.sin(dLon/2) * Math.sin(dLon/2);
+                        const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                        return dist <= radius;
+                    });
+                    setWells(filtered.length > 0 ? filtered : allLoaded);
+                } else {
+                    setWells(allLoaded);
+                }
+            };
+
+            // If offline, bypass network call immediately
+            if (typeof navigator !== 'undefined' && !navigator.onLine) {
+                runClientFilter();
+                return;
+            }
+
             try {
                 const params = {
                     region: selectedRegion || 'all'
                 };
                 if (selectedRegion && selectedRegion !== 'all') {
-                    params.lat = searchCoords.lat;
-                    params.lon = searchCoords.lon;
+                    params.lat = centerLat;
+                    params.lon = centerLon;
                     params.radius_km = radius;
                 } else {
                     params.radius_km = 3000; // Return all across India
                 }
-                const response = await axios.get(`${API_BASE}/api/wells/nearby`, { params });
-                setWells(response.data);
+                const response = await axios.get(`${API_BASE}/api/wells/nearby`, { params, timeout: 2500 });
+                if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+                    setWells(response.data);
+                    if (selectedRegion === 'all' || !selectedRegion) {
+                        try {
+                            localStorage.setItem('petrolq_cached_wells', JSON.stringify(response.data));
+                        } catch (e) {
+                            // ignore quota errors
+                        }
+                    }
+                }
             } catch (err) {
-                console.error("Failed to fetch regional wells:", err);
+                console.warn("Using offline client-side radius filter for wells:", err?.message);
+                runClientFilter();
             }
         };
         fetchWells();
-    }, [selectedRegion, searchCoords.lat, searchCoords.lon, radius]);
+    }, [selectedRegion, searchCoords.lat, searchCoords.lon, radius, activeWellId]);
 
     // Center map helper: smoothly animates and centers camera on a target well
     const centerOnWell = useCallback((wellOrId, customZoom = 11) => {
@@ -401,6 +489,8 @@ export default function WellMap({
                 return satelliteStyle;
             case 'terrain':
                 return terrainStyle;
+            case 'edge_grid':
+                return tacticalGridStyle;
             case 'dark':
             default:
                 return osmStyle;

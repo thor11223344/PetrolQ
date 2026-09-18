@@ -11,10 +11,13 @@ import {
   Brain, 
   Sparkles,
   Clock,
-  ShieldAlert
+  ShieldAlert,
+  Maximize2,
+  Minimize2,
+  ExternalLink
 } from 'lucide-react';
 
-const ContributeLessonModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', onLessonContributed }) => {
+const ContributeLessonModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', onLessonContributed, isFullScreen: propFullScreen = false }) => {
   const [formData, setFormData] = useState({
     well_id: activeWellId,
     event_type: 'Lost Circulation',
@@ -25,6 +28,46 @@ const ContributeLessonModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1'
     mitigation_applied: '',
     npt_hours: 4.0
   });
+
+  const [isFullScreen, setIsFullScreen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search);
+      return propFullScreen || p.get('fullscreen') === 'true' || p.get('module') === 'lesson' || p.get('module') === 'contribute';
+    }
+    return propFullScreen;
+  });
+
+  useEffect(() => {
+    if (propFullScreen) setIsFullScreen(true);
+  }, [propFullScreen]);
+
+  const handleToggleFullscreen = () => {
+    if (!isFullScreen) {
+      setIsFullScreen(true);
+      if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+    } else {
+      setIsFullScreen(false);
+      if (document.exitFullscreen && document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+  };
+
+  // Close or exit tab on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        if (typeof window !== 'undefined' && window.location.search.includes('module=')) {
+          window.close();
+        }
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
@@ -79,8 +122,8 @@ const ContributeLessonModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1'
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 sm:p-4 animate-in fade-in duration-200">
-      <div className="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[96vh] sm:max-h-[92vh]">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200 ${isFullScreen ? 'p-0 w-screen h-screen' : 'p-2 sm:p-4'}`}>
+      <div className={`bg-slate-900 border border-slate-700 shadow-2xl overflow-hidden flex flex-col ${isFullScreen ? 'w-screen h-screen rounded-none border-none max-h-none h-full' : 'w-full max-w-2xl rounded-xl max-h-[96vh] sm:max-h-[92vh]'}`}>
         
         {/* Header */}
         <div className="px-3 sm:px-6 py-3 sm:py-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center gap-2">
@@ -103,12 +146,38 @@ const ContributeLessonModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1'
             </div>
           </div>
 
-          <button 
-            onClick={onClose}
-            className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition min-h-[36px] min-w-[36px] flex items-center justify-center"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+            {/* Toggle Fullscreen */}
+            <button
+              onClick={handleToggleFullscreen}
+              className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition min-h-[36px] min-w-[36px] flex items-center justify-center cursor-pointer"
+              title={isFullScreen ? "Window Mode" : "Full Screen"}
+            >
+              {isFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            </button>
+
+            {/* Pop out to New Tab */}
+            <button
+              onClick={() => window.open(`${window.location.origin}${window.location.pathname}?module=contribute&well=${encodeURIComponent(activeWellId)}&fullscreen=true`, '_blank')}
+              className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition min-h-[36px] min-w-[36px] flex items-center justify-center cursor-pointer"
+              title="Open in Dedicated Browser Tab (Full Screen)"
+            >
+              <ExternalLink size={16} />
+            </button>
+
+            <button 
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.location.search.includes('module=')) {
+                  window.close();
+                }
+                onClose();
+              }}
+              className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition min-h-[36px] min-w-[36px] flex items-center justify-center cursor-pointer"
+              title="Close View"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Content */}

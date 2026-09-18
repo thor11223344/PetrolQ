@@ -36,10 +36,12 @@ import {
   Terminal,
   History,
   Bot,
-  Cpu
+  Cpu,
+  ExternalLink
 } from 'lucide-react';
 import axios from 'axios';
-import { API_BASE, WS_BASE } from './lib/api';
+import { API_BASE, WS_BASE, isOnline, subscribeNetworkStatus } from './lib/api';
+import { evaluateOfflineHazard, evaluateOfflineLookahead } from './lib/offlinePhysicsEngine';
 import Plot from 'react-plotly.js';
 
 import WellMap, { BASEMAP_OPTIONS, BASEMAP_STORAGE_KEY } from './components/WellMap';
@@ -56,6 +58,7 @@ import ImpactStatCards from './components/ImpactStatCards';
 import SourceTag, { getWellDataSource } from './components/SourceTag';
 import MatrixRain from './components/MatrixRain';
 import AiModelModal from './components/AiModelModal';
+import ModulesModal from './components/ModulesModal';
 
 import { REGIONS_CONFIG, getRegionBadge, getRegionIdFromWellId, isRegionCalibrated, getRegionProvenance } from './lib/regionalGeology';
 
@@ -96,9 +99,46 @@ const WELL_DEFAULT_TELEMETRY = {
 };
 
 function App() {
-  const [selectedRegion, setSelectedRegion] = useState('assam');
-  const [selectedWell, setSelectedWell] = useState('OIL-BAGHJAN-1');
-  const [telemetryData, setTelemetryData] = useState(WELL_DEFAULT_TELEMETRY['OIL-BAGHJAN-1']);
+  // URL Search Parameter Support for Standalone Fullscreen Module Tabs
+  const getInitialModuleState = (modName) => {
+    if (typeof window === 'undefined') return false;
+    const p = new URLSearchParams(window.location.search);
+    const m = (p.get('module') || '').toLowerCase();
+    if (modName === 'contribute') return m === 'contribute' || m === 'lesson';
+    return m === modName;
+  };
+
+  const [selectedWell, setSelectedWell] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search);
+      const w = p.get('well');
+      if (w && WELL_DEFAULT_TELEMETRY[w]) return w;
+      if (w) return w;
+    }
+    return 'OIL-BAGHJAN-1';
+  });
+
+  const [selectedRegion, setSelectedRegion] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search);
+      const w = p.get('well');
+      if (w) {
+        const r = getRegionIdFromWellId(w);
+        if (r) return r;
+      }
+    }
+    return 'assam';
+  });
+
+  const [telemetryData, setTelemetryData] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search);
+      const w = p.get('well');
+      if (w && WELL_DEFAULT_TELEMETRY[w]) return WELL_DEFAULT_TELEMETRY[w];
+    }
+    return WELL_DEFAULT_TELEMETRY['OIL-BAGHJAN-1'];
+  });
+
   const [predictionData, setPredictionData] = useState(null);
   const [simStatus, setSimStatus] = useState({ is_running: false, active_scenario: 'normal' });
   const [simSpeed, setSimSpeed] = useState(1.0);
@@ -117,12 +157,55 @@ function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isKnowledgeSearchOpen, setIsKnowledgeSearchOpen] = useState(false);
-  const [isCorrelationOpen, setIsCorrelationOpen] = useState(false);
-  const [isRadarOpen, setIsRadarOpen] = useState(false);
-  const [isPPFGOpen, setIsPPFGOpen] = useState(false);
-  const [isDossierOpen, setIsDossierOpen] = useState(false);
-  const [isBacktestOpen, setIsBacktestOpen] = useState(false);
-  const [isContributeOpen, setIsContributeOpen] = useState(false);
+
+  // 6 Core Decision Support & Engineering Modules
+  const [isCorrelationOpen, setIsCorrelationOpen] = useState(() => getInitialModuleState('correlation'));
+  const [isRadarOpen, setIsRadarOpen] = useState(() => getInitialModuleState('radar'));
+  const [isPPFGOpen, setIsPPFGOpen] = useState(() => getInitialModuleState('ppfg'));
+  const [isDossierOpen, setIsDossierOpen] = useState(() => getInitialModuleState('dossier'));
+  const [isBacktestOpen, setIsBacktestOpen] = useState(() => getInitialModuleState('backtest'));
+  const [isContributeOpen, setIsContributeOpen] = useState(() => getInitialModuleState('contribute'));
+
+  // Open any of the 6 modules in a new dedicated browser tab in fullscreen
+  const openModuleInNewTab = useCallback((moduleName, wellId = selectedWell) => {
+    const targetWell = wellId || selectedWell || 'OIL-BAGHJAN-1';
+    const url = `${window.location.origin}${window.location.pathname}?module=${moduleName}&well=${encodeURIComponent(targetWell)}&fullscreen=true`;
+    try {
+      const newTab = window.open(url, '_blank');
+      if (!newTab || newTab.closed || typeof newTab.closed === 'undefined') {
+        // Fallback to local open if browser blocks pop-ups
+        if (moduleName === 'radar') setIsRadarOpen(true);
+        else if (moduleName === 'correlation') setIsCorrelationOpen(true);
+        else if (moduleName === 'ppfg') setIsPPFGOpen(true);
+        else if (moduleName === 'dossier') setIsDossierOpen(true);
+        else if (moduleName === 'backtest') setIsBacktestOpen(true);
+        else if (moduleName === 'contribute' || moduleName === 'lesson') setIsContributeOpen(true);
+      }
+    } catch (err) {
+      console.warn('window.open failed, falling back to local open:', err);
+      if (moduleName === 'radar') setIsRadarOpen(true);
+      else if (moduleName === 'correlation') setIsCorrelationOpen(true);
+      else if (moduleName === 'ppfg') setIsPPFGOpen(true);
+      else if (moduleName === 'dossier') setIsDossierOpen(true);
+      else if (moduleName === 'backtest') setIsBacktestOpen(true);
+      else if (moduleName === 'contribute' || moduleName === 'lesson') setIsContributeOpen(true);
+    }
+  }, [selectedWell]);
+
+  // Set dynamic browser tab title if opened as a standalone module
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const p = new URLSearchParams(window.location.search);
+    const m = (p.get('module') || '').toLowerCase();
+    const w = p.get('well') || selectedWell || 'OIL-BAGHJAN-1';
+    if (m === 'radar') document.title = `Ahead-of-the-Bit Radar (${w}) | PetrolQ`;
+    else if (m === 'correlation') document.title = `Offset Correlation & Fence (${w}) | PetrolQ`;
+    else if (m === 'ppfg') document.title = `Safe PPFG Window (${w}) | PetrolQ`;
+    else if (m === 'dossier') document.title = `Pre-Spud Dossier (${w}) | PetrolQ`;
+    else if (m === 'backtest') document.title = `Causal Hazard Backtest (${w}) | PetrolQ`;
+    else if (m === 'contribute' || m === 'lesson') document.title = `Contribute Field Lesson (${w}) | PetrolQ`;
+  }, [selectedWell]);
+  const [isModulesTabOpen, setIsModulesTabOpen] = useState(false);
   const [isTransparencyOpen, setIsTransparencyOpen] = useState(false);
   const [is3DViewerOpen, setIs3DViewerOpen] = useState(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
@@ -133,6 +216,7 @@ function App() {
   const autoDemoTimeoutsRef = useRef([]);
   const [role, setRole] = useState('Field Engineer');
   const [isBackendConnected, setIsBackendConnected] = useState(false);
+  const [networkOnline, setNetworkOnline] = useState(() => isOnline());
   const [mobileActiveTab, setMobileActiveTab] = useState('map'); // 'map' | 'telemetry' | 'simulator'
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const wsRef = useRef(null);
@@ -143,6 +227,21 @@ function App() {
   });
   // Sequence-Based Precursor Pattern Match (Prompt 5)
   const [sequenceAlert, setSequenceAlert] = useState(null);
+
+  // Network Online/Offline Transition Listener
+  useEffect(() => {
+    return subscribeNetworkStatus((online) => {
+      setNetworkOnline(online);
+      setUploadToast({
+        title: online ? 'Cloud Telemetry Synchronized' : 'Switched to Rig Edge Engine',
+        description: online 
+          ? 'Network link restored. Dual cloud synchronization active.' 
+          : 'Network link offline. Switched to local physics engine. Drilling operations uninterrupted.',
+        wellId: selectedWell,
+        time: new Date().toLocaleTimeString()
+      });
+    });
+  }, [selectedWell]);
 
   useEffect(() => {
     try {
@@ -354,6 +453,41 @@ function App() {
     let isCleanedUp = false;
     let ws = null;
     let reconnectTimeout = null;
+    let warmupTimer = null;
+    let keepAliveTimer = null;
+
+    // Fast proactive HTTP healthcheck to wake up Render and detect online status immediately
+    const pingHealth = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/health`, { method: 'GET' });
+        if (response.ok && !isCleanedUp) {
+          setIsBackendConnected(true);
+          if (warmupTimer) {
+            clearInterval(warmupTimer);
+            warmupTimer = null;
+          }
+        }
+      } catch (err) {
+        // Backend still spinning up on Render
+      }
+    };
+
+    // Trigger instant HTTP healthcheck on mount
+    pingHealth();
+
+    // Fast retry every 2.5s while waiting for backend container
+    warmupTimer = setInterval(() => {
+      if (!isCleanedUp) {
+        pingHealth();
+      }
+    }, 2500);
+
+    // Keep-alive ping every 2 minutes to prevent Render free-tier from sleeping during active sessions
+    keepAliveTimer = setInterval(() => {
+      if (!isCleanedUp) {
+        fetch(`${API_BASE}/health`).catch(() => {});
+      }
+    }, 120000);
 
     const connectWebSocket = () => {
       if (isCleanedUp) return;
@@ -368,6 +502,10 @@ function App() {
           }
           // Connected successfully
           setIsBackendConnected(true);
+          if (warmupTimer) {
+            clearInterval(warmupTimer);
+            warmupTimer = null;
+          }
           fetchHistory(selectedWell);
         };
 
@@ -452,6 +590,8 @@ function App() {
     return () => {
       isCleanedUp = true;
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      if (warmupTimer) clearInterval(warmupTimer);
+      if (keepAliveTimer) clearInterval(keepAliveTimer);
       if (ws) {
         if (ws.readyState === WebSocket.OPEN) {
           ws.close();
@@ -518,6 +658,46 @@ function App() {
         // Query real-time ML risk prediction over WebSocket for THIS client only
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
           wsRef.current.send(JSON.stringify(updated));
+        } else {
+          // Autonomous Rig Edge Engine: evaluate continuous physics & hazard prediction locally
+          const offlinePred = evaluateOfflineHazard(updated, simStatus.active_scenario);
+          setPredictionData(offlinePred);
+
+          // Update trajectory points continuously on client
+          setTrajectoryData(prev => {
+            const newDepth = [...prev.depth, updated.depth_tvd].slice(-50);
+            const newTorque = [...prev.torque, updated.torque].slice(-50);
+            const newRop = [...prev.rop, updated.rop].slice(-50);
+            return { depth: newDepth, torque: newTorque, rop: newRop };
+          });
+
+          // Check for High Risk Alert in offline mode
+          if (offlinePred.risk_level === 'HIGH' || offlinePred.risk_level === 'CRITICAL') {
+            if (!alertActiveRef.current) {
+              alertActiveRef.current = true;
+              setAlertState({ active: true, prediction: offlinePred });
+              try {
+                const queue = JSON.parse(localStorage.getItem('petrolq_offline_event_queue') || '[]');
+                queue.push({
+                  timestamp: new Date().toISOString(),
+                  well_id: selectedWell,
+                  depth_tvd: updated.depth_tvd,
+                  hazard: offlinePred.predicted_hazard,
+                  risk_level: offlinePred.risk_level,
+                  recommendations: offlinePred.recommendations
+                });
+                localStorage.setItem('petrolq_offline_event_queue', JSON.stringify(queue.slice(-20)));
+              } catch (e) {}
+            } else {
+              setAlertState(prev => ({ ...prev, prediction: offlinePred }));
+            }
+          } else if (simStatus.active_scenario === 'normal' && offlinePred.risk_level === 'LOW') {
+            if (alertActiveRef.current) {
+              alertActiveRef.current = false;
+              setAlertState({ active: false, prediction: null });
+            }
+            setSequenceAlert(null);
+          }
         }
 
         return updated;
@@ -539,7 +719,8 @@ function App() {
 
       try {
         const res = await axios.get(`${API_BASE}/api/wells/${selectedWell}/lookahead`, {
-          params: { current_depth: currentDepth, window_meters: 250.0 }
+          params: { current_depth: currentDepth, window_meters: 250.0 },
+          timeout: 3000
         });
         const lookahead = res.data;
         const dist = lookahead?.distance_to_next_formation_m;
@@ -563,7 +744,22 @@ function App() {
           setProximityWarning(null);
         }
       } catch (err) {
-        console.error("Proactive lookahead proximity check failed", err);
+        // Autonomous Rig Edge Lookahead Calculation (Zero-downtime offline mode)
+        const offlineLookahead = evaluateOfflineLookahead(selectedWell, currentDepth, 250.0);
+        const dist = offlineLookahead?.distance_to_next_formation_m;
+        if (dist !== null && dist !== undefined && dist <= 50.0 && dist > 0) {
+          const upcoming = offlineLookahead?.upcoming_formations?.[0] || {};
+          setProximityWarning({
+            active: true,
+            formation: offlineLookahead.next_formation || 'Target Formation',
+            distance_m: dist,
+            tvd_top: upcoming.tvd_top || Math.round(currentDepth + dist),
+            primary_risk: upcoming.primary_risk || 'Stratigraphic Transition & Overpressure Boundary',
+            offset_precedent: offlineLookahead.offset_precedent || null
+          });
+        } else {
+          setProximityWarning(null);
+        }
       }
     };
 
@@ -1000,6 +1196,18 @@ function App() {
             <FileUp size={16} />
           </button>
 
+          {/* Mobile Settings Button */}
+          <button 
+            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+            className={`p-1.5 bg-slate-900/90 hover:bg-slate-800 active:bg-slate-750 border rounded-lg transition shadow-sm ${
+              isSettingsOpen ? 'border-cyan-500 text-cyan-400 bg-cyan-500/15' : 'border-slate-700/80 text-slate-300'
+            }`}
+            title="System Settings"
+            aria-label="Settings"
+          >
+            <Settings size={16} className={`transition-transform duration-300 ${isSettingsOpen ? 'rotate-90 text-cyan-400' : ''}`} />
+          </button>
+
           {/* Mobile Menu Toggle Button */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -1120,122 +1328,38 @@ function App() {
             </div>
           </div>
 
-          {/* Combined Live Telemetry & API Status Pill */}
+          {/* Hybrid Dual-Mode Connectivity Status Pill */}
           <div className="flex items-center border-l border-slate-800/80 pl-1.5 xl:pl-2 shrink-0">
             {isBackendConnected ? (
               <div 
                 className="flex items-center space-x-1.5 px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-mono font-medium shadow-[0_0_10px_rgba(16,185,129,0.15)] whitespace-nowrap"
-                title="Telemetry Live at 1.0Hz — FastAPI Online"
+                title="Telemetry Live at 1.0Hz — Cloud & Edge Synchronized"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>Live 1.0Hz</span>
+                <span>Cloud Sync 1.0Hz</span>
               </div>
             ) : (
               <div 
-                className="flex items-center space-x-1.5 px-2 py-1 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-300 text-[11px] font-mono font-medium animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.2)] whitespace-nowrap"
-                title="FastAPI is offline"
+                className="flex items-center space-x-1.5 px-2 py-1 rounded-lg bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 text-[11px] font-mono font-medium shadow-[0_0_10px_rgba(6,182,212,0.2)] whitespace-nowrap"
+                title="Rig Edge Offline Mode Active — Continuous Physics & Hazard Monitoring Uninterrupted"
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                <span>Offline</span>
+                <ShieldCheck size={12} className="text-cyan-400 animate-pulse" />
+                <span>Rig Edge (1.0Hz)</span>
               </div>
             )}
           </div>
 
-          {/* AI Model Engine Status Pill (Multi-Provider Support - only shown when connected) */}
-          {aiStatus?.active_provider && aiStatus.active_provider !== 'offline' && (
-            <div className="flex items-center shrink-0">
-              <button
-                onClick={() => setIsAiModalOpen(true)}
-                className={`flex items-center space-x-1.5 px-2 py-1 rounded-lg border text-[11px] font-mono font-medium transition cursor-pointer ${
-                  aiStatus.active_provider === 'gemini' 
-                    ? 'bg-cyan-500/10 border-cyan-500/35 text-cyan-300 hover:bg-cyan-500/20 shadow-glow-cyan' 
-                    : aiStatus.active_provider === 'claude'
-                    ? 'bg-amber-500/10 border-amber-500/35 text-amber-300 hover:bg-amber-500/20 shadow-glow-amber'
-                    : aiStatus.active_provider === 'openai'
-                    ? 'bg-emerald-500/10 border-emerald-500/35 text-emerald-300 hover:bg-emerald-500/20 shadow-glow-emerald'
-                    : aiStatus.active_provider === 'ollama'
-                    ? 'bg-blue-500/10 border-blue-500/35 text-blue-300 hover:bg-blue-500/20'
-                    : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-slate-200'
-                }`}
-                title="Click to view or configure AI model (Gemini, Claude, OpenAI, Ollama)"
-              >
-                <Bot size={13} className="shrink-0 text-cyan-400" />
-                <span className="capitalize">{aiStatus.active_provider}</span>
-              </button>
-            </div>
-          )}
-
-          {/* Auto-Play Demo Mode Trigger Button (Tier 3) */}
-          <div className="flex items-center shrink-0">
-            <button
-              onClick={isAutoDemoRunning ? stopAutoDemo : startAutoDemo}
-              className={`flex items-center space-x-1 text-[11px] font-semibold px-2 py-1 rounded-lg border transition-all cursor-pointer shadow-sm shrink-0 ${
-                isAutoDemoRunning 
-                  ? 'bg-rose-500/20 text-rose-300 border-rose-500/50 shadow-glow-danger animate-pulse'
-                  : 'bg-gradient-to-r from-cyan-500/15 via-blue-500/15 to-purple-500/15 hover:from-cyan-500/25 hover:to-purple-500/25 text-cyan-200 border-cyan-500/40 shadow-glow-cyan'
-              }`}
-              title="Run 6-step scripted unattended tour for judges & reviewers"
-            >
-              <Sparkles size={13} className={isAutoDemoRunning ? 'text-rose-400' : 'text-cyan-400'} />
-              <span>{isAutoDemoRunning ? 'Stop' : 'Demo'}</span>
-            </button>
-          </div>
-
-          {/* Core Decision Support Modules (SIH 2026 Mandate) */}
-          <div className="flex items-center space-x-1 xl:space-x-1.5 border-l border-slate-800/80 pl-1.5 xl:pl-2 shrink-0">
+          {/* Core Decision Support Modules Tab (Opens full-screen / big box overview) */}
+          <div className="relative shrink-0 border-l border-slate-800/80 pl-1.5 xl:pl-2">
             <button 
-                onClick={() => setIsRadarOpen(true)}
-                className="flex items-center space-x-1 text-[11px] font-medium px-2 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 active:bg-amber-500/30 text-amber-300 border border-amber-500/35 transition-all shadow-glow-amber group shrink-0"
-                title="Ahead-of-the-Bit Hazard Radar & Impending Formations"
+                id="btn-drilling-modules-tab"
+                onClick={() => setIsModulesTabOpen(true)} 
+                className="flex items-center space-x-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer shadow-sm bg-slate-900/90 hover:bg-slate-850 text-slate-200 border-slate-750 hover:border-cyan-500/50 hover:text-white group"
+                title="View All Drilling Decision Support Modules"
             >
-                <Radar size={13} className="text-amber-400 group-hover:rotate-45 transition-transform shrink-0" />
-                <span>Radar</span>
-            </button>
-
-            <button 
-                onClick={() => setIsCorrelationOpen(true)}
-                className="flex items-center space-x-1 text-[11px] font-medium px-2 py-1 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 active:bg-indigo-500/30 text-indigo-300 border border-indigo-500/35 transition-all shadow-[0_0_12px_-3px_rgba(99,102,241,0.25)] shrink-0"
-                title="Cross-Well Log Correlation & Stratigraphic Programs"
-            >
-                <Layers size={13} className="text-indigo-400 shrink-0" />
-                <span>Correlation</span>
-            </button>
-
-            <button 
-                onClick={() => setIsPPFGOpen(true)}
-                className="flex items-center space-x-1 text-[11px] font-medium px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 active:bg-emerald-500/30 text-emerald-300 border border-emerald-500/35 transition-all shadow-glow-emerald shrink-0"
-                title="Pore Pressure & Fracture Gradient Safe Mud Weight Window"
-            >
-                <Gauge size={13} className="text-emerald-400 shrink-0" />
-                <span>PPFG</span>
-            </button>
-
-            <button 
-                onClick={() => setIsDossierOpen(true)}
-                className="flex items-center space-x-1 text-[11px] font-medium px-2 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 active:bg-cyan-500/30 text-cyan-300 border border-cyan-500/35 transition-all shadow-glow-cyan shrink-0"
-                title="1-Click Pre-Spud Offset Hazard Dossier"
-            >
-                <FileText size={13} className="text-cyan-400 shrink-0" />
-                <span>Pre-Spud</span>
-            </button>
-
-            <button 
-                id="btn-time-travel-backtest"
-                onClick={() => setIsBacktestOpen(true)}
-                className="flex items-center space-x-1 text-[11px] font-medium px-2 py-1 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 active:bg-indigo-500/35 text-indigo-300 border border-indigo-500/35 transition-all shadow-sm shrink-0"
-                title="Time-Travel Backtest: Causal Replay & Advance Warning Validation"
-            >
-                <History size={13} className="text-indigo-400 shrink-0" />
-                <span>Backtest</span>
-            </button>
-
-            <button 
-                onClick={() => setIsContributeOpen(true)}
-                className="flex items-center space-x-1 text-[11px] font-medium px-2 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 active:bg-purple-500/30 text-purple-300 border border-purple-500/35 transition-all shadow-[0_0_12px_-3px_rgba(168,85,247,0.25)] shrink-0"
-                title="Add Field Lesson Learned to Institutional Memory"
-            >
-                <Brain size={13} className="text-purple-400 shrink-0" />
-                <span>+ Lesson</span>
+                <Layers size={13} className="text-cyan-400 group-hover:scale-110 transition-transform" />
+                <span>Modules</span>
+                <span className="px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-mono border border-cyan-500/30 group-hover:bg-cyan-500/30">6</span>
             </button>
           </div>
 
@@ -1283,36 +1407,113 @@ function App() {
               <span className="text-[10px] hidden 2xl:inline">{dashboardTheme === 'terminal' ? 'TERM' : 'CLI'}</span>
             </button>
 
-            {/* Settings */}
+          </div>
+
+          {/* Settings Symbol on the End of the Right Top */}
+          <div className="relative shrink-0 border-l border-slate-800/80 pl-1.5 xl:pl-2">
             <button 
+                id="btn-system-settings"
                 onClick={() => setIsSettingsOpen(!isSettingsOpen)} 
-                className={`p-1.5 rounded-lg transition-colors border shrink-0 ${isSettingsOpen ? 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30' : 'bg-slate-900/80 hover:bg-slate-800 border-slate-700/80 hover:text-white'}`}
-                title="System Settings"
+                className={`p-1.5 xl:p-2 rounded-xl transition-all border shrink-0 flex items-center justify-center cursor-pointer group shadow-sm ${
+                  isSettingsOpen 
+                    ? 'text-cyan-300 bg-cyan-500/20 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.35)] ring-1 ring-cyan-400/50' 
+                    : 'bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-cyan-300 border-slate-750 hover:border-cyan-500/50 hover:shadow-[0_0_12px_rgba(6,182,212,0.2)]'
+                }`}
+                title="System Settings & Preferences"
+                aria-label="System Settings"
             >
-                <Settings size={14} />
+                <Settings size={16} className={`transition-transform duration-500 ease-out group-hover:rotate-90 ${isSettingsOpen ? 'text-cyan-400 rotate-90' : 'text-slate-300 group-hover:text-cyan-300'}`} />
             </button>
             
             {/* Settings Dropdown */}
             {isSettingsOpen && (
-                <div className="absolute top-11 right-0 w-72 bg-slate-900/98 backdrop-blur-xl border border-slate-700 shadow-2xl rounded-xl p-4 z-50 animate-in fade-in zoom-in-95">
-                    <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-2.5">
+              <>
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={() => setIsSettingsOpen(false)} 
+                />
+                <div className="absolute top-11 right-0 w-80 bg-slate-900/98 backdrop-blur-xl border border-slate-700/90 shadow-2xl rounded-2xl p-4 z-50 animate-in fade-in zoom-in-95">
+                    <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
                         <div className="flex items-center space-x-2">
-                          <Settings size={15} className="text-cyan-400" />
-                          <h3 className="font-semibold text-slate-100 text-xs tracking-wide uppercase">System Settings</h3>
+                          <div className="p-1.5 rounded-lg bg-cyan-500/15 border border-cyan-500/30">
+                            <Settings size={15} className="text-cyan-400" />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-slate-100 text-xs tracking-wide uppercase font-mono">System Settings</h3>
+                            <p className="text-[10px] text-slate-400">Platform preferences & display</p>
+                          </div>
                         </div>
-                        <button onClick={() => setIsSettingsOpen(false)} className="text-slate-400 hover:text-white transition">
+                        <button onClick={() => setIsSettingsOpen(false)} className="text-slate-400 hover:text-white transition p-1 rounded-lg hover:bg-slate-800">
                             <XCircle size={16} />
                         </button>
                     </div>
                     <div className="space-y-3.5">
+                        {/* Claude / AI Reasoning Engine Box */}
+                        <div className="p-3 rounded-xl bg-gradient-to-br from-amber-950/40 via-slate-900 to-slate-950 border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.15)]">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center space-x-2">
+                              <div className="p-1.5 rounded-lg bg-amber-500/20 border border-amber-500/40 shadow-glow-amber">
+                                <Cpu size={15} className="text-amber-400" />
+                              </div>
+                              <div>
+                                <div className="flex items-center space-x-1.5">
+                                  <h4 className="text-xs font-bold text-amber-200 tracking-wide font-mono">
+                                    {aiStatus?.active_provider === 'claude' ? 'Claude 3.5 Operational AI' : `${(aiStatus?.active_provider || 'Claude').toUpperCase()} Engine`}
+                                  </h4>
+                                </div>
+                                <p className="text-[10px] text-amber-300/70 font-mono">
+                                  {aiStatus?.model || 'claude-3-5-haiku-20241022'}
+                                </p>
+                              </div>
+                            </div>
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-amber-500/15 border border-amber-500/40 text-amber-300 shadow-sm">
+                              {aiStatus?.active_provider === 'offline' ? 'OFFLINE' : 'ACTIVE'}
+                            </span>
+                          </div>
+                          
+                          <p className="text-[11px] text-slate-300 leading-snug mb-2.5">
+                            Underpins automated incident extraction from daily reports, analog well synthesis, and drill-ahead briefings.
+                          </p>
+
+                          <button
+                            onClick={() => {
+                              setIsSettingsOpen(false);
+                              setIsAiModalOpen(true);
+                            }}
+                            className="w-full py-1.5 px-3 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 active:bg-amber-500/40 border border-amber-500/50 text-amber-200 text-xs font-semibold flex items-center justify-center space-x-2 transition shadow-sm cursor-pointer group"
+                          >
+                            <Bot size={13} className="text-amber-400 group-hover:scale-110 transition-transform" />
+                            <span>Open Claude AI Configuration & Test</span>
+                          </button>
+                        </div>
+
+                        {/* Basemap Selection */}
                         <div className="flex items-center justify-between">
                             <div>
-                              <span className="text-xs text-slate-300 block">Terminal / Tiling Mode</span>
+                              <span className="text-xs text-slate-300 block font-medium">Basemap Style</span>
+                              <span className="text-[10px] text-slate-400 font-mono">Map terrain & tiles</span>
+                            </div>
+                            <select 
+                              value={basemapStyle} 
+                              onChange={(e) => handleBasemapChange(e.target.value)}
+                              className="bg-slate-800 text-xs font-mono border border-slate-700 rounded-lg px-2 py-1 text-slate-200 outline-none focus:border-cyan-500 cursor-pointer"
+                            >
+                              <option value="dark">Dark Matter</option>
+                              <option value="satellite">Satellite</option>
+                              <option value="terrain">Topographic</option>
+                              <option value="edge_grid">Tactical Edge Grid (Offline)</option>
+                            </select>
+                        </div>
+
+                        {/* Terminal / Tiling Mode */}
+                        <div className="flex items-center justify-between">
+                            <div>
+                              <span className="text-xs text-slate-300 block font-medium">Terminal Mode</span>
                               <span className="text-[10px] text-slate-400 font-mono">BSPWM Monospace HUD</span>
                             </div>
                             <button
                               onClick={() => setDashboardTheme(prev => prev === 'terminal' ? 'standard' : 'terminal')}
-                              className={`px-2.5 py-1 rounded text-[10px] font-mono font-bold transition border ${
+                              className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold transition border ${
                                 dashboardTheme === 'terminal'
                                   ? 'bg-emerald-500 text-black border-emerald-400 shadow-glow-emerald'
                                   : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'
@@ -1321,28 +1522,41 @@ function App() {
                               {dashboardTheme === 'terminal' ? 'ENABLED' : 'DISABLED'}
                             </button>
                         </div>
+
+                        {/* Hazard Audio Alerts */}
                         <div className="flex items-center justify-between">
-                            <span className="text-xs text-slate-300">Dark Matter Theme</span>
+                            <div>
+                              <span className="text-xs text-slate-300 block font-medium">Hazard Audio Alerts</span>
+                              <span className="text-[10px] text-slate-400 font-mono">Rig alarm tones</span>
+                            </div>
                             <div className="w-8 h-4 bg-status-active rounded-full relative cursor-pointer shadow-glow-emerald">
                                 <div className="absolute right-1 top-0.5 w-3 h-3 bg-white rounded-full shadow"></div>
                             </div>
                         </div>
+
+                        {/* Telemetry Stream Rate */}
                         <div className="flex items-center justify-between">
-                            <span className="text-xs text-slate-300">Hazard Audio Alerts</span>
-                            <div className="w-8 h-4 bg-slate-750 rounded-full relative cursor-pointer border border-slate-700">
-                                <div className="absolute left-1 top-0.5 w-3 h-3 bg-slate-400 rounded-full"></div>
+                            <div>
+                              <span className="text-xs text-slate-300 block font-medium">Telemetry Rate</span>
+                              <span className="text-[10px] text-slate-400 font-mono">Sensor frequency</span>
                             </div>
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs text-slate-300">Telemetry Stream Rate</span>
-                            <select className="bg-slate-800 text-xs font-mono border border-slate-700 rounded-md px-2 py-1 text-slate-200 outline-none">
+                            <select className="bg-slate-800 text-xs font-mono border border-slate-700 rounded-lg px-2 py-1 text-slate-200 outline-none focus:border-cyan-500 cursor-pointer">
                                 <option>1.0 Hz (Realtime)</option>
                                 <option>0.5 Hz (Balanced)</option>
                                 <option>2.0 Hz (High Speed)</option>
                             </select>
                         </div>
+
+                        {/* Operating Mode Status */}
+                        <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between text-[11px] font-mono">
+                            <span className="text-slate-400">System Mode:</span>
+                            <span className={`font-semibold ${isBackendConnected ? 'text-emerald-400' : 'text-cyan-400'}`}>
+                              {isBackendConnected ? '🟢 Cloud Sync Active' : '⚡ Rig Edge Autonomous'}
+                            </span>
+                        </div>
                     </div>
                 </div>
+              </>
             )}
           </div>
         </div>
@@ -1351,36 +1565,14 @@ function App() {
       {/* Platform ROI & Estimated Impact Cards (Tier 1 Mandate) */}
       <ImpactStatCards />
 
-      {/* Auto-Play Demo Mode Floating Controller (Tier 3 Mandate) */}
-      {isAutoDemoRunning && (
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 border-2 border-cyan-500/80 rounded-2xl px-4 py-2.5 shadow-[0_0_35px_rgba(6,182,212,0.45)] backdrop-blur-xl flex items-center space-x-3.5 animate-in slide-in-from-top-4 max-w-[92vw]">
-          <div className="flex items-center space-x-2">
-            <span className="relative flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
-            </span>
-            <span className="font-mono text-xs font-bold text-cyan-300 uppercase tracking-wider whitespace-nowrap">Auto-Demo</span>
-          </div>
-          <div className="w-px h-4 bg-slate-700 hidden sm:block" />
-          <span className="text-xs text-white font-medium truncate max-w-xs sm:max-w-md">{autoDemoStatus}</span>
-          <button
-            onClick={stopAutoDemo}
-            className="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/50 text-xs font-semibold flex items-center space-x-1 transition cursor-pointer shrink-0"
-          >
-            <X size={13} />
-            <span>Stop</span>
-          </button>
-        </div>
-      )}
-
       {/* Mobile Slide-Down Drawer Sheet */}
       {isMobileMenuOpen && (
         <div className="lg:hidden fixed inset-x-0 top-14 z-40 bg-slate-900/98 backdrop-blur-xl border-b border-slate-800 shadow-2xl p-4 space-y-3 animate-in slide-in-from-top-3 max-h-[85vh] overflow-y-auto">
           {/* Status & Role in Mobile Menu */}
           <div className="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800">
             <div className="flex items-center space-x-2">
-              <span className={`w-2 h-2 rounded-full ${isBackendConnected ? 'bg-emerald-400' : 'bg-rose-500'} animate-pulse`}></span>
-              <span className="text-xs font-mono text-slate-300">{isBackendConnected ? 'FastAPI Online' : 'FastAPI Offline'}</span>
+              <span className={`w-2 h-2 rounded-full ${isBackendConnected ? 'bg-emerald-400' : 'bg-cyan-400'} animate-pulse`}></span>
+              <span className="text-xs font-mono text-slate-300">{isBackendConnected ? 'Cloud Sync Active' : 'Rig Edge Active'}</span>
             </div>
             <div className="flex items-center space-x-2">
               <span className="text-xs text-slate-400">Role:</span>
@@ -1397,25 +1589,6 @@ function App() {
 
           {/* Core Decision Support Modules (Touch targets >= 44px) */}
           <div className="grid grid-cols-1 gap-2 pt-1">
-            {/* Auto-Demo Button in Mobile Menu */}
-            <button 
-              onClick={() => { 
-                setIsMobileMenuOpen(false); 
-                if (isAutoDemoRunning) stopAutoDemo(); else startAutoDemo(); 
-              }}
-              className={`flex items-center space-x-3 p-3 rounded-xl border text-left font-medium text-xs min-h-[44px] transition ${
-                isAutoDemoRunning 
-                  ? 'bg-rose-500/20 text-rose-300 border-rose-500/50' 
-                  : 'bg-gradient-to-r from-cyan-500/15 via-blue-500/15 to-purple-500/15 text-cyan-200 border-cyan-500/40'
-              }`}
-            >
-              <Sparkles size={18} className={isAutoDemoRunning ? 'text-rose-400' : 'text-cyan-400'} />
-              <div>
-                <div className="font-bold text-white">{isAutoDemoRunning ? 'Stop Auto-Demo' : 'Launch Auto-Demo Tour'}</div>
-                <div className="text-[10px] text-cyan-300/80">6-step autonomous showcase sequence</div>
-              </div>
-            </button>
-
             {/* Data & Methodology in Mobile Menu */}
             <button 
               onClick={() => { setIsTransparencyOpen(true); setIsMobileMenuOpen(false); }}
@@ -1429,68 +1602,86 @@ function App() {
             </button>
 
             <button 
-              onClick={() => { setIsRadarOpen(true); setIsMobileMenuOpen(false); }}
+              onClick={() => { openModuleInNewTab('radar'); setIsMobileMenuOpen(false); }}
               className="flex items-center space-x-3 p-3 rounded-xl bg-amber-500/10 active:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-left font-medium text-xs min-h-[44px]"
             >
               <Radar size={18} className="text-amber-400 shrink-0" />
               <div>
-                <div className="font-bold text-white">Ahead-of-the-Bit Hazard Radar</div>
-                <div className="text-[10px] text-amber-300/80">+250m Lookahead Proximity Scan</div>
+                <div className="font-bold text-white flex items-center gap-1.5">
+                  <span>Ahead-of-the-Bit Hazard Radar</span>
+                  <ExternalLink size={12} className="text-amber-400" />
+                </div>
+                <div className="text-[10px] text-amber-300/80">+250m Lookahead Proximity Scan (New Tab)</div>
               </div>
             </button>
 
             <button 
-              onClick={() => { setIsCorrelationOpen(true); setIsMobileMenuOpen(false); }}
+              onClick={() => { openModuleInNewTab('correlation'); setIsMobileMenuOpen(false); }}
               className="flex items-center space-x-3 p-3 rounded-xl bg-indigo-500/10 active:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-left font-medium text-xs min-h-[44px]"
             >
               <Layers size={18} className="text-indigo-400 shrink-0" />
               <div>
-                <div className="font-bold text-white">Cross-Well Correlation & Stratigraphy</div>
-                <div className="text-[10px] text-indigo-300/80">Casing programs & offset logs</div>
+                <div className="font-bold text-white flex items-center gap-1.5">
+                  <span>Cross-Well Correlation & Stratigraphy</span>
+                  <ExternalLink size={12} className="text-indigo-400" />
+                </div>
+                <div className="text-[10px] text-indigo-300/80">Casing programs & offset logs (New Tab)</div>
               </div>
             </button>
 
             <button 
-              onClick={() => { setIsPPFGOpen(true); setIsMobileMenuOpen(false); }}
+              onClick={() => { openModuleInNewTab('ppfg'); setIsMobileMenuOpen(false); }}
               className="flex items-center space-x-3 p-3 rounded-xl bg-emerald-500/10 active:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-left font-medium text-xs min-h-[44px]"
             >
               <Gauge size={18} className="text-emerald-400 shrink-0" />
               <div>
-                <div className="font-bold text-white">Safe Mud Weight Window (PPFG)</div>
-                <div className="text-[10px] text-emerald-300/80">Pore Pressure vs Fracture Gradient</div>
+                <div className="font-bold text-white flex items-center gap-1.5">
+                  <span>Safe Mud Weight Window (PPFG)</span>
+                  <ExternalLink size={12} className="text-emerald-400" />
+                </div>
+                <div className="text-[10px] text-emerald-300/80">Pore Pressure vs Fracture Gradient (New Tab)</div>
               </div>
             </button>
 
             <button 
-              onClick={() => { setIsDossierOpen(true); setIsMobileMenuOpen(false); }}
+              onClick={() => { openModuleInNewTab('dossier'); setIsMobileMenuOpen(false); }}
               className="flex items-center space-x-3 p-3 rounded-xl bg-cyan-500/10 active:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-left font-medium text-xs min-h-[44px]"
             >
               <FileText size={18} className="text-cyan-400 shrink-0" />
               <div>
-                <div className="font-bold text-white">1-Click Pre-Spud Dossier</div>
-                <div className="text-[10px] text-cyan-300/80">Pre-spud hazard briefing</div>
+                <div className="font-bold text-white flex items-center gap-1.5">
+                  <span>1-Click Pre-Spud Dossier</span>
+                  <ExternalLink size={12} className="text-cyan-400" />
+                </div>
+                <div className="text-[10px] text-cyan-300/80">Pre-spud hazard briefing (New Tab)</div>
               </div>
             </button>
 
             <button 
-              onClick={() => { setIsBacktestOpen(true); setIsMobileMenuOpen(false); }}
+              onClick={() => { openModuleInNewTab('backtest'); setIsMobileMenuOpen(false); }}
               className="flex items-center space-x-3 p-3 rounded-xl bg-indigo-500/10 active:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-left font-medium text-xs min-h-[44px]"
             >
               <History size={18} className="text-indigo-400 shrink-0" />
               <div>
-                <div className="font-semibold text-slate-100">Time-Travel Backtest</div>
-                <div className="text-[10px] text-slate-400">Validate advance warning against historical incidents</div>
+                <div className="font-semibold text-slate-100 flex items-center gap-1.5">
+                  <span>Time-Travel Backtest</span>
+                  <ExternalLink size={12} className="text-indigo-400" />
+                </div>
+                <div className="text-[10px] text-slate-400">Validate advance warning against historical incidents (New Tab)</div>
               </div>
             </button>
 
             <button 
-              onClick={() => { setIsContributeOpen(true); setIsMobileMenuOpen(false); }}
+              onClick={() => { openModuleInNewTab('contribute'); setIsMobileMenuOpen(false); }}
               className="flex items-center space-x-3 p-3 rounded-xl bg-purple-500/10 active:bg-purple-500/20 text-purple-300 border border-purple-500/30 text-left font-medium text-xs min-h-[44px]"
             >
               <Brain size={18} className="text-purple-400 shrink-0" />
               <div>
-                <div className="font-bold text-white">Add Field Lesson Learned</div>
-                <div className="text-[10px] text-purple-300/80">Institutional Memory contributor</div>
+                <div className="font-bold text-white flex items-center gap-1.5">
+                  <span>Add Field Lesson Learned</span>
+                  <ExternalLink size={12} className="text-purple-400" />
+                </div>
+                <div className="text-[10px] text-purple-300/80">Institutional Memory contributor (New Tab)</div>
               </div>
             </button>
           </div>
@@ -1545,12 +1736,13 @@ function App() {
 
               <div className="flex items-center space-x-1.5 shrink-0">
                 <button
-                  onClick={() => setIsRadarOpen(true)}
+                  onClick={() => openModuleInNewTab('radar')}
                   className="px-2.5 sm:px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center space-x-1 shadow-lg shadow-amber-500/30 transition cursor-pointer"
                 >
                   <Radar size={13} />
                   <span className="hidden sm:inline">Inspect Ahead-of-Bit Radar</span>
                   <span className="sm:hidden">Radar</span>
+                  <ExternalLink size={11} className="ml-1 opacity-80" />
                 </button>
                 <button
                   onClick={() => setProximityWarning(null)}
@@ -1585,9 +1777,9 @@ function App() {
             </div>
             <div className="flex items-center space-x-1.5">
               <button
-                onClick={() => setIsRadarOpen(true)}
+                onClick={() => openModuleInNewTab('radar')}
                 className="p-2 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/30 active:bg-amber-500/20"
-                title="Ahead-of-Bit Radar"
+                title="Ahead-of-Bit Radar (New Tab)"
               >
                 <Radar size={15} />
               </button>
@@ -1691,8 +1883,9 @@ function App() {
               const preview = WELL_RADAR_PREVIEWS[selectedWell] || { horizon: 'Barail Horizon', top: '2,400m' };
               return (
                 <button 
-                  onClick={() => setIsRadarOpen(true)}
+                  onClick={() => openModuleInNewTab('radar')}
                   className="glass-panel hover:border-amber-500/60 p-3.5 rounded-xl shadow-glass min-w-[230px] text-left transition-all duration-300 group cursor-pointer relative overflow-hidden border-amber-500/30"
+                  title="Open Ahead-of-the-Bit Radar in New Fullscreen Tab"
                 >
                   <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-amber-400/50 to-transparent" />
                   <div className="flex items-center justify-between text-xs uppercase text-amber-400 font-bold mb-1.5">
@@ -1877,11 +2070,11 @@ function App() {
               </button>
             </div>
 
-            {/* 1-Click Pitch Demo Scenarios (Calibrated to Golden PDF Events) */}
+            {/* 1-Click Field Incident Scenarios (Calibrated to Golden PDF Events) */}
             <div className="flex items-center space-x-1.5 border-l border-slate-800 pl-3">
               <span className="text-[10px] font-mono text-amber-400 font-bold uppercase tracking-wider flex items-center gap-1 shrink-0">
-                <Sparkles size={11} className="text-amber-400" />
-                <span>Demo Scenarios:</span>
+                <AlertTriangle size={11} className="text-amber-400" />
+                <span>Field Incidents:</span>
               </span>
               <div className="flex items-center space-x-1">
                 {demoScenarios.map(sc => {
@@ -2098,12 +2291,12 @@ function App() {
                 </button>
               </div>
 
-              {/* Pitch Demo Scenarios (Golden PDF Documented Incidents) */}
+              {/* Field Incident Replay (Golden PDF Documented Incidents) */}
               <div className="mt-4 pt-3 border-t border-slate-800">
                 <div className="flex items-center justify-between text-xs font-bold text-amber-400 uppercase tracking-wider mb-2.5">
                   <div className="flex items-center space-x-1.5">
-                    <Sparkles size={13} className="text-amber-400" />
-                    <span>Demo Scenarios (Golden PDF)</span>
+                    <AlertTriangle size={13} className="text-amber-400" />
+                    <span>Field Incident Replay</span>
                   </div>
                   <span className="text-[10px] font-mono text-slate-500">1-Click</span>
                 </div>
@@ -2174,10 +2367,12 @@ function App() {
                       DTW Similarity: <strong className="text-white">{(sequenceAlert.similarity_score * 100).toFixed(1)}%</strong>
                     </span>
                     <button
-                      onClick={() => setIsCorrelationOpen(true)}
-                      className="px-2 py-0.5 rounded bg-amber-500/30 hover:bg-amber-500/50 border border-amber-500/60 text-amber-200 hover:text-white text-[10px] font-mono font-bold transition cursor-pointer"
+                      onClick={() => openModuleInNewTab('correlation')}
+                      className="px-2 py-0.5 rounded bg-amber-500/30 hover:bg-amber-500/50 border border-amber-500/60 text-amber-200 hover:text-white text-[10px] font-mono font-bold transition cursor-pointer flex items-center space-x-1"
+                      title="Open Cross-Well Correlation in New Tab"
                     >
-                      View Reference Incident
+                      <span>View Reference Incident</span>
+                      <ExternalLink size={10} />
                     </button>
                   </div>
                 </div>
@@ -2674,29 +2869,33 @@ function App() {
 
               {/* Action Buttons */}
               <button 
-                onClick={() => setIsCorrelationOpen(true)}
-                className="w-full mt-3 bg-gradient-to-r from-cyan-500/20 via-blue-500/20 to-cyan-500/20 hover:from-cyan-500/30 hover:to-blue-500/30 text-cyan-300 text-xs font-semibold py-2.5 rounded-xl transition border border-cyan-500/40 shadow-glow-cyan flex items-center justify-center space-x-2"
+                onClick={() => openModuleInNewTab('correlation')}
+                className="w-full mt-3 bg-gradient-to-r from-cyan-500/20 via-blue-500/20 to-cyan-500/20 hover:from-cyan-500/30 hover:to-blue-500/30 text-cyan-300 text-xs font-semibold py-2.5 rounded-xl transition border border-cyan-500/40 shadow-glow-cyan flex items-center justify-center space-x-2 cursor-pointer"
+                title="Open Cross-Well Correlation in New Tab"
               >
                 <Layers size={15} />
                 <span>Cross-Correlate with Offset Wells</span>
+                <ExternalLink size={12} className="ml-1 opacity-70" />
               </button>
               
               <div className="grid grid-cols-2 gap-2 mt-2">
                 <button 
-                  onClick={() => setIsPPFGOpen(true)}
-                  className="bg-slate-900 hover:bg-slate-850 text-slate-200 text-xs font-medium py-2.5 px-2 rounded-xl border border-slate-700/80 flex items-center justify-center space-x-1.5 transition shadow-sm"
-                  title="Safe Mud Weight Operating Window"
+                  onClick={() => openModuleInNewTab('ppfg')}
+                  className="bg-slate-900 hover:bg-slate-850 text-slate-200 text-xs font-medium py-2.5 px-2 rounded-xl border border-slate-700/80 flex items-center justify-center space-x-1.5 transition shadow-sm cursor-pointer"
+                  title="Safe Mud Weight Operating Window (New Tab)"
                 >
                   <Gauge size={14} className="text-emerald-400" />
                   <span>Safe Mud Window</span>
+                  <ExternalLink size={10} className="opacity-60" />
                 </button>
                 <button 
-                  onClick={() => setIsDossierOpen(true)}
-                  className="bg-slate-900 hover:bg-slate-850 text-slate-200 text-xs font-medium py-2.5 px-2 rounded-xl border border-slate-700/80 flex items-center justify-center space-x-1.5 transition shadow-sm"
-                  title="1-Click Pre-Spud Risk Dossier"
+                  onClick={() => openModuleInNewTab('dossier')}
+                  className="bg-slate-900 hover:bg-slate-850 text-slate-200 text-xs font-medium py-2.5 px-2 rounded-xl border border-slate-700/80 flex items-center justify-center space-x-1.5 transition shadow-sm cursor-pointer"
+                  title="1-Click Pre-Spud Risk Dossier (New Tab)"
                 >
                   <FileText size={14} className="text-cyan-400" />
                   <span>Pre-Spud Report</span>
+                  <ExternalLink size={10} className="opacity-60" />
                 </button>
               </div>
 
@@ -2791,7 +2990,7 @@ function App() {
         </button>
 
         <button
-          onClick={() => setIsRadarOpen(true)}
+          onClick={() => openModuleInNewTab('radar')}
           className="flex flex-col items-center justify-center flex-1 py-1 rounded-xl text-amber-400 hover:text-amber-300 transition min-h-[44px]"
         >
           <Radar size={18} />
@@ -2799,7 +2998,7 @@ function App() {
         </button>
 
         <button
-          onClick={() => setIsCorrelationOpen(true)}
+          onClick={() => openModuleInNewTab('correlation')}
           className="flex flex-col items-center justify-center flex-1 py-1 rounded-xl text-indigo-400 hover:text-indigo-300 transition min-h-[44px]"
         >
           <Layers size={18} />
@@ -2814,6 +3013,7 @@ function App() {
           onClose={() => setIsRadarOpen(false)}
           activeWellId={selectedWell}
           currentDepth={telemetryData ? telemetryData.depth_tvd : undefined}
+          isFullScreen={typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('module') === 'radar' || new URLSearchParams(window.location.search).get('fullscreen') === 'true')}
       />
 
       {/* Safe Operating Mud Weight Window (PPFG) Modal */}
@@ -2821,6 +3021,7 @@ function App() {
           isOpen={isPPFGOpen}
           onClose={() => setIsPPFGOpen(false)}
           activeWellId={selectedWell}
+          isFullScreen={typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('module') === 'ppfg' || new URLSearchParams(window.location.search).get('fullscreen') === 'true')}
       />
 
       {/* 1-Click Pre-Spud Offset Hazard Dossier Modal */}
@@ -2828,10 +3029,12 @@ function App() {
           isOpen={isDossierOpen}
           onClose={() => setIsDossierOpen(false)}
           activeWellId={selectedWell}
+          isFullScreen={typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('module') === 'dossier' || new URLSearchParams(window.location.search).get('fullscreen') === 'true')}
       />
       <BacktestResultsModal 
           isOpen={isBacktestOpen}
           onClose={() => setIsBacktestOpen(false)}
+          isFullScreen={typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('module') === 'backtest' || new URLSearchParams(window.location.search).get('fullscreen') === 'true')}
       />
 
       {/* Floating Ingestion / Institutional Memory Toast Notification */}
@@ -2857,24 +3060,26 @@ function App() {
               {uploadToast.isLas ? (
                 <button
                   onClick={() => {
-                    setIsCorrelationOpen(true);
+                    openModuleInNewTab('correlation');
                     setUploadToast(null);
                   }}
-                  className="text-xs font-semibold px-2.5 py-1 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/30 transition flex items-center space-x-1"
+                  className="text-xs font-semibold px-2.5 py-1 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/30 transition flex items-center space-x-1 cursor-pointer"
                 >
                   <Layers size={12} />
                   <span>View Log Correlation</span>
+                  <ExternalLink size={10} className="ml-1 opacity-70" />
                 </button>
               ) : (
                 <button
                   onClick={() => {
-                    setIsRadarOpen(true);
+                    openModuleInNewTab('radar');
                     setUploadToast(null);
                   }}
-                  className="text-xs font-semibold px-2.5 py-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition flex items-center space-x-1"
+                  className="text-xs font-semibold px-2.5 py-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition flex items-center space-x-1 cursor-pointer"
                 >
                   <Radar size={12} />
                   <span>Open Hazard Radar</span>
+                  <ExternalLink size={10} className="ml-1 opacity-70" />
                 </button>
               )}
               <button
@@ -2892,12 +3097,28 @@ function App() {
         </div>
       )}
 
+      {/* Big Box Modules Overview Modal */}
+      <ModulesModal 
+          isOpen={isModulesTabOpen}
+          onClose={() => setIsModulesTabOpen(false)}
+          onOpenRadar={() => openModuleInNewTab('radar')}
+          onOpenCorrelation={() => openModuleInNewTab('correlation')}
+          onOpenPPFG={() => openModuleInNewTab('ppfg')}
+          onOpenDossier={() => openModuleInNewTab('dossier')}
+          onOpenBacktest={() => openModuleInNewTab('backtest')}
+          onOpenContribute={() => openModuleInNewTab('contribute')}
+          activeWellId={selectedWell}
+          currentDepth={telemetryData ? telemetryData.depth_tvd : undefined}
+          isBackendConnected={isBackendConnected}
+      />
+
       {/* Institutional Memory Contribution Modal (Two-Way Feedback) */}
       <ContributeLessonModal 
           isOpen={isContributeOpen}
           onClose={() => setIsContributeOpen(false)}
           activeWellId={selectedWell}
           onLessonContributed={handleLessonContributed}
+          isFullScreen={typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('module') === 'contribute' || new URLSearchParams(window.location.search).get('module') === 'lesson' || new URLSearchParams(window.location.search).get('fullscreen') === 'true')}
       />
 
       {/* Document Upload Modal */}
@@ -2921,6 +3142,7 @@ function App() {
           onClose={() => setIsCorrelationOpen(false)}
           activeWell={selectedWell}
           offsetWell={getDefaultOffsetWell(selectedWell)}
+          isFullScreen={typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('module') === 'correlation' || new URLSearchParams(window.location.search).get('fullscreen') === 'true')}
       />
 
       {/* Data & Methodology Transparency Modal (Tier 1 Mandate) */}

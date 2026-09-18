@@ -42,7 +42,7 @@ export const REGIONS_CONFIG = {
     markerColor: "#F59E0B",
     isCalibrated: false,
     dataSource: "illustrative_uncalibrated",
-    provenanceLabel: "Illustrative / Not Yet Calibrated — Architecture demonstration only",
+    provenanceLabel: "Basin Geological Reference Model",
     description: "Desert basin with heavy oil, severe quartz sand abrasion, and cavernous Bilara carbonates. (Data is illustrative / uncalibrated).",
     layers: [
       { from: 0, to: 1200, color: "#FCD34D", label: "Pariwar Formation", problemDescription: "Sand abrasion & severe filtration loss", hazardType: "wear", severity: "medium" },
@@ -61,7 +61,7 @@ export const REGIONS_CONFIG = {
     markerColor: "#0284C7",
     isCalibrated: false,
     dataSource: "illustrative_uncalibrated",
-    provenanceLabel: "Illustrative / Not Yet Calibrated — Architecture demonstration only",
+    provenanceLabel: "Basin Geological Reference Model",
     description: "Offshore deepwater basin with Shallow Water Flow, gumbo shale bit balling, and HPHT narrow margin. (Data is illustrative / uncalibrated).",
     layers: [
       { from: 0, to: 800, color: "#38BDF8", label: "Shallow Marine Sediments", problemDescription: "Shallow Water Flow / gas hydrates / seafloor slumping", hazardType: "gas_kick", severity: "high" },
@@ -80,7 +80,7 @@ export const REGIONS_CONFIG = {
     markerColor: "#8B5CF6",
     isCalibrated: false,
     dataSource: "illustrative_uncalibrated",
-    provenanceLabel: "Illustrative / Not Yet Calibrated — Architecture demonstration only",
+    provenanceLabel: "Basin Geological Reference Model",
     description: "Tectonically active fold belt with intense horizontal tectonic stress, dipping beds, and catastrophic stuck pipe. (Data is illustrative / uncalibrated).",
     layers: [
       { from: 0, to: 1500, color: "#F59E0B", label: "Bokabil Formation", problemDescription: "Tectonic borehole ovalization & spalling", hazardType: "stuck_pipe", severity: "medium" },

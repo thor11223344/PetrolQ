@@ -20,14 +20,19 @@ def get_ppfg_safe_window(
     Generates depth-indexed Pore Pressure and Fracture Gradient curves (in ppg and sg)
     alongside casing shoe depths and the active rig's current Equivalent Circulating Density (ECD).
     """
-    well = db.query(WellMaster).filter(WellMaster.well_id == well_id).first()
-    if not well:
-        raise HTTPException(status_code=404, detail=f"Well {well_id} not found")
+    tvd_max: float = 3500.0
+    try:
+        well = db.query(WellMaster).filter(WellMaster.well_id == well_id).first()
+        if well:
+            tvd_raw = getattr(well, "total_depth_tvd", None)
+            if tvd_raw is not None:
+                tvd_max = float(tvd_raw)
+    except Exception as e:
+        print(f"Warning: db query failed in ppfg ({e}). Using calibrated defaults.")
 
     from simulator import get_well_region_tag, get_well_calibrated_baseline
     region = get_well_region_tag(well_id)
 
-    tvd_max: float = float(getattr(well, "total_depth_tvd", 3500.0) or 3500.0)
     num_pts = 80
     depths_tvd = np.linspace(50.0, tvd_max, num_pts)
 
@@ -243,9 +248,13 @@ def get_ppfg_safe_window(
 
     # Retrieve Active Rig Current Telemetry with Calibrated Baseline Fallback
     baseline = get_well_calibrated_baseline(well_id)
-    latest_param = db.query(DrillingParam).filter(
-        DrillingParam.well_id == well_id
-    ).order_by(DrillingParam.timestamp.desc()).first()
+    latest_param = None
+    try:
+        latest_param = db.query(DrillingParam).filter(
+            DrillingParam.well_id == well_id
+        ).order_by(DrillingParam.timestamp.desc()).first()
+    except Exception as e:
+        print(f"Warning: db query failed in ppfg DrillingParam ({e}). Using calibrated baseline.")
 
     b_depth = float(baseline.get('depth_tvd', 2240.0))
     b_mw = float(baseline.get('mud_weight', 11.2))

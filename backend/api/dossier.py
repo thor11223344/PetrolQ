@@ -23,17 +23,80 @@ def get_pre_spud_dossier(
     formation-specific NPT challenges, casing program recommendations,
     and 3D anti-collision clearance using the exact shared calculation engine.
     """
-    well = db.query(WellMaster).filter(WellMaster.well_id == well_id).first()
-    if not well:
-        raise HTTPException(status_code=404, detail=f"Well {well_id} not found")
-
     from simulator import get_well_region_tag
     region = get_well_region_tag(well_id)
 
+    all_wells = []
+    all_db_events = []
+    well = None
+    try:
+        well = db.query(WellMaster).filter(WellMaster.well_id == well_id).first()
+        all_wells = db.query(WellMaster).all()
+        all_db_events = db.query(SyntheticEvent).all()
+    except Exception as e:
+        print(f"Warning: db query failed in dossier ({e}). Using offline defaults.")
+
+    if well is None or not all_wells:
+        import json
+        from pathlib import Path
+        p_wells = Path(__file__).resolve().parent.parent.parent / "frontend" / "src" / "data" / "defaultWells.json"
+        if not p_wells.exists():
+            p_wells = Path(__file__).resolve().parent.parent / "data" / "defaultWells.json"
+        if p_wells.exists():
+            try:
+                with open(p_wells, "r", encoding="utf-8") as f:
+                    raw_wells = json.load(f)
+                class MockWell:
+                    def __init__(self, d):
+                        self.well_id = d.get("well_id")
+                        self.field_name = d.get("field_name")
+                        self.kb_elevation = d.get("kb_elevation") or 115.0
+                        self.total_depth_tvd = d.get("total_depth_tvd") or d.get("total_depth_m") or 3500.0
+                        self.spud_date = d.get("spud_date") or "Planned"
+                mock_list = [MockWell(w) for w in raw_wells]
+                if not all_wells:
+                    all_wells = mock_list
+                if well is None:
+                    well = next((w for w in mock_list if w.well_id == well_id), None)
+            except Exception as read_err:
+                print(f"Error loading default wells in dossier: {read_err}")
+
+    if well is None:
+        class DefaultWell:
+            well_id = well_id
+            field_name = f"{region.capitalize()} Field"
+            kb_elevation = 115.0
+            total_depth_tvd = 3500.0
+            spud_date = "Planned"
+        well = DefaultWell()
+
+    if not all_db_events:
+        import json
+        from pathlib import Path
+        p_inc = Path(__file__).resolve().parent.parent.parent / "frontend" / "src" / "data" / "defaultIncidents.json"
+        if not p_inc.exists():
+            p_inc = Path(__file__).resolve().parent.parent / "data" / "curated_historical_incidents.json"
+        if p_inc.exists():
+            try:
+                with open(p_inc, "r", encoding="utf-8") as f:
+                    raw_inc = json.load(f)
+                class MockEvent:
+                    def __init__(self, d):
+                        self.well_id = d.get("well_id", "OIL-MORAN-1")
+                        self.formation = d.get("formation", "Unknown")
+                        self.event_type = d.get("event_type", "Drilling Hazard")
+                        self.depth_start_tvd = float(d.get("depth_tvd") or 2400.0)
+                        self.severity = d.get("severity", "MEDIUM")
+                        self.root_cause = d.get("root_cause", "")
+                        self.mitigation_applied = d.get("mitigation_applied", "")
+                        self.npt_hours = float(d.get("npt_hours", 4.0))
+                all_db_events = [MockEvent(i) for i in raw_inc]
+            except Exception as inc_err:
+                print(f"Error loading default incidents in dossier: {inc_err}")
+
     # 1. Fetch nearby offset wells within the active regional basin
-    all_wells = db.query(WellMaster).all()
     offsets = [w for w in all_wells if str(w.well_id) != well_id and get_well_region_tag(str(w.well_id)) == region]
-    if not offsets:
+    if not offsets and all_wells:
         offsets = [w for w in all_wells if str(w.well_id) != well_id]
 
     offset_summaries = []
@@ -48,7 +111,6 @@ def get_pre_spud_dossier(
 
     # 2. Historical NPT Incidents grouped by active regional formations
     basin_well_ids = {w.well_id for w in offsets} | {well_id}
-    all_db_events = db.query(SyntheticEvent).all()
     events = [e for e in all_db_events if getattr(e, "well_id", "") in basin_well_ids]
     if not events:
         events = all_db_events

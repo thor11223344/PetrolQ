@@ -16,7 +16,10 @@ import {
   ShieldCheck,
   BarChart2,
   ChevronRight,
-  ArrowLeft
+  ArrowLeft,
+  Maximize2,
+  Minimize2,
+  ExternalLink
 } from 'lucide-react';
 import { API_BASE } from '../lib/api';
 
@@ -114,13 +117,52 @@ const DEFAULT_CASES = [
   }
 ];
 
-export default function BacktestResultsModal({ isOpen, onClose }) {
+export default function BacktestResultsModal({ isOpen, onClose, isFullScreen: propFullScreen = false }) {
   const [viewMode, setViewMode] = useState("aggregate"); // "aggregate" | "detail"
   const [availableCases, setAvailableCases] = useState(DEFAULT_CASES);
   const [selectedCaseId, setSelectedCaseId] = useState("VOLVE-15-9-F12-stuck-pipe");
   const [backtestData, setBacktestData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isFullScreen, setIsFullScreen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search);
+      return propFullScreen || p.get('fullscreen') === 'true' || p.get('module') === 'backtest';
+    }
+    return propFullScreen;
+  });
+
+  useEffect(() => {
+    if (propFullScreen) setIsFullScreen(true);
+  }, [propFullScreen]);
+
+  const handleToggleFullscreen = () => {
+    if (!isFullScreen) {
+      setIsFullScreen(true);
+      if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+    } else {
+      setIsFullScreen(false);
+      if (document.exitFullscreen && document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+  };
+
+  // Close or exit tab on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        if (typeof window !== 'undefined' && window.location.search.includes('module=')) {
+          window.close();
+        }
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   // Fetch multi-incident backtest data on modal open
   const fetchMultiBacktest = async () => {
@@ -368,8 +410,8 @@ export default function BacktestResultsModal({ isOpen, onClose }) {
   const hasAnyAdvanceWarning = Object.values(milestones).some(m => m?.advance_warning_m > 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-5 animate-in fade-in duration-200">
-      <div className="relative w-full max-w-4xl max-h-[92vh] flex flex-col bg-[#070b14]/95 border border-slate-750 shadow-2xl rounded-2xl overflow-hidden">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md animate-in fade-in duration-200 ${isFullScreen ? 'p-0 w-screen h-screen' : 'p-3 sm:p-5'}`}>
+      <div className={`relative flex flex-col bg-[#070b14]/98 border border-slate-750 shadow-2xl overflow-hidden ${isFullScreen ? 'w-screen h-screen rounded-none border-none max-h-none h-full' : 'w-full max-w-5xl max-h-[92vh] rounded-2xl'}`}>
         
         {/* Header with Mode Toggles */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800/80 bg-slate-900/60">
@@ -397,7 +439,7 @@ export default function BacktestResultsModal({ isOpen, onClose }) {
             <div className="flex items-center bg-slate-950/80 border border-slate-800 rounded-lg p-0.5">
               <button
                 onClick={() => setViewMode("aggregate")}
-                className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition ${
+                className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer ${
                   viewMode === "aggregate"
                     ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-sm"
                     : "text-slate-400 hover:text-slate-200"
@@ -408,7 +450,7 @@ export default function BacktestResultsModal({ isOpen, onClose }) {
               </button>
               <button
                 onClick={() => setViewMode("detail")}
-                className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition ${
+                className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer ${
                   viewMode === "detail"
                     ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-sm"
                     : "text-slate-400 hover:text-slate-200"
@@ -419,9 +461,33 @@ export default function BacktestResultsModal({ isOpen, onClose }) {
               </button>
             </div>
 
+            {/* Fullscreen Toggle */}
+            <button
+              onClick={handleToggleFullscreen}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+              title={isFullScreen ? "Window Mode" : "Full Screen"}
+            >
+              {isFullScreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+            </button>
+
+            {/* Pop out to New Tab */}
+            <button
+              onClick={() => window.open(`${window.location.origin}${window.location.pathname}?module=backtest&fullscreen=true`, '_blank')}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+              title="Open in Dedicated Browser Tab (Full Screen)"
+            >
+              <ExternalLink size={15} />
+            </button>
+
             <button 
-              onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.location.search.includes('module=')) {
+                  window.close();
+                }
+                onClose();
+              }}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+              title="Close View"
             >
               <X size={18} />
             </button>

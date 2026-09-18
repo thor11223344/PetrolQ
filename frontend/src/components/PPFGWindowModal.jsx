@@ -3,6 +3,7 @@ import axios from 'axios';
 import { API_BASE } from '../lib/api';
 import Plot from 'react-plotly.js';
 import SourceTag, { getWellDataSource } from './SourceTag';
+import { evaluateOfflinePPFG } from '../lib/offlinePhysicsEngine';
 import { 
   Gauge, 
   ShieldCheck, 
@@ -13,22 +14,66 @@ import {
   Layers, 
   Info,
   CheckCircle2,
-  FileText
+  FileText,
+  Maximize2,
+  Minimize2,
+  ExternalLink
 } from 'lucide-react';
 
-const PPFGWindowModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1' }) => {
+const PPFGWindowModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', isFullScreen: propFullScreen = false }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [unit, setUnit] = useState('ppg'); // 'ppg' or 'sg'
+  const [isFullScreen, setIsFullScreen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search);
+      return propFullScreen || p.get('fullscreen') === 'true' || p.get('module') === 'ppfg';
+    }
+    return propFullScreen;
+  });
+
+  useEffect(() => {
+    if (propFullScreen) setIsFullScreen(true);
+  }, [propFullScreen]);
+
+  const handleToggleFullscreen = () => {
+    if (!isFullScreen) {
+      setIsFullScreen(true);
+      if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+    } else {
+      setIsFullScreen(false);
+      if (document.exitFullscreen && document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+  };
+
+  // Close or exit tab on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        if (typeof window !== 'undefined' && window.location.search.includes('module=')) {
+          window.close();
+        }
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   const fetchPPFG = async () => {
     if (!isOpen) return;
     setLoading(true);
     try {
-      const res = await axios.get(`${API_BASE}/api/wells/${activeWellId}/ppfg`);
+      const res = await axios.get(`${API_BASE}/api/wells/${activeWellId}/ppfg`, { timeout: 3000 });
       setData(res.data);
     } catch (err) {
-      console.error('Failed to fetch PPFG window:', err);
+      console.warn('Network/Cloud API unavailable for PPFG, using local Rig Edge Eaton PPFG engine:', err);
+      const offlinePPFG = evaluateOfflinePPFG(activeWellId);
+      setData(offlinePPFG);
     } finally {
       setLoading(false);
     }
@@ -155,8 +200,8 @@ const PPFGWindowModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1' }) =>
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 sm:p-4 animate-in fade-in duration-200">
-      <div className="bg-slate-900 border border-slate-700 w-full max-w-6xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[96vh] sm:max-h-[92vh]">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200 ${isFullScreen ? 'p-0 w-screen h-screen' : 'p-2 sm:p-4'}`}>
+      <div className={`bg-slate-900 border border-slate-700 shadow-2xl overflow-hidden flex flex-col ${isFullScreen ? 'w-screen h-screen rounded-none border-none max-h-none h-full' : 'w-full max-w-6xl rounded-xl max-h-[96vh] sm:max-h-[92vh]'}`}>
         
         {/* Header */}
         <div className="px-3 sm:px-6 py-3 sm:py-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center gap-2">
@@ -188,13 +233,13 @@ const PPFGWindowModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1' }) =>
             <div className="flex items-center space-x-1 bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs font-mono">
               <button
                 onClick={() => setUnit('ppg')}
-                className={`px-2 py-1 rounded text-xs transition ${unit === 'ppg' ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}
+                className={`px-2 py-1 rounded text-xs transition cursor-pointer ${unit === 'ppg' ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}
               >
                 PPG
               </button>
               <button
                 onClick={() => setUnit('sg')}
-                className={`px-2 py-1 rounded text-xs transition ${unit === 'sg' ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}
+                className={`px-2 py-1 rounded text-xs transition cursor-pointer ${unit === 'sg' ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}
               >
                 SG
               </button>
@@ -202,14 +247,39 @@ const PPFGWindowModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1' }) =>
 
             <button 
               onClick={fetchPPFG}
-              className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition"
+              className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
               title="Refresh PPFG Window"
             >
               <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
             </button>
+
+            {/* Toggle Fullscreen */}
+            <button
+              onClick={handleToggleFullscreen}
+              className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
+              title={isFullScreen ? "Window Mode" : "Full Screen"}
+            >
+              {isFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            </button>
+
+            {/* Pop out to New Tab */}
+            <button
+              onClick={() => window.open(`${window.location.origin}${window.location.pathname}?module=ppfg&well=${encodeURIComponent(activeWellId)}&fullscreen=true`, '_blank')}
+              className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
+              title="Open in Dedicated Browser Tab (Full Screen)"
+            >
+              <ExternalLink size={16} />
+            </button>
+
             <button 
-              onClick={onClose}
-              className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition"
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.location.search.includes('module=')) {
+                  window.close();
+                }
+                onClose();
+              }}
+              className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
+              title="Close View"
             >
               <X size={18} />
             </button>

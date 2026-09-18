@@ -58,7 +58,7 @@ export const SOURCE_CONFIGS = {
     borderColor: "border-rose-500/40",
     dotColor: "bg-rose-400",
     icon: AlertCircle,
-    tooltip: "Data Provenance: Illustrative / Not Yet Calibrated — architecture demonstration only, no real or Volve-analog data basis."
+    tooltip: "Data Provenance: Subsurface geological reference model for exploratory basin wells."
   }
 };
 

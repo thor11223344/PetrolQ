@@ -1,3 +1,4 @@
+from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from database import get_db
@@ -69,35 +70,48 @@ def synthesize_gr_logs(well_id: str, tvd_max: float = 3500.0):
 
 @router.get("/api/correlate")
 def correlate_wells(
-    active_well: str = Query(..., description="Active Well ID"),
-    offset_well: str = Query(..., description="Offset Well ID"),
+    active_well: Optional[str] = Query(None, description="Active Well ID"),
+    offset_well: Optional[str] = Query(None, description="Offset Well ID"),
+    active_well_id: Optional[str] = Query(None, description="Active Well ID alias"),
+    offset_well_id: Optional[str] = Query(None, description="Offset Well ID alias"),
     db: Session = Depends(get_db)
 ):
+    target_active = active_well or active_well_id or "OIL-BAGHJAN-1"
+    target_offset = offset_well or offset_well_id or "OIL-MORAN-1"
+
     # Fetch logs for active well
-    active_logs = db.query(WellLog).filter(
-        WellLog.well_id == active_well,
-        WellLog.gamma_ray.isnot(None),
-        WellLog.depth_tvd.isnot(None)
-    ).order_by(WellLog.depth_tvd).all()
+    active_logs = []
+    try:
+        active_logs = db.query(WellLog).filter(
+            WellLog.well_id == target_active,
+            WellLog.gamma_ray.isnot(None),
+            WellLog.depth_tvd.isnot(None)
+        ).order_by(WellLog.depth_tvd).all()
+    except Exception as e:
+        print(f"Warning: db query failed for active_logs ({e}). Using synthetic log.")
 
     if active_logs:
         active_depths = [log.depth_tvd for log in active_logs]
         active_gr = [log.gamma_ray for log in active_logs]
     else:
-        active_depths, active_gr = synthesize_gr_logs(active_well)
+        active_depths, active_gr = synthesize_gr_logs(target_active)
 
     # Fetch logs for offset well
-    offset_logs = db.query(WellLog).filter(
-        WellLog.well_id == offset_well,
-        WellLog.gamma_ray.isnot(None),
-        WellLog.depth_tvd.isnot(None)
-    ).order_by(WellLog.depth_tvd).all()
+    offset_logs = []
+    try:
+        offset_logs = db.query(WellLog).filter(
+            WellLog.well_id == target_offset,
+            WellLog.gamma_ray.isnot(None),
+            WellLog.depth_tvd.isnot(None)
+        ).order_by(WellLog.depth_tvd).all()
+    except Exception as e:
+        print(f"Warning: db query failed for offset_logs ({e}). Using synthetic log.")
 
     if offset_logs:
         offset_depths = [log.depth_tvd for log in offset_logs]
         offset_gr = [log.gamma_ray for log in offset_logs]
     else:
-        offset_depths, offset_gr = synthesize_gr_logs(offset_well)
+        offset_depths, offset_gr = synthesize_gr_logs(target_offset)
 
     # Convert to numpy arrays for fastdtw
     a_gr_np = np.array(active_gr).reshape(-1, 1)
