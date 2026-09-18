@@ -87,6 +87,14 @@ MIZORAM_HORIZONS: List[Dict[str, Any]] = [
     {"name": "Disang Flysch", "tvd_top": 4100.0, "color": "#475569", "lithology": "Crushed Tectonic Flysch", "primary_risk": "Abnormal Pore Pressure & Severe Sloughing"}
 ]
 
+NORTH_SEA_HORIZONS: List[Dict[str, Any]] = [
+    {"name": "Nordland Group", "tvd_top": 800.0, "color": "#38BDF8", "lithology": "Unconsolidated Sands & Clays", "primary_risk": "Shallow Gas Hazard"},
+    {"name": "Hordaland & Rogaland", "tvd_top": 1500.0, "color": "#60A5FA", "lithology": "Reactive Smectitic Shales", "primary_risk": "Borehole Swelling & Tight Hole"},
+    {"name": "Shetland Chalk Group", "tvd_top": 2100.0, "color": "#F59E0B", "lithology": "Dense Micro-crystalline Chalk", "primary_risk": "Mud Losses & Bit Chipping"},
+    {"name": "Draupne & Heather (Viking)", "tvd_top": 2550.0, "color": "#EF4444", "lithology": "Overpressured Organic Hot Shale", "primary_risk": "Kick Influx & Wellbore Instability"},
+    {"name": "Brent Group Sandstone", "tvd_top": 2800.0, "color": "#10B981", "lithology": "High Permeability Sand Reservoir", "primary_risk": "Differential Sticking in Depleted Zones"}
+]
+
 # Baseline depths when opening each well if telemetry is not yet active
 WELL_BASE_DEPTHS = {
     "OIL-BAGHJAN-1": 2240.0,
@@ -115,6 +123,19 @@ WELL_BASE_DEPTHS = {
     "OIL-MZ-KOLASIB-1": 2750.0,
     "OIL-MZ-LUNGLEI-1": 3100.0,
     "OIL-MZ-CHAMPHAI-1": 3250.0,
+    "16/7-6": 2240.0,
+    "16/7-5": 2250.0,
+    "16/7-4": 2200.0,
+    "16/8-1": 2150.0,
+    "16/2-6": 2300.0,
+    "16/2-7": 2280.0,
+    "7/1-1": 2100.0,
+    "7/1-2 S": 2120.0,
+    "35/9-7": 2400.0,
+    "35/9-8": 2450.0,
+    "VOLVE-15/9-F-12": 2400.0,
+    "VOLVE-15/9-F-14": 2450.0,
+    "VOLVE-15/9-F-1": 2350.0,
 }
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -126,7 +147,7 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
     return round(R * c, 1)
 
-@router.get("/api/wells/{well_id}/lookahead")
+@router.get("/api/wells/{well_id:path}/lookahead")
 def get_lookahead_advisory(
     well_id: str,
     current_depth: Optional[float] = Query(None, description="Current bit TVD depth in meters"),
@@ -185,6 +206,8 @@ def get_lookahead_advisory(
         horizons = KG_HORIZONS
     elif "MZ" in wid or "MIZO" in wid:
         horizons = MIZORAM_HORIZONS
+    elif "VOLVE" in wid or "FORCE" in wid or "/" in wid:
+        horizons = NORTH_SEA_HORIZONS
     else:
         horizons = DEFAULT_HORIZONS
     upcoming_formations = []
@@ -228,6 +251,16 @@ def get_lookahead_advisory(
             "OIL-MORAN-1": (27.18, 94.92),
             "OIL-NAHARKATIYA-1": (27.28, 95.35)
         }
+
+    # Ensure North Sea wells are present in well_coords
+    try:
+        from main import get_north_sea_wells
+        for nw in get_north_sea_wells():
+            loc = nw.surface_location
+            if loc and isinstance(loc, dict) and "lat" in loc and "lon" in loc:
+                well_coords[str(nw.well_id)] = (float(loc["lat"]), float(loc["lon"]))
+    except Exception:
+        pass
 
     active_lat_lon = well_coords.get(well_id)
 

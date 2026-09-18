@@ -7,7 +7,7 @@ from models import WellMaster, DrillingParam
 
 router = APIRouter()
 
-@router.get("/api/wells/{well_id}/ppfg")
+@router.get("/api/wells/{well_id:path}/ppfg")
 def get_ppfg_safe_window(
     well_id: str,
     db: Session = Depends(get_db)

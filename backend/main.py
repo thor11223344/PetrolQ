@@ -597,9 +597,9 @@ def get_nearby_wells(
                 elif region == "mizoram":
                     all_loaded = [w for w in all_loaded if w.well_id.startswith("OIL-MZ-")]
                 elif region == "assam":
-                    all_loaded = [w for w in all_loaded if not (w.well_id.startswith("OIL-RAJ-") or w.well_id.startswith("OIL-KG-") or w.well_id.startswith("OIL-MZ-")) and w.field_name != "North Sea"]
+                    all_loaded = [w for w in all_loaded if not (w.well_id.startswith("OIL-RAJ-") or w.well_id.startswith("OIL-KG-") or w.well_id.startswith("OIL-MZ-")) and not ("North Sea" in str(w.field_name) or "Volve" in str(w.field_name) or "/" in w.well_id)]
                 elif region == "north_sea":
-                    all_loaded = [w for w in all_loaded if w.field_name == "North Sea"]
+                    all_loaded = [w for w in all_loaded if "North Sea" in str(w.field_name) or "Volve" in str(w.field_name) or "/" in w.well_id]
 
                 # Filter by spatial radius if specific coordinates provided
                 if lat is not None and lon is not None and radius_km is not None and radius_km < 200:

@@ -13,12 +13,28 @@ import defaultWells from '../data/defaultWells.json';
 function filterWellsByRegion(allWells, region) {
     if (!Array.isArray(allWells) || allWells.length === 0) return [];
     if (!region || region === 'all') return allWells;
-    if (region === 'rajasthan') return allWells.filter(w => w.well_id?.startsWith('OIL-RAJ-'));
-    if (region === 'kg') return allWells.filter(w => w.well_id?.startsWith('OIL-KG-'));
-    if (region === 'mizoram') return allWells.filter(w => w.well_id?.startsWith('OIL-MZ-'));
-    if (region === 'assam') return allWells.filter(w => !w.well_id?.startsWith('OIL-RAJ-') && !w.well_id?.startsWith('OIL-KG-') && !w.well_id?.startsWith('OIL-MZ-') && w.field_name !== 'North Sea');
-    if (region === 'north_sea') return allWells.filter(w => w.field_name === 'North Sea');
-    return allWells;
+    return allWells.filter(w => {
+        const wellId = w.well_id || '';
+        const reg = getRegionIdFromWellId(wellId);
+        if (reg === region) return true;
+        const field = (w.field_name || '').toUpperCase();
+        if (region === 'north_sea') {
+            return field.includes('NORTH SEA') || field.includes('VOLVE') || /^\d+\/\d+/.test(wellId);
+        }
+        if (region === 'rajasthan') {
+            return wellId.startsWith('OIL-RAJ-') || field.includes('RAJASTHAN');
+        }
+        if (region === 'kg') {
+            return wellId.startsWith('OIL-KG-') || field.includes('KG');
+        }
+        if (region === 'mizoram') {
+            return wellId.startsWith('OIL-MZ-') || field.includes('MIZORAM');
+        }
+        if (region === 'assam') {
+            return reg === 'assam' && !field.includes('NORTH SEA') && !field.includes('VOLVE') && !/^\d+\/\d+/.test(wellId);
+        }
+        return false;
+    });
 }
 
 function getInitialWells(region = 'all') {
@@ -26,8 +42,9 @@ function getInitialWells(region = 'all') {
         const cached = localStorage.getItem('petrolq_cached_wells_v2');
         if (cached) {
             const parsed = JSON.parse(cached);
-            if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.target_formation) {
-                return filterWellsByRegion(parsed, region);
+            if (Array.isArray(parsed) && parsed.length > 0 && (parsed[0]?.target_formation || parsed[0]?.surface_location)) {
+                const filtered = filterWellsByRegion(parsed, region);
+                if (filtered.length > 0) return filtered;
             }
         }
     } catch (e) {
@@ -242,23 +259,9 @@ export default function WellMap({
 
             const runClientFilter = () => {
                 const allLoaded = getInitialWells(selectedRegion);
-                if (radius && radius < 200 && centerLat !== undefined && centerLon !== undefined) {
-                    const filtered = allLoaded.filter(w => {
-                        const loc = w.surface_location;
-                        if (!loc || loc.lat === undefined || loc.lon === undefined) return false;
-                        const R = 6371.0;
-                        const dLat = (loc.lat - centerLat) * Math.PI / 180.0;
-                        const dLon = (loc.lon - centerLon) * Math.PI / 180.0;
-                        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                                  Math.cos(centerLat * Math.PI / 180.0) * Math.cos(loc.lat * Math.PI / 180.0) *
-                                  Math.sin(dLon/2) * Math.sin(dLon/2);
-                        const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-                        return dist <= radius;
-                    });
-                    setWells(filtered.length > 0 ? filtered : allLoaded);
-                } else {
-                    setWells(allLoaded);
-                }
+                // Keep all loaded regional wells so the entire basin portfolio remains visible on the map,
+                // while wellsWithDistance evaluates isInsideRadius for highlighting in-radius offsets.
+                setWells(allLoaded);
             };
 
             // If offline, bypass network call immediately
@@ -274,9 +277,10 @@ export default function WellMap({
                 if (selectedRegion && selectedRegion !== 'all') {
                     params.lat = centerLat;
                     params.lon = centerLon;
-                    params.radius_km = radius;
+                    // Provide a generous radius so the full regional portfolio is available on the interactive canvas
+                    params.radius_km = selectedRegion === 'north_sea' ? 800 : 400;
                 } else {
-                    params.radius_km = 3000; // Return all across India
+                    params.radius_km = 3000; // Return all across India and North Sea
                 }
                 const response = await axios.get(`${API_BASE}/api/wells/nearby`, { params, timeout: 2500 });
                 if (response.data && Array.isArray(response.data) && response.data.length > 0) {
@@ -290,7 +294,7 @@ export default function WellMap({
                     }
                 }
             } catch (err) {
-                console.warn("Using offline client-side radius filter for wells:", err?.message);
+                console.warn("Using offline client-side wells for region:", err?.message);
                 runClientFilter();
             }
         };
@@ -348,7 +352,7 @@ export default function WellMap({
             const targetLon = config.center[1];
             const targetZoom = config.zoom || 8;
 
-            setRadius(selectedRegion === 'all' ? 1200 : 40);
+            setRadius(selectedRegion === 'all' ? 1200 : (selectedRegion === 'north_sea' ? 80 : 40));
 
             // If active well already belongs to this region, let centerOnWell handle camera
             const activeWellRegion = getRegionIdFromWellId(activeWellId);
@@ -764,8 +768,8 @@ export default function WellMap({
                                 <div className="grid grid-cols-3 gap-1.5 pt-0.5">
                                     {[
                                         { label: 'Pad (15km)', val: 15 },
-                                        { label: 'Cluster (30km)', val: 30 },
-                                        { label: 'Basin (60km)', val: 60 }
+                                        { label: 'Cluster (40km)', val: 40 },
+                                        { label: selectedRegion === 'north_sea' ? 'Basin (100km)' : 'Basin (60km)', val: selectedRegion === 'north_sea' ? 100 : 60 }
                                     ].map(preset => (
                                         <button
                                             key={preset.val}
@@ -785,7 +789,7 @@ export default function WellMap({
                                 <input 
                                     type="range" 
                                     min="10.0" 
-                                    max="120.0" 
+                                    max={selectedRegion === 'north_sea' || selectedRegion === 'all' ? 300.0 : 120.0} 
                                     step="5.0" 
                                     value={radius}
                                     onChange={(e) => setRadius(parseFloat(e.target.value))}

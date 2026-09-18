@@ -10,8 +10,8 @@ from services.statistics_utils import format_wilson_insight, wilson_confidence_i
 
 router = APIRouter()
 
-@router.get("/api/wells/{well_id}/pre-spud-dossier")
-@router.get("/api/wells/{well_id}/dossier")
+@router.get("/api/wells/{well_id:path}/pre-spud-dossier")
+@router.get("/api/wells/{well_id:path}/dossier")
 def get_pre_spud_dossier(
     well_id: str,
     radius_km: float = Query(25.0, description="Offset well search radius in km"),
