@@ -1007,7 +1007,8 @@ def search_events(
             else "synthetic"
         )
 
-        results.append(
+        results.append((
+            getattr(event, 'id', 0) if isinstance(getattr(event, 'id', 0), int) else 0,
             RAGSearchResponse(
                 similarity_score=round(final_score, 4),
                 hybrid_score=round(final_score, 4),
@@ -1021,10 +1022,11 @@ def search_events(
                 guardrail_verified=is_verified,
                 data_source=ev_source
             )
-        )
+        ))
         
-    # Sort descending by hybrid multi-signal relevance score
-    results.sort(key=lambda x: x.similarity_score, reverse=True)
+    # Sort descending by hybrid multi-signal relevance score, breaking ties with newer IDs
+    results.sort(key=lambda x: (x[1].similarity_score, x[0]), reverse=True)
+    results = [x[1] for x in results]
     
     if not results:
         return get_offline_fallback_events(query, target_depth, limit)

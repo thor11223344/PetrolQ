@@ -86,14 +86,24 @@ def synthesize_incident_briefing(
                     raw = json.load(f)
                 class MockEv:
                     def __init__(self, d):
+                        self.id = d.get("id", 0)
                         self.well_id = d.get("well_id", "OIL-MORAN-1")
                         self.depth_start_tvd = float(d.get("depth_tvd") or d.get("incident_depth_m") or 2500.0)
                         self.formation = d.get("formation", "Barail Sandstone")
                         self.event_type = d.get("event_type") or d.get("incident_type", "stuck_pipe")
                         self.root_cause = d.get("root_cause") or d.get("report_summary", "")
                         self.mitigation_applied = d.get("mitigation_applied") or d.get("report_summary", "")
-                        self.embedding = None
+                        self.embedding = d.get("embedding")
                 all_events = [MockEv(d) for d in raw]
+            except Exception:
+                pass
+        
+        p_offline = Path(__file__).resolve().parent.parent / "data" / "offline_ingested_events.json"
+        if p_offline.exists():
+            try:
+                with open(p_offline, "r", encoding="utf-8") as f:
+                    raw_off = json.load(f)
+                all_events.extend([MockEv(d) for d in raw_off])
             except Exception:
                 pass
     
@@ -116,8 +126,7 @@ def synthesize_incident_briefing(
                 if payload.depth_tvd and ev.depth_start_tvd:
                     diff = abs(float(payload.depth_tvd) - float(ev.depth_start_tvd))
                     score += max(0.0, 0.10 * (1.0 - diff / 1000.0))
-                scored_events.append((score, ev))
-        scored_events.sort(key=lambda x: x[0], reverse=True)
+        scored_events.sort(key=lambda x: (x[0], getattr(x[1], 'id', 0) if isinstance(getattr(x[1], 'id', 0), int) else 0), reverse=True)
     except Exception as e:
         logger.warning(f"Vector search failed in synthesis ({e}), using lexical fallback.")
         # Lexical fallback
@@ -129,7 +138,7 @@ def synthesize_incident_briefing(
             if ev_region == target_region:
                 score += 0.3
             scored_events.append((score, ev))
-        scored_events.sort(key=lambda x: x[0], reverse=True)
+        scored_events.sort(key=lambda x: (x[0], getattr(x[1], 'id', 0) if isinstance(getattr(x[1], 'id', 0), int) else 0), reverse=True)
 
     top_events = [ev for _, ev in scored_events[:payload.max_records]] if scored_events else []
 

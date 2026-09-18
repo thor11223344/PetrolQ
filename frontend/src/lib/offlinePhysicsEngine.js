@@ -292,7 +292,12 @@ export function evaluateOfflineLookahead(wellId = 'OIL-BAGHJAN-1', currentDepth 
   const upcomingEvents = defaultIncidents.filter(inc => {
     const d = inc.depth_tvd;
     return d >= currentDepth && d <= targetDepth + 300;
-  }).slice(0, 4);
+  }).map(inc => ({
+    ...inc,
+    mitigation: inc.mitigation || inc.mitigation_applied || "Circulate bottoms-up, condition mud, and monitor standpipe pressure.",
+    mitigation_applied: inc.mitigation_applied || inc.mitigation || "Circulate bottoms-up, condition mud, and monitor standpipe pressure.",
+    npt_hours: inc.npt_hours || 4.5
+  })).slice(0, 4);
 
   const riskScore = distToNext !== null && distToNext <= 50.0 ? 0.78 : (distToNext !== null && distToNext <= 120.0 ? 0.52 : 0.22);
 

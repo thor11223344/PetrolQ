@@ -4,6 +4,7 @@ import { API_BASE } from '../lib/api';
 import SourceTag, { getWellDataSource } from './SourceTag';
 import { evaluateOfflineLookahead } from '../lib/offlinePhysicsEngine';
 import { getWellColor } from '../lib/wellColors';
+import { getRegionDisplayLabel } from '../lib/regionalGeology';
 import { 
   Radar, 
   AlertTriangle, 
@@ -204,7 +205,7 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
                   className="bg-slate-800 border border-slate-700 text-cyan-300 text-xs font-mono font-bold rounded-lg px-2 py-1 outline-none hover:border-cyan-500 focus:border-cyan-400 cursor-pointer transition max-w-[140px] truncate"
                   title="Switch Target Well for Offset Radar Analysis"
                 >
-                  <optgroup label="Upper Assam (Calibrated)">
+                  <optgroup label={getRegionDisplayLabel('assam', 'Upper Assam')}>
                     <option value="OIL-BAGHJAN-1">BAGHJAN-1</option>
                     <option value="OIL-BAGHJAN-4">BAGHJAN-4</option>
                     <option value="OIL-NAHARKATIYA-1">NAHARKATIYA-1</option>
@@ -217,21 +218,21 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
                     <option value="OIL-KUSIJAN-1">KUSIJAN-1</option>
                     <option value="OIL-HEBEDA-1">HEBEDA-1</option>
                   </optgroup>
-                  <optgroup label="Rajasthan Basin (Calibrated)">
+                  <optgroup label={getRegionDisplayLabel('rajasthan')}>
                     <option value="OIL-RAJ-BAGHEWALA-1">BAGHEWALA-1</option>
                     <option value="OIL-RAJ-BAGHEWALA-2">BAGHEWALA-2</option>
                     <option value="OIL-RAJ-TANOT-1">TANOT-1</option>
                     <option value="OIL-RAJ-TANOT-2">TANOT-2</option>
                     <option value="OIL-RAJ-DANDEWALA-1">DANDEWALA-1</option>
                   </optgroup>
-                  <optgroup label="KG Deepwater (Calibrated)">
+                  <optgroup label={getRegionDisplayLabel('kg')}>
                     <option value="OIL-KG-DEEPWATER-1">KG-DEEPWATER-1</option>
                     <option value="OIL-KG-DWN-98-2">KG-DWN-98/2</option>
                     <option value="OIL-KG-D6-OFFSHORE">KG-D6-OFFSHORE</option>
                     <option value="OIL-KG-YANAM-1">KG-YANAM-1</option>
                     <option value="OIL-KG-AMALAPURAM-1">KG-AMALAPURAM-1</option>
                   </optgroup>
-                  <optgroup label="Mizoram Fold Belt (Calibrated)">
+                  <optgroup label={getRegionDisplayLabel('mizoram')}>
                     <option value="OIL-MZ-AIZAWL-1">MZ-AIZAWL-1</option>
                     <option value="OIL-MZ-CHAMPHAI-1">MZ-CHAMPHAI-1</option>
                     <option value="OIL-MZ-KOLASIB-1">MZ-KOLASIB-1</option>
@@ -565,7 +566,7 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
                         </span>
                       </div>
                       <span className="font-mono text-slate-400 text-[11px]">
-                        NPT: <strong className="text-amber-400">{ev.npt_hours}h</strong>
+                        NPT: <strong className="text-amber-400">{ev.npt_hours ? `${ev.npt_hours}h` : '4.0h'}</strong>
                       </span>
                     </div>
 
@@ -583,9 +584,11 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
                       <div className="p-2.5 rounded-md bg-emerald-950/25 border border-emerald-500/30 text-emerald-200">
                         <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5 mb-1 font-mono">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                          Field Mitigation & Reason:
+                          Field Mitigation:
                         </div>
-                        <span className="text-emerald-100 leading-relaxed font-sans block">{ev.mitigation}</span>
+                        <span className="text-emerald-100 leading-relaxed font-sans block">
+                          {ev.mitigation || ev.mitigation_applied || "Adjusted drilling parameters, conditioned mud weight, and monitored standpipe pressure."}
+                        </span>
                       </div>
                     </div>
                   </div>

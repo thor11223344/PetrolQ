@@ -61,7 +61,7 @@ import AiModelModal from './components/AiModelModal';
 import ModulesModal from './components/ModulesModal';
 import { getWellColor } from './lib/wellColors';
 
-import { REGIONS_CONFIG, getRegionBadge, getRegionIdFromWellId, isRegionCalibrated, getRegionProvenance } from './lib/regionalGeology';
+import { REGIONS_CONFIG, getRegionBadge, getRegionIdFromWellId, isRegionCalibrated, getRegionProvenance, getRegionDisplayLabel } from './lib/regionalGeology';
 
 const WELL_DEFAULT_TELEMETRY = {
   // Upper Assam Basin
@@ -1114,10 +1114,10 @@ function App() {
             className="bg-slate-900 border border-slate-700/80 text-slate-200 text-[10px] font-mono font-medium rounded-lg px-1.5 py-1.5 outline-none max-w-[100px] truncate shadow-inner focus:border-cyan-500"
           >
             <option value="all">All Regions</option>
-            <option value="assam">Assam (Calibrated)</option>
-            <option value="rajasthan">Rajasthan (Calibrated)</option>
-            <option value="kg">KG (Calibrated)</option>
-            <option value="mizoram">Mizoram (Calibrated)</option>
+            <option value="assam">{getRegionDisplayLabel('assam', 'Assam')}</option>
+            <option value="rajasthan">{getRegionDisplayLabel('rajasthan', 'Rajasthan')}</option>
+            <option value="kg">{getRegionDisplayLabel('kg', 'KG')}</option>
+            <option value="mizoram">{getRegionDisplayLabel('mizoram', 'Mizoram')}</option>
             <option value="north_sea">North Sea (159 FORCE & Volve)</option>
           </select>
 
@@ -1143,7 +1143,7 @@ function App() {
               </optgroup>
             )}
             {(selectedRegion === 'all' || selectedRegion === 'rajasthan') && (
-              <optgroup label="Rajasthan Basin (Calibrated)">
+              <optgroup label={getRegionDisplayLabel('rajasthan')}>
                 <option value="OIL-RAJ-BAGHEWALA-1">BAGHEWALA-1</option>
                 <option value="OIL-RAJ-BAGHEWALA-2">BAGHEWALA-2</option>
                 <option value="OIL-RAJ-TANOT-1">TANOT-1</option>
@@ -1152,7 +1152,7 @@ function App() {
               </optgroup>
             )}
             {(selectedRegion === 'all' || selectedRegion === 'kg') && (
-              <optgroup label="KG Deepwater (Calibrated)">
+              <optgroup label={getRegionDisplayLabel('kg')}>
                 <option value="OIL-KG-DEEPWATER-1">KG-DEEPWATER-1</option>
                 <option value="OIL-KG-DWN-98-2">KG-DWN-98/2</option>
                 <option value="OIL-KG-D6-OFFSHORE">KG-D6-OFFSHORE</option>
@@ -1161,7 +1161,7 @@ function App() {
               </optgroup>
             )}
             {(selectedRegion === 'all' || selectedRegion === 'mizoram') && (
-              <optgroup label="Mizoram Fold Belt (Calibrated)">
+              <optgroup label={getRegionDisplayLabel('mizoram')}>
                 <option value="OIL-MZ-AIZAWL-1">MZ-AIZAWL-1</option>
                 <option value="OIL-MZ-MAMIT-1">MZ-MAMIT-1</option>
                 <option value="OIL-MZ-KOLASIB-1">MZ-KOLASIB-1</option>
@@ -1246,10 +1246,10 @@ function App() {
                   title="Filter portfolio by geographic region"
               >
                   <option value="all">All Regions (Pan-India)</option>
-                  <option value="assam">Upper Assam Shelf (Calibrated)</option>
-                  <option value="rajasthan">Rajasthan Basin (Calibrated)</option>
-                  <option value="kg">KG Deepwater (Calibrated)</option>
-                  <option value="mizoram">Mizoram Fold Belt (Calibrated)</option>
+                  <option value="assam">{getRegionDisplayLabel('assam')}</option>
+                  <option value="rajasthan">{getRegionDisplayLabel('rajasthan')}</option>
+                  <option value="kg">{getRegionDisplayLabel('kg')}</option>
+                  <option value="mizoram">{getRegionDisplayLabel('mizoram')}</option>
                   <option value="north_sea">North Sea (159 FORCE & Volve)</option>
               </select>
             </div>
@@ -1281,7 +1281,7 @@ function App() {
                     </optgroup>
                   )}
                   {(selectedRegion === 'all' || selectedRegion === 'rajasthan') && (
-                    <optgroup label="Rajasthan Basin (Calibrated)">
+                    <optgroup label={getRegionDisplayLabel('rajasthan')}>
                       <option value="OIL-RAJ-BAGHEWALA-1">BAGHEWALA-1</option>
                       <option value="OIL-RAJ-BAGHEWALA-2">BAGHEWALA-2</option>
                       <option value="OIL-RAJ-TANOT-1">TANOT-1</option>
@@ -1290,7 +1290,7 @@ function App() {
                     </optgroup>
                   )}
                   {(selectedRegion === 'all' || selectedRegion === 'kg') && (
-                    <optgroup label="KG Deepwater (Calibrated)">
+                    <optgroup label={getRegionDisplayLabel('kg')}>
                       <option value="OIL-KG-DEEPWATER-1">KG-DEEPWATER-1</option>
                       <option value="OIL-KG-DWN-98-2">KG-DWN-98/2</option>
                       <option value="OIL-KG-D6-OFFSHORE">KG-D6-OFFSHORE</option>
@@ -1299,7 +1299,7 @@ function App() {
                     </optgroup>
                   )}
                   {(selectedRegion === 'all' || selectedRegion === 'mizoram') && (
-                    <optgroup label="Mizoram Fold Belt (Calibrated)">
+                    <optgroup label={getRegionDisplayLabel('mizoram')}>
                       <option value="OIL-MZ-AIZAWL-1">MZ-AIZAWL-1</option>
                       <option value="OIL-MZ-MAMIT-1">MZ-MAMIT-1</option>
                       <option value="OIL-MZ-KOLASIB-1">MZ-KOLASIB-1</option>

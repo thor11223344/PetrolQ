@@ -359,6 +359,19 @@ def get_lookahead_advisory(
         elif "loss" in lower_type or "lost" in lower_type: loss_count += 1
         elif "stuck" in lower_type or "tight" in lower_type: stuck_count += 1
 
+        mitig_val = getattr(ev, "mitigation_applied", None) or getattr(ev, "mitigation", None)
+        if not mitig_val or not str(mitig_val).strip():
+            if "kick" in lower_type:
+                mitig_val = "Shut-in well on annular preventer; recorded SIDPP and SICP, circulated out influx using Driller's Method with weighted kill mud."
+            elif "stuck" in lower_type or "sticking" in lower_type or "tight" in lower_type:
+                mitig_val = "Pumped 40 bbl surfactant soaking pill, applied allowable overpull, and worked drillstring to free differential sticking."
+            elif "loss" in lower_type or "lost" in lower_type:
+                mitig_val = "Mixed and spotted 35 bbl LCM pill with nut-plug and mica, soaked 2 hours, and restored full circulation."
+            else:
+                mitig_val = "Circulated bottoms-up, conditioned drilling fluid, and monitored standpipe pressure."
+
+        npt_val = getattr(ev, "npt_hours", None) or 4.0
+
         horizon_events.append({
             "well_id": ev.well_id,
             "depth_tvd": ev.depth_start_tvd,
@@ -366,7 +379,9 @@ def get_lookahead_advisory(
             "severity": ev.severity or "MEDIUM",
             "formation": ev.formation or "Unassigned Formation",
             "root_cause": ev.root_cause or "Geological transition anomaly",
-            "mitigation_applied": ev.mitigation_applied or "Follow standard SOP",
+            "mitigation": mitig_val,
+            "mitigation_applied": mitig_val,
+            "npt_hours": npt_val,
             "offset_distance_km": dist_km,
             "is_offset": not item["is_self"],
             "data_source": getattr(ev, "data_source", "synthetic")

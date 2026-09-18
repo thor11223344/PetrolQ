@@ -156,3 +156,16 @@ export const getRegionBadge = (wellId, selectedRegion) => {
   }
   return REGIONS_CONFIG[regionKey] || REGIONS_CONFIG.assam;
 };
+
+/**
+ * Returns a dynamically formatted display label for a region reflecting its calibration status:
+ * e.g., "Rajasthan Basin (Illustrative)", "Upper Assam Shelf (Calibrated)"
+ * Prevents UI desynchronization with regional data provenance configuration.
+ */
+export const getRegionDisplayLabel = (regionKey, customName = null) => {
+  const reg = REGIONS_CONFIG[regionKey];
+  if (!reg) return regionKey;
+  const name = customName || reg.name;
+  const status = reg.isCalibrated ? 'Calibrated' : 'Illustrative';
+  return `${name} (${status})`;
+};
