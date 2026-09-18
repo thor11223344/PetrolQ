@@ -3,6 +3,7 @@ import axios from 'axios';
 import { API_BASE } from '../lib/api';
 import SourceTag, { getWellDataSource } from './SourceTag';
 import { evaluateOfflineLookahead } from '../lib/offlinePhysicsEngine';
+import { getWellColor } from '../lib/wellColors';
 import { 
   Radar, 
   AlertTriangle, 
@@ -539,7 +540,7 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
                   <div key={i} className="p-3.5 rounded-lg bg-slate-900 border border-slate-800 text-xs hover:border-slate-700 transition">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-2">
-                        <span className="font-mono font-bold text-white text-sm">
+                        <span className={`px-2 py-0.5 rounded text-xs font-bold font-mono border ${getWellColor(ev.well_id).badge}`}>
                           {ev.well_id}
                         </span>
                         {ev.offset_distance_km !== undefined && ev.offset_distance_km > 0 && (
@@ -568,14 +569,23 @@ const LookAheadRadar = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', curre
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-slate-300 text-[11px] bg-slate-950/60 p-2.5 rounded border border-slate-800/80">
-                      <div>
-                        <strong className="text-slate-400 block mb-0.5">Root Cause:</strong>
-                        <span>{ev.root_cause}</span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]">
+                      {/* Cause in RED */}
+                      <div className="p-2.5 rounded-md bg-rose-950/25 border border-rose-500/30 text-rose-200">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400 flex items-center gap-1.5 mb-1 font-mono">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                          Cause / Root Failure:
+                        </div>
+                        <span className="text-rose-100 leading-relaxed font-sans block">{ev.root_cause}</span>
                       </div>
-                      <div>
-                        <strong className="text-emerald-400 block mb-0.5">Field Mitigation Applied:</strong>
-                        <span>{ev.mitigation}</span>
+
+                      {/* Mitigation in GREEN */}
+                      <div className="p-2.5 rounded-md bg-emerald-950/25 border border-emerald-500/30 text-emerald-200">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5 mb-1 font-mono">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                          Field Mitigation & Reason:
+                        </div>
+                        <span className="text-emerald-100 leading-relaxed font-sans block">{ev.mitigation}</span>
                       </div>
                     </div>
                   </div>

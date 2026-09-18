@@ -4,6 +4,7 @@ import { API_BASE } from '../lib/api';
 import { Search, X, BookOpen, ChevronRight, Loader2, ShieldCheck, Filter, Sparkles, Bot, CheckCircle2, HardDrive } from 'lucide-react';
 import SourceTag from './SourceTag';
 import { searchOfflineIncidents, generateOfflineBriefing } from '../lib/offlinePhysicsEngine';
+import { getWellColor } from '../lib/wellColors';
 
 const KnowledgeSearch = ({ isOpen, onClose, suggestedQuery = '', activeWellId = 'OIL-BAGHJAN-1' }) => {
     const [query, setQuery] = useState(suggestedQuery || '');
@@ -219,8 +220,11 @@ const KnowledgeSearch = ({ isOpen, onClose, suggestedQuery = '', activeWellId = 
                                 <div className="flex items-start justify-between mb-2">
                                     <div>
                                         <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-800 text-slate-300">
-                                                {result.well_id} • {result.depth_tvd}m TVD
+                                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-bold border ${getWellColor(result.well_id).badge}`}>
+                                                {result.well_id}
+                                            </span>
+                                            <span className="text-xs font-mono text-slate-400">
+                                                • {result.depth_tvd}m TVD
                                             </span>
                                             <SourceTag source={result.data_source} compact={false} />
                                         </div>
@@ -239,19 +243,26 @@ const KnowledgeSearch = ({ isOpen, onClose, suggestedQuery = '', activeWellId = 
                                     </div>
                                 </div>
                                 
-                                {result.root_cause && (
-                                    <div className="mb-2">
-                                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Root Cause</span>
-                                        <p className="text-sm text-slate-400">{result.root_cause}</p>
-                                    </div>
-                                )}
-                                
-                                <div>
-                                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Mitigation Applied</span>
-                                    <div className="flex items-start space-x-2 bg-status-active/10 p-2 rounded border border-status-active/20">
-                                        <ChevronRight size={14} className="text-status-active mt-0.5 shrink-0" />
-                                        <p className="text-sm text-emerald-400 font-medium">{result.mitigation_applied}</p>
-                                    </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs mt-3">
+                                    {result.root_cause && (
+                                        <div className="p-2.5 rounded-md bg-rose-950/25 border border-rose-500/30 text-rose-200">
+                                            <span className="text-[10px] font-bold text-rose-400 uppercase tracking-wider block font-mono flex items-center gap-1.5 mb-1">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                                Cause / Root Failure
+                                            </span>
+                                            <p className="text-rose-100 leading-relaxed font-sans">{result.root_cause}</p>
+                                        </div>
+                                    )}
+                                    
+                                    {result.mitigation_applied && (
+                                        <div className="p-2.5 rounded-md bg-emerald-950/25 border border-emerald-500/30 text-emerald-200">
+                                            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block font-mono flex items-center gap-1.5 mb-1">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                                Mitigation & Operational Reason
+                                            </span>
+                                            <p className="text-emerald-100 leading-relaxed font-sans font-medium">{result.mitigation_applied}</p>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Multi-Signal Hybrid Retrieval Score Breakdown (AHP Saaty 1980 Derived Weights) */}

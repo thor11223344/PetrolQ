@@ -59,6 +59,7 @@ import SourceTag, { getWellDataSource } from './components/SourceTag';
 import MatrixRain from './components/MatrixRain';
 import AiModelModal from './components/AiModelModal';
 import ModulesModal from './components/ModulesModal';
+import { getWellColor } from './lib/wellColors';
 
 import { REGIONS_CONFIG, getRegionBadge, getRegionIdFromWellId, isRegionCalibrated, getRegionProvenance } from './lib/regionalGeology';
 
@@ -2809,6 +2810,9 @@ function App() {
                             severity === 'CRITICAL' ? 'bg-status-danger' : 
                             severity === 'HIGH' ? 'bg-status-warning' : 'bg-status-fluid'
                           }`} />
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border ${getWellColor(event.well_id || selectedWell).badge}`}>
+                            {event.well_id || selectedWell}
+                          </span>
                           <span className="text-xs font-semibold text-slate-200">{event.event_type}</span>
                           <SourceTag source={event.data_source || selectedWell} compact={true} />
                         </div>
@@ -2835,17 +2839,23 @@ function App() {
                       {isExpanded && (
                         <div className="mt-3 pt-3 border-t border-slate-800/80 text-xs space-y-2 animate-in fade-in duration-150">
                           {event.root_cause && (
-                            <div>
-                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-mono">Root Cause</span>
-                              <p className="text-slate-300 mt-1 leading-relaxed bg-slate-900/90 p-2.5 rounded-lg border border-slate-800">
+                            <div className="p-2.5 rounded-lg bg-rose-950/25 border border-rose-500/30 text-rose-200">
+                              <span className="text-[10px] font-bold text-rose-400 uppercase tracking-wider block font-mono flex items-center gap-1.5 mb-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                Cause / Root Failure
+                              </span>
+                              <p className="text-rose-100 text-xs leading-relaxed font-sans">
                                 {event.root_cause}
                               </p>
                             </div>
                           )}
                           {event.mitigation_applied && (
-                            <div>
-                              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block font-mono">Mitigation Applied</span>
-                              <p className="text-emerald-300/90 mt-1 leading-relaxed bg-emerald-950/30 p-2.5 rounded-lg border border-emerald-900/40">
+                            <div className="p-2.5 rounded-lg bg-emerald-950/25 border border-emerald-500/30 text-emerald-200">
+                              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block font-mono flex items-center gap-1.5 mb-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                Mitigation Applied & Operational Reason
+                              </span>
+                              <p className="text-emerald-100 text-xs leading-relaxed font-sans">
                                 {event.mitigation_applied}
                               </p>
                             </div>

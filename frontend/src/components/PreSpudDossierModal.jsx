@@ -3,6 +3,7 @@ import axios from 'axios';
 import { API_BASE } from '../lib/api';
 import SourceTag, { getWellDataSource } from './SourceTag';
 import { generateOfflineDossier } from '../lib/offlinePhysicsEngine';
+import { getWellColor } from '../lib/wellColors';
 import { 
   FileText, 
   Printer, 
@@ -112,7 +113,7 @@ const PreSpudDossierModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', 
                 <h2 className="text-sm sm:text-lg font-bold text-white tracking-wide truncate">
                   Pre-Spud Offset Dossier
                 </h2>
-                <span className="text-[11px] px-2 py-0.5 rounded-full bg-cyan-950 border border-cyan-800 text-cyan-300 font-mono">
+                <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-mono font-bold border ${getWellColor(activeWellId).badge}`}>
                   {activeWellId}
                 </span>
                 <SourceTag source={activeWellId} compact={true} />
@@ -211,7 +212,7 @@ const PreSpudDossierModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono">
               <div>
                 <span className="text-slate-400 print:text-slate-600 block">Well Identifier:</span>
-                <strong className="text-white print:text-black text-sm">{target.well_id}</strong>
+                <strong className={`font-mono text-sm px-2 py-0.5 rounded border inline-block mt-0.5 ${getWellColor(target.well_id).badge}`}>{target.well_id}</strong>
               </div>
               <div>
                 <span className="text-slate-400 print:text-slate-600 block">Field / Basin:</span>
@@ -243,7 +244,7 @@ const PreSpudDossierModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', 
                   <span>Offset Wells Evaluated: <strong>{exec.offset_wells_analyzed || 0}</strong></span>
                   <span>Historical NPT Events: <strong>{exec.historical_incidents_recorded || 0}</strong></span>
                   <span>Total Offset NPT: <strong className="text-amber-400 print:text-black">{exec.total_offset_npt_hours || 0} hrs</strong></span>
-                  <span>Closest Subsurface Approach: <strong className="text-emerald-400 print:text-black">{exec.closest_approach_distance_m}m ({exec.closest_approach_offset_well})</strong></span>
+                  <span>Closest Subsurface Approach: <strong className="text-emerald-400 print:text-black">{exec.closest_approach_distance_m}m</strong> (<span className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${getWellColor(exec.closest_approach_offset_well).badge}`}>{exec.closest_approach_offset_well}</span>)</span>
                 </div>
                 {exec.mitigation_wilson_stats && (
                   <div className="mt-2.5 pt-2.5 border-t border-amber-900/30 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono">
@@ -312,7 +313,11 @@ const PreSpudDossierModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', 
                 <tbody className="divide-y divide-slate-800/60 print:divide-slate-200 font-mono">
                   {antiCollision.map((ac, i) => (
                     <tr key={i} className="hover:bg-slate-800/30 print:hover:bg-transparent">
-                      <td className="py-2 px-3 font-bold text-white print:text-black">{ac.offset_well_id}</td>
+                      <td className="py-2 px-3 font-bold font-mono">
+                        <span className={`px-2 py-0.5 rounded text-xs border ${getWellColor(ac.offset_well_id).badge}`}>
+                          {ac.offset_well_id}
+                        </span>
+                      </td>
                       <td className="py-2 px-3 font-bold text-cyan-400 print:text-black">{ac.min_distance_m} m</td>
                       <td className="py-2 px-3 text-slate-300 print:text-black">{ac.separation_factor}</td>
                       <td className="py-2 px-3">
@@ -362,19 +367,49 @@ const PreSpudDossierModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', 
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      {evList.map((ev, idx) => (
-                        <div key={idx} className="p-2.5 rounded bg-slate-900/90 border border-slate-800 text-xs print:bg-white print:border-slate-200">
-                          <div className="flex items-center justify-between font-mono text-[11px] mb-1">
-                            <span className="font-bold text-white print:text-black">{ev.well_id} • {ev.event_type}</span>
-                            <span className="text-amber-400 print:text-black">{ev.depth_tvd}m TVD ({ev.npt_hours}h NPT)</span>
+                    <div className="space-y-2.5">
+                      {evList.map((ev, idx) => {
+                        const wellTheme = getWellColor(ev.well_id);
+                        return (
+                          <div key={idx} className="p-3 rounded-lg bg-slate-900/90 border border-slate-800 text-xs print:bg-white print:border-slate-300">
+                            <div className="flex flex-wrap items-center justify-between gap-2 font-mono text-[11px] mb-2.5">
+                              <div className="flex items-center space-x-2">
+                                <span className={`px-2 py-0.5 rounded text-[11px] font-bold font-mono border ${wellTheme.badge}`}>
+                                  {ev.well_id}
+                                </span>
+                                <span className="text-slate-300 print:text-slate-800 font-semibold">
+                                  • {ev.event_type}
+                                </span>
+                              </div>
+                              <span className="text-amber-400 print:text-amber-800 font-semibold">{ev.depth_tvd}m TVD ({ev.npt_hours}h NPT)</span>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]">
+                              {/* Cause in RED */}
+                              <div className="p-2.5 rounded-md bg-rose-950/25 border border-rose-500/30 text-rose-200 print:bg-rose-50 print:border-rose-300 print:text-rose-900">
+                                <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400 print:text-rose-700 flex items-center gap-1.5 mb-1 font-mono">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                  Cause:
+                                </div>
+                                <div className="text-rose-100 print:text-rose-950 leading-relaxed">
+                                  {ev.root_cause || 'Formation instability and pressure differential.'}
+                                </div>
+                              </div>
+
+                              {/* Mitigation and Reason in GREEN */}
+                              <div className="p-2.5 rounded-md bg-emerald-950/25 border border-emerald-500/30 text-emerald-200 print:bg-emerald-50 print:border-emerald-300 print:text-emerald-900">
+                                <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 print:text-emerald-700 flex items-center gap-1.5 mb-1 font-mono">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                  Mitigation & Operational Reason:
+                                </div>
+                                <div className="text-emerald-100 print:text-emerald-950 leading-relaxed">
+                                  {ev.mitigation_applied || 'Standard LCM pill, mud weight conditioning, and flow check.'}
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-slate-300 print:text-slate-700 text-[11px] mt-1">
-                            <div><strong>Cause:</strong> {ev.root_cause}</div>
-                            <div><strong>Mitigation:</strong> {ev.mitigation_applied}</div>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 );
