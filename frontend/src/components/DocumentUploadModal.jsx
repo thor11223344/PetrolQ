@@ -111,7 +111,7 @@ const DocumentUploadModal = ({
         try {
             const res = await axios.post(`${API_BASE}/api/upload-report`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
-                timeout: 4000
+                timeout: 120000 // Increased timeout to 120 seconds for LLM extraction
             });
             setUploadResult(res.data);
             setIsOfflineEngine(false);

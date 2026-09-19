@@ -62,7 +62,7 @@ def _get_llm():
     Initialize the LLM using the universal factory.
     Supports Google Gemini, Anthropic Claude, OpenAI, and Ollama (Local).
     """
-    return get_llm(temperature=0.0, timeout=8.0)
+    return get_llm(temperature=0.0, timeout=120.0)
 
 def extract_incidents_from_text(text: str) -> List[DrillingIncidentSchema]:
     """
