@@ -106,7 +106,7 @@ flowchart TB
 ## 3. Layer-by-Layer Architectural Breakdown
 
 ### 3.1. Client Presentation Layer (Frontend)
-Built with **React 19** and bundled with **Vite 8**, styled using **Tailwind CSS** and custom **Glassmorphism design tokens**, deployed to **Vercel** (`https://petrol-q.vercel.app`) or run locally:
+Built with **React 19** and bundled with **Vite 8**, styled using **Tailwind CSS** and custom **Glassmorphism design tokens**, deployed to cloud hosting or run locally:
 * **Multi-Tier Typography System**:
   * `Space Grotesk`: High-tech industrial headers and modal titles.
   * `Inter`: Clean, legible UI controls, drawer logs, and microcopy.
