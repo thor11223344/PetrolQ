@@ -429,7 +429,7 @@ const PPFGWindowModal = ({ isOpen, onClose, activeWellId = 'OIL-BAGHJAN-1', isFu
                 <span className="font-semibold text-white">Methodology & Transparency:</span>
               </div>
               <p className="text-slate-300 leading-relaxed text-[11px]">
-                Pore pressure and fracture gradient computed using Eaton's method (1972) with a synthetic sonic-log input calibrated to produce a plausible Upper Assam Basin overpressure signature — real acoustic log data was not available.
+                Pore pressure and fracture gradient computed using Eaton's method (1975) ["The Equation for Geopressure Prediction from Well Logs", SPE-5544-MS] with a synthetic sonic-log input calibrated to produce a plausible Upper Assam Basin overpressure signature — real acoustic log data was not available.
               </p>
               <div className="p-2 rounded bg-cyan-900/30 border border-cyan-500/30 text-[10px] text-cyan-200 leading-relaxed">
                 <strong className="text-cyan-300 font-semibold block mb-0.5">Estimated Uncertainty Range (±5–8%):</strong>

@@ -2999,7 +2999,7 @@ function App() {
           </span>
           <span className="text-slate-700">|</span>
           <span className="text-slate-400">
-            <strong className="text-cyan-400">80% Physics</strong> (Eaton 1972, Teale 1965, Jorden-Shirley 1966) + <strong className="text-purple-400">20% LightGBM ML</strong>
+            <strong className="text-cyan-400">80% Physics</strong> (Eaton 1975, Teale 1965, Jorden-Shirley 1966) + <strong className="text-purple-400">20% LightGBM ML</strong>
           </span>
         </div>
         <div className="flex items-center space-x-3">

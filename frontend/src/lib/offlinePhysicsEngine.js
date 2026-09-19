@@ -337,7 +337,7 @@ export function evaluateOfflineLookahead(wellId = 'OIL-BAGHJAN-1', currentDepth 
 }
 
 /**
- * Offline Pore Pressure & Fracture Gradient (Eaton 1972) Safe Mud Weight Window.
+ * Offline Pore Pressure & Fracture Gradient (Eaton 1975) Safe Mud Weight Window.
  */
 export function evaluateOfflinePPFG(wellId = 'OIL-BAGHJAN-1', tvdMax = 3500.0) {
   const wid = (wellId || '').toUpperCase();

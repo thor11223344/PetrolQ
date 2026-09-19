@@ -6,7 +6,7 @@ PetrolQ is an AI-powered Nearby Wells Intelligence System  designed to serve as 
 
 | Basin / Region | Wells Available | Calibration & Data Provenance Status |
 | :--- | :--- | :--- |
-| **Upper Assam Shelf** | 11 Wells (`OIL-BAGHJAN-1`, `OIL-NAHARKATIYA-1`, etc.) | **Calibrated Baseline**: Derived from Equinor's Volve open field dataset (North Sea) and FORCE 2020 ML Competition log benchmark, relabeled to Assam stratigraphy and calibrated with Eaton (1972) / Teale (1965) physics rules. |
+| **Upper Assam Shelf** | 11 Wells (`OIL-BAGHJAN-1`, `OIL-NAHARKATIYA-1`, etc.) | **Calibrated Baseline**: Derived from Equinor's Volve open field dataset (North Sea) and FORCE 2020 ML Competition log benchmark, relabeled to Assam stratigraphy and calibrated with Eaton (1975) / Teale (1965) physics rules. |
 | **Rajasthan Basin** | 5 Wells (`OIL-RAJ-BAGHEWALA-1` to `5`) | **Regionally Calibrated**: Calibrated geomechanical physics using authentic Indian formations (Pariwar, Baisakhi, Jodhpur Sandstone, Bilara Carbonates), basin normal compaction trends $\Delta t_n(z)$, and Teale MSE wear curves. |
 | **KG Deepwater** | 5 Wells (`OIL-KG-DEEPWATER-1` to `5`) | **Regionally Calibrated**: Subsea geomechanical calibration with seafloor overburdens, Godavari Gumbo bit-balling dynamics, and HPHT narrow-margin PP-FG safe drilling corridors. |
 | **Mizoram Fold Belt** | 5 Wells (`OIL-MZ-AIZAWL-1` to `5`) | **Regionally Calibrated**: High-tectonic-stress calibration covering Bokabil, Bhuban, and Disang formations with tectonic overpressures and dipping-bed packoff diagnostics. |

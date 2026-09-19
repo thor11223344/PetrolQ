@@ -1,13 +1,13 @@
 # Real Drilling Physics, Not Approximations
 
-### 1. Eaton (1972) Subsurface Pore Pressure & Fracture Gradient
-* **Code Implementation (`backend/api/ppfg.py` lines 35-77):**
+### 1. Eaton (1975) Subsurface Pore Pressure & Fracture Gradient
+* **Code Implementation (`backend/api/ppfg.py`):**
   $$\sigma_v = 19.2 \text{ ppg} \quad (\sim 1.0 \text{ psi/ft overburden gradient})$$
   $$P_{hyd} = 8.6 \text{ ppg} \quad (\sim 0.447 \text{ psi/ft normal hydrostatic gradient})$$
   $$\Delta t_n(z) = 185.0 \cdot \exp(-0.0003 \cdot z) \quad [\mu\text{s/ft normal shale compaction trend}]$$
   $$P_p(z) = \sigma_v - [\sigma_v - P_{hyd}] \times \left(\frac{\Delta t_n(z)}{\Delta t_{obs}(z)}\right)^N, \quad N = 3.0$$
   $$FG(z) = P_p(z) + \left(\frac{\nu(z)}{1 - \nu(z)}\right) \cdot [\sigma_v - P_p(z)], \quad \nu(z) = 0.25 + 0.15 \cdot \left(\frac{z}{3500}\right)$$
-* **Technical Note for Judges:** Genuine Eaton exponent ($N=3.0$), standard shale acoustic value from Eaton, B.A. (1972), *"The Effect of Overburden Stress on Geopressure Prediction from Well Logs"*, SPE-3719.
+* **Technical Note for Judges:** Genuine Eaton exponent ($N=3.0$), standard shale acoustic value from Eaton, B.A. (1975), *"The Equation for Geopressure Prediction from Well Logs"*, SPE-5544-MS.
 
 ---
 

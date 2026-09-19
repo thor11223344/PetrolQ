@@ -137,9 +137,9 @@ export default function ModulesModal({
       badgeBg: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
       btnStyle: 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 border-emerald-500/40 hover:border-emerald-400',
       statusText: 'Safe Window Computed',
-      description: 'Applies the Eaton (1972) acoustic/resistivity pore pressure model and Hubbert-Willis (1957) fracture gradient equations. Displays the safe drilling mud weight operating corridor with ±5% uncertainty margins, casing shoes, and live telemetry tracking.',
+      description: 'Applies the Eaton (1975) acoustic/resistivity pore pressure model and Hubbert-Willis (1957) fracture gradient equations. Displays the safe drilling mud weight operating corridor with ±5% uncertainty margins, casing shoes, and live telemetry tracking.',
       features: [
-        'Eaton (1972) Pore Pressure Curve',
+        'Eaton (1975) Pore Pressure Curve',
         'Hubbert-Willis (1957) Fracture Gradient Limit',
         '±5% to 8% Regional Uncertainty Envelope',
         'Active Depth Mud Weight Telemetry Marker'

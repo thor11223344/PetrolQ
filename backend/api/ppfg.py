@@ -14,11 +14,12 @@ def get_ppfg_safe_window(
 ):
     """
     Pore Pressure & Fracture Gradient (PPFG) Safe Mud Weight Window:
-    Pore pressure and fracture gradient computed using Eaton's method (1972) with a synthetic
+    Pore pressure and fracture gradient computed using Eaton's method (1975) with a synthetic
     sonic-log input calibrated to produce a plausible Upper Assam Basin overpressure signature
     — real acoustic log data was not available.
     Generates depth-indexed Pore Pressure and Fracture Gradient curves (in ppg and sg)
     alongside casing shoe depths and the active rig's current Equivalent Circulating Density (ECD).
+    Reference: Eaton, B.A. (1975), "The Equation for Geopressure Prediction from Well Logs", SPE-5544-MS.
     """
     tvd_max: float = 3500.0
     try:
@@ -37,7 +38,7 @@ def get_ppfg_safe_window(
     depths_tvd = np.linspace(50.0, tvd_max, num_pts)
 
     # -------------------------------------------------------------------------
-    # BASIN-CALIBRATED EATON'S METHOD (1972) PORE PRESSURE & FRACTURE GRADIENT
+    # BASIN-CALIBRATED EATON'S METHOD (1975) PORE PRESSURE & FRACTURE GRADIENT
     # -------------------------------------------------------------------------
     if region == "rajasthan":
         # Rajasthan Basin (Barmer/Jaisalmer): Arid, dense quartz sandstones, heavy oil, cavernous Bilara carbonates
@@ -231,7 +232,7 @@ def get_ppfg_safe_window(
             {"casing_type": 'Intermediate Casing 9-5/8"', "tvd_depth": 2250.0, "color": "#F59E0B", "notes": "Set above high-pressure Barail kick zone"},
             {"casing_type": 'Production Liner 7"', "tvd_depth": min(3200.0, tvd_max - 150.0), "color": "#10B981", "notes": "Covers Barail pay zone into Kopili basement"}
         ]
-        notes_str = "Pore pressure and fracture gradient computed using Eaton's method (1972) calibrated to Upper Assam overpressure signatures using Volve and FORCE 2020 open data benchmarks."
+        notes_str = "Pore pressure and fracture gradient computed using Eaton's method (1975) calibrated to Upper Assam overpressure signatures using Volve and FORCE 2020 open data benchmarks."
 
     pp_curve = [round(float(p), 2) for p in pp_raw]
     fg_curve = [round(float(f), 2) for f in fg_raw]
@@ -316,7 +317,8 @@ def get_ppfg_safe_window(
         "casing_shoes": casing_shoes,
         "formations": formations,
         "eaton_metadata": {
-            "method": "Eaton's Method (1972)",
+            "method": "Eaton's Method (1975)",
+            "publication": "The Equation for Geopressure Prediction from Well Logs (SPE-5544-MS, 1975)",
             "normal_compaction_trend": f"Δtn(z) = {dt_0} * exp(-{c_trend} * z) μs/ft",
             "eaton_exponent_N": eaton_n,
             "overburden_gradient_ppg": sigma_v,

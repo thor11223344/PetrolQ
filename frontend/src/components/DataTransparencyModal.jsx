@@ -55,11 +55,11 @@ const DataTransparencyModal = ({ isOpen, onClose }) => {
               </span>
             </div>
             <p className="text-xs text-slate-200 leading-relaxed font-sans">
-              <strong className="text-white">Genuine published methods:</strong> Eaton's pore pressure/fracture gradient method (1972), Teale's Mechanical Specific Energy (1965), and Jorden & Shirley's d-exponent (1966) with Rehm & McClendon mud-weight normalization (1971).
+              <strong className="text-white">Genuine published methods:</strong> Eaton's pore pressure/fracture gradient method (1975) [SPE-5544-MS], Teale's Mechanical Specific Energy (1965), and Jorden & Shirley's d-exponent (1966) with Rehm & McClendon mud-weight normalization (1971).
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-[11px] font-mono">
               <div className="p-2 rounded bg-slate-900 border border-slate-800 text-slate-300">
-                <span className="text-cyan-400 block font-bold">Eaton (1972)</span>
+                <span className="text-cyan-400 block font-bold">Eaton (1975)</span>
                 <span>N = 3.0 acoustic exponent</span>
               </div>
               <div className="p-2 rounded bg-slate-900 border border-slate-800 text-slate-300">

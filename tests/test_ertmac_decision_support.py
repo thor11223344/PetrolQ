@@ -201,7 +201,7 @@ def test_api_endpoints():
     assert ppdata["eaton_metadata"]["eaton_exponent_N"] == 3.0
     assert ppdata["eaton_metadata"]["overburden_gradient_ppg"] == 19.2
     assert ppdata["eaton_metadata"]["hydrostatic_gradient_ppg"] == 8.6
-    assert "Eaton's method (1972)" in ppdata["eaton_metadata"]["notes"]
+    assert "Eaton's method (1975)" in ppdata["eaton_metadata"]["notes"]
 
     # Hydrostatic behavior above ~1200m
     depths = ppdata["depths_tvd"]
