@@ -142,8 +142,15 @@ export function evaluateOfflineHazard(telemetry, activeScenario = 'normal') {
     ];
   }
 
+  const topFactorsFormatted = topFeatures.map(f => ({
+    feature: f.feature,
+    impact: 0.4,
+    direction: 'INCREASES_RISK'
+  }));
+
   return {
     risk_level: riskLevel,
+    risk_probability: Number(maxProb.toFixed(3)),
     risk_score: Number(maxProb.toFixed(3)),
     predicted_hazard: predictedHazard,
     probabilities: {
@@ -153,6 +160,7 @@ export function evaluateOfflineHazard(telemetry, activeScenario = 'normal') {
       torque_drag: Number(torqueDragProb.toFixed(3))
     },
     top_features: topFeatures,
+    top_factors: topFactorsFormatted,
     recommendations: recommendations,
     mse_kpsi: mse,
     dxc: dxc,
