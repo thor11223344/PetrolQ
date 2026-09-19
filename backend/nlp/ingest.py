@@ -84,6 +84,17 @@ def ingest_report(pdf_path: str, well_id: str, db_session: Session):
             logger.error(f"Failed to generate embedding for context: {e}")
             continue
             
+        # Determine appropriate region-based provenance tag
+        from simulator import get_well_region_tag
+        region = get_well_region_tag(well_id)
+        
+        # Check if the well actually exists to inherit data_source, otherwise use regional default
+        db_well = db_session.query(WellMaster).filter(WellMaster.well_id == well_id).first()
+        if db_well and db_well.data_source:
+            provenance_tag = db_well.data_source
+        else:
+            provenance_tag = "synthetic" if region == "assam" else "synthetic_uncalibrated"
+
         # Map to SQLAlchemy Model
         # Note: mapping single depth_tvd to both start and end for point-in-time incidents.
         db_event = SyntheticEvent(
@@ -96,7 +107,8 @@ def ingest_report(pdf_path: str, well_id: str, db_session: Session):
             root_cause=event.root_cause,
             mitigation_applied=mitigation_final,
             npt_hours=event.npt_hours,
-            embedding=embedding
+            embedding=embedding,
+            data_source=provenance_tag
         )
         events_to_insert.append(db_event)
         extracted_summary.append({

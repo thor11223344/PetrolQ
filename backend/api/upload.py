@@ -211,6 +211,19 @@ def contribute_lesson_learned(
         from nlp.config import _pseudo_embedding
         embedding = _pseudo_embedding(context_str)
 
+    # Determine appropriate region-based provenance tag
+    from simulator import get_well_region_tag
+    region = get_well_region_tag(payload.well_id)
+    
+    provenance_tag = "synthetic" if region == "assam" else "synthetic_uncalibrated"
+    if well_found:
+        try:
+            db_well = db.query(WellMaster).filter(WellMaster.well_id == payload.well_id).first()
+            if db_well and db_well.data_source:
+                provenance_tag = db_well.data_source
+        except Exception:
+            pass
+
     # 4. Insert into SyntheticEvent table (with offline JSON cache fallback)
     event_id = None
     try:
@@ -224,7 +237,8 @@ def contribute_lesson_learned(
             root_cause=payload.root_cause,
             mitigation_applied=payload.mitigation_applied,
             npt_hours=payload.npt_hours or 0.0,
-            embedding=embedding
+            embedding=embedding,
+            data_source=provenance_tag
         )
         db.add(new_event)
         db.commit()
@@ -253,7 +267,8 @@ def contribute_lesson_learned(
             "root_cause": payload.root_cause,
             "mitigation_applied": payload.mitigation_applied,
             "npt_hours": payload.npt_hours or 0.0,
-            "embedding": embedding
+            "embedding": embedding,
+            "data_source": provenance_tag
         }
         existing.append(offline_event)
         try:

@@ -345,8 +345,18 @@ def get_lookahead_advisory(
 
 
     # Separate events into true offsets and prioritize wells within the same basin (< 300 km)
+    # ENFORCE REGIONAL BOUNDARY: Never cross-match regions
+    from simulator import get_well_region_tag
+    active_region = get_well_region_tag(well_id)
+    
     scored_events = []
     for ev in candidate_events:
+        ev_region = get_well_region_tag(str(ev.well_id))
+        
+        # Explicit boundary enforcement
+        if ev_region != active_region:
+            continue
+            
         dist_km = offset_distances.get(str(ev.well_id), 999.0)
         is_self = (str(ev.well_id) == well_id)
         # Prioritize same basin (distance < 350km)
@@ -357,9 +367,13 @@ def get_lookahead_advisory(
                 "is_self": is_self
             })
 
-    # Fallback if no proximate offsets found
+    # Fallback if no proximate offsets found in region
     if not scored_events:
         for ev in candidate_events:
+            ev_region = get_well_region_tag(str(ev.well_id))
+            if ev_region != active_region:
+                continue
+                
             dist_km = offset_distances.get(str(ev.well_id), 999.0)
             scored_events.append({
                 "event": ev,
