@@ -912,6 +912,7 @@ def search_events(
     event_type: Optional[str] = Query(None, description="Optional target event type"),
     well_id: Optional[str] = Query(None, description="Active reference well ID"),
     pre_filter_to_analogs: bool = Query(False, description="Stage 1: Pre-filter candidate event pool to analog wells"),
+    exclude_synthetic: bool = Query(False, description="Exclude synthetic background data"),
     limit: int = 5,
     db: Session = Depends(get_db)
 ):
@@ -945,6 +946,10 @@ def search_events(
             if analog_wells:
                 db_query = db_query.filter(SyntheticEvent.well_id.in_(analog_wells))
                 
+        # Exclude synthetic defaults if user requests custom data only
+        if exclude_synthetic:
+            db_query = db_query.filter(SyntheticEvent.data_source.notin_(["synthetic", "synthetic_calibrated"]))
+
         events = db_query.all()
     except Exception as e:
         print(f"Warning: Database query failed in search_events ({e}), using offline fallback events.")

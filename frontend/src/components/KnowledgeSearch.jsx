@@ -12,6 +12,7 @@ const KnowledgeSearch = ({ isOpen, onClose, suggestedQuery = '', activeWellId = 
     const [isSearching, setIsSearching] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
     const [preFilterToAnalogs, setPreFilterToAnalogs] = useState(false);
+    const [excludeSynthetic, setExcludeSynthetic] = useState(false);
     const [aiBriefing, setAiBriefing] = useState(null);
     const [isSynthesizing, setIsSynthesizing] = useState(false);
     const [isOfflineMode, setIsOfflineMode] = useState(false);
@@ -34,7 +35,8 @@ const KnowledgeSearch = ({ isOpen, onClose, suggestedQuery = '', activeWellId = 
                     query: targetQuery.trim(), 
                     limit: 5,
                     well_id: activeWellId,
-                    pre_filter_to_analogs: preFilterToAnalogs
+                    pre_filter_to_analogs: preFilterToAnalogs,
+                    exclude_synthetic: excludeSynthetic
                 },
                 timeout: 3000
             });
@@ -127,7 +129,6 @@ const KnowledgeSearch = ({ isOpen, onClose, suggestedQuery = '', activeWellId = 
                                 const val = e.target.checked;
                                 setPreFilterToAnalogs(val);
                                 if (query.trim()) {
-                                    // Trigger immediate re-search with new filter mode
                                     setTimeout(() => executeSearch(), 50);
                                 }
                             }}
@@ -137,6 +138,28 @@ const KnowledgeSearch = ({ isOpen, onClose, suggestedQuery = '', activeWellId = 
                     </label>
                     <span className="text-[10px] font-mono text-cyan-400 font-bold bg-cyan-950/80 px-1.5 py-0.5 rounded border border-cyan-500/30">
                         {preFilterToAnalogs ? "Stage 1 Active" : "Full Pool"}
+                    </span>
+                </div>
+
+                {/* Exclude Synthetic Data Toggle */}
+                <div className="flex items-center justify-between bg-slate-900/90 border border-slate-800 px-2.5 py-1.5 rounded-lg">
+                    <label className="flex items-center space-x-2 text-[11px] text-slate-300 cursor-pointer select-none">
+                        <input 
+                            type="checkbox"
+                            checked={excludeSynthetic}
+                            onChange={(e) => {
+                                const val = e.target.checked;
+                                setExcludeSynthetic(val);
+                                if (query.trim()) {
+                                    setTimeout(() => executeSearch(), 50);
+                                }
+                            }}
+                            className="w-3.5 h-3.5 rounded accent-purple-500 bg-slate-800 border-slate-700 cursor-pointer"
+                        />
+                        <span className="font-medium">Only search uploaded custom reports (Exclude defaults)</span>
+                    </label>
+                    <span className="text-[10px] font-mono text-purple-400 font-bold bg-purple-950/80 px-1.5 py-0.5 rounded border border-purple-500/30">
+                        {excludeSynthetic ? "Custom Only" : "All Data"}
                     </span>
                 </div>
             </div>
