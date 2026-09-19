@@ -325,7 +325,7 @@ def test_formation_match_scoring_jaccard_similarity():
 
     # Empty sets
     assert jaccard_similarity(set(), set()) == 0.0
-    assert compute_formation_match_score(None, None) == 0.0
+    assert compute_formation_match_score(None, None) == -1.0
 
 
 def test_depth_proximity_properties():
@@ -338,9 +338,9 @@ def test_depth_proximity_properties():
     assert compute_depth_proximity_score(2500.0, 2750.0, max_range=500.0) == 0.5
     # Exceeding max range clamps at 0.0
     assert compute_depth_proximity_score(2500.0, 3500.0, max_range=500.0) == 0.0
-    # Missing reference returns 0.5 neutral
-    assert compute_depth_proximity_score(None, 2500.0) == 0.5
-    assert compute_depth_proximity_score(2500.0, None) == 0.5
+    # Missing reference returns -1.0 absent
+    assert compute_depth_proximity_score(None, 2500.0) == -1.0
+    assert compute_depth_proximity_score(2500.0, None) == -1.0
 
 
 def test_bm25_lexical_overlap():

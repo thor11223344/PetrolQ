@@ -61,7 +61,7 @@ def compute_bm25_score(query: str, text: str) -> float:
 def compute_depth_proximity_score(query_depth: Optional[float], event_depth: Optional[float], max_range: float = 500.0) -> float:
     """Calculates linear decay proximity score between reference drilling depth and historical event depth."""
     if query_depth is None or event_depth is None:
-        return 0.5  # neutral if depth context unavailable
+        return -1.0  # signal absence of context
     diff = abs(float(query_depth) - float(event_depth))
     return max(0.0, 1.0 - (diff / max_range))
 
@@ -134,7 +134,10 @@ def compute_formation_match_score(
     if not set_context and query:
         set_context = _extract_formation_set(query)
 
-    if not set_context or not set_event:
+    if not set_context:
+        return -1.0 # signal absence of context
+        
+    if not set_event:
         return 0.0
 
     return round(jaccard_similarity(set_context, set_event), 3)
@@ -218,12 +221,27 @@ def compute_hybrid_relevance_score(
         "vector": float(vector),
     }
 
-    hybrid_score = sum(score_breakdown[k] * w.get(k, 0.0) for k in w)
+    # Normalize weights dynamically for excluded signals
+    active_weights = {}
+    for key, weight_val in w.items():
+        if score_breakdown[key] >= 0:
+            active_weights[key] = weight_val
+
+    total_active_weight = sum(active_weights.values())
+    if total_active_weight > 0:
+        normalized_weights = {k: v / total_active_weight for k, v in active_weights.items()}
+    else:
+        normalized_weights = {}
+
+    hybrid_score = 0.0
+    for key in normalized_weights:
+        hybrid_score += score_breakdown[key] * normalized_weights[key]
 
     return {
         "hybrid_score": float(hybrid_score),
         "score_breakdown": score_breakdown,
         "weights": w,
+        "normalized_weights": normalized_weights,
         "ahp_metadata": {
             "consistency_ratio": float(AHP_CONSISTENCY_RATIO),
             "consistent": bool(AHP_IS_CONSISTENT),

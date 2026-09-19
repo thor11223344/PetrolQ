@@ -128,6 +128,15 @@ def test_simulator_realistic_scenario_injection():
 
 def test_api_endpoints():
     """Verify all required API endpoints for PetrolQ decision suite."""
+    # Mock the DB to prevent real connections (e.g. Supabase) from failing the test
+    from database import get_db
+    mock_db = MagicMock()
+    mock_query = MagicMock()
+    mock_db.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.first.return_value = None
+    app.dependency_overrides[get_db] = lambda: mock_db
+    
     # 1. Multi-hazard prediction
     pred_res = client.post("/api/predict-risk", json={
         "depth_tvd": 2240.0, "rop": 16.5, "wob": 14.0, "rpm": 105.0,
@@ -208,6 +217,8 @@ def test_api_endpoints():
     # Verify fracture gradient exceeds pore pressure throughout
     for p, f in zip(pp_vals, fg_vals):
         assert f > p, f"Fracture gradient ({f}) must exceed pore pressure ({p})"
+        
+    app.dependency_overrides.clear()
 
 
 @pytest.mark.asyncio

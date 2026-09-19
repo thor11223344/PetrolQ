@@ -6,6 +6,7 @@ from database import Base
 
 class WellMaster(Base):
     __tablename__ = 'well_master'
+    __table_args__ = {'extend_existing': True}
     
     id = Column(Integer, primary_key=True, index=True)
     well_id = Column(String, unique=True, index=True, nullable=False)
@@ -28,6 +29,7 @@ class WellMaster(Base):
 
 class DrillingParam(Base):
     __tablename__ = 'drilling_param'
+    __table_args__ = {'extend_existing': True}
     
     id = Column(Integer, primary_key=True, index=True)
     well_id = Column(String, ForeignKey('well_master.well_id'), nullable=False, index=True)
@@ -49,6 +51,7 @@ class DrillingParam(Base):
 
 class WellLog(Base):
     __tablename__ = 'well_log'
+    __table_args__ = {'extend_existing': True}
     
     id = Column(Integer, primary_key=True, index=True)
     well_id = Column(String, ForeignKey('well_master.well_id'), nullable=False, index=True)
@@ -65,6 +68,7 @@ class WellLog(Base):
 
 class SyntheticEvent(Base):
     __tablename__ = 'synthetic_event'
+    __table_args__ = {'extend_existing': True}
     
     id = Column(Integer, primary_key=True, index=True)
     well_id = Column(String, ForeignKey('well_master.well_id'), nullable=False, index=True)

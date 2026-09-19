@@ -40,9 +40,9 @@ def test_ahp_eigenvector_weights_and_consistency():
     assert cr < 0.10
     assert is_consistent is True
     
-    # 4. Geological criteria (formation, depth) should have highest weights
-    assert weights["formation_match"] > weights["bm25"]
-    assert weights["depth_proximity"] > weights["vector"]
+    # 4. Semantic criteria (vector) should have highest weight
+    assert weights["vector"] > weights["bm25"]
+    assert weights["bm25"] > weights["formation_match"]
 
 
 # ==============================================================================

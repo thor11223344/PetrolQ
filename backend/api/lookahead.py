@@ -245,12 +245,28 @@ def get_lookahead_advisory(
                     pass
     except Exception as e:
         print(f"Warning: db query failed in lookahead well_coords ({e}). Using default coordinates.")
-        well_coords = {
-            "OIL-BAGHJAN-1": (27.58, 95.34),
-            "OIL-BAGHJAN-4": (27.59, 95.35),
-            "OIL-MORAN-1": (27.18, 94.92),
-            "OIL-NAHARKATIYA-1": (27.28, 95.35)
-        }
+        try:
+            from main import INDIAN_WELLS_METADATA
+            # Extract fallback coords from some known well geometries, mapping roughly by basin
+            well_coords = {}
+            for wid in INDIAN_WELLS_METADATA.keys():
+                if "BAGHJAN" in wid or "NAHAR" in wid or "MORAN" in wid or "DIKOM" in wid or "TENGAKHAT" in wid or "KUSIJAN" in wid or "HAPJAN" in wid or "HEBEDA" in wid or "SHALMARI" in wid or "KOTHALONI" in wid:
+                    well_coords[wid] = (27.5, 95.3) # Assam approx
+                elif "RAJ" in wid:
+                    well_coords[wid] = (27.5, 71.5) # Rajasthan approx
+                elif "KG" in wid:
+                    well_coords[wid] = (16.25, 82.4) # KG approx
+                elif "MZ" in wid or "MIZO" in wid:
+                    well_coords[wid] = (23.72, 92.7) # Mizoram approx
+                else:
+                    well_coords[wid] = (27.5, 95.3) # Default
+        except:
+            well_coords = {
+                "OIL-BAGHJAN-1": (27.58, 95.34),
+                "OIL-BAGHJAN-4": (27.59, 95.35),
+                "OIL-MORAN-1": (27.18, 94.92),
+                "OIL-NAHARKATIYA-1": (27.28, 95.35)
+            }
 
     # Ensure North Sea wells are present in well_coords
     try:
@@ -285,13 +301,28 @@ def get_lookahead_advisory(
     if not candidate_events:
         import json
         from pathlib import Path
+        raw_inc = []
         p_inc = Path(__file__).resolve().parent.parent.parent / "frontend" / "src" / "data" / "defaultIncidents.json"
         if not p_inc.exists():
             p_inc = Path(__file__).resolve().parent.parent / "data" / "curated_historical_incidents.json"
         if p_inc.exists():
             try:
                 with open(p_inc, "r", encoding="utf-8") as f:
-                    raw_inc = json.load(f)
+                    raw_inc.extend(json.load(f))
+            except Exception as read_err:
+                pass
+                
+        # Also include newly ingested offline events
+        offline_cache = Path(__file__).resolve().parent.parent / "data" / "offline_ingested_events.json"
+        if offline_cache.exists():
+            try:
+                with open(offline_cache, "r", encoding="utf-8") as f:
+                    raw_inc.extend(json.load(f))
+            except Exception:
+                pass
+
+        if raw_inc:
+            try:
                 class MockEvent:
                     def __init__(self, d):
                         self.well_id = d.get("well_id", "OIL-MORAN-1")

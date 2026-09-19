@@ -57,26 +57,13 @@ def derive_ahp_weights(pairwise_matrix: List[List[float]], criteria_names: List[
 # 5. vector: Dense semantic embedding cosine similarity
 #
 # DOMAIN JUSTIFICATIONS (Saaty Scale 1-9):
-# - formation_match vs depth_proximity (1.0): Both lithology and depth are co-equal
-#   fundamental drivers of subsurface pore pressure and rock compressive strength.
-# - formation_match vs event_type_match (2.0): Formation lithology is moderately more
-#   governing than reported hazard class because the same rock unit generates multiple
-#   symptom classes (e.g. Tipam permeable sands generate differential sticking AND mud loss).
-# - formation_match vs bm25 (3.0): Physical geological formation is strongly more
-#   relevant than raw vocabulary overlap across driller shifts.
-# - formation_match vs vector (3.0): Stratigraphic rock mechanics strongly outweigh
-#   generalized dense sentence semantics in safety-critical retrieval.
-# - depth_proximity vs event_type_match (2.0): Depth-dependent hydrostatic pressure
-#   is moderately more predictive of downhole state than qualitative event categorizations.
-# - depth_proximity vs bm25 (3.0): Proximity in vertical stress regime strongly
-#   outweighs text term matching.
-# - depth_proximity vs vector (3.0): Depth containment strongly outweighs text embeddings.
-# - event_type_match vs bm25 (2.0): Curated domain taxonomy is moderately more informative
-#   than unstructured bag-of-words.
-# - event_type_match vs vector (2.0): Explicit hazard taxonomy moderately outperforms
-#   dense vectors which can conflate distinct drilling hazards.
-# - bm25 vs vector (1.0): Lexical exactness (e.g. 'packoff', 'barite pill') and semantic
-#   generalization provide equal, complementary NLP signals.
+# - vector is the PRIMARY signal for free-text search relevance, since it captures semantic meaning.
+# - vector vs formation_match (4.0): Semantic relevance strongly outweighs pure formation overlap in free text queries.
+# - vector vs depth_proximity (4.0): Semantic relevance strongly outweighs depth proximity.
+# - vector vs event_type_match (3.0): Semantic relevance moderately outweighs broad event category matching.
+# - vector vs bm25 (3.0): Dense semantic representations are moderately more relevant than sparse lexical term matching.
+# - event_type_match and bm25 (1.0): Both provide secondary validation and are equally important.
+# - formation_match and depth_proximity (1.0): Co-equal but tertiary signals for free text queries unless explicitly provided.
 # ---------------------------------------------------------------------------
 
 RETRIEVAL_CRITERIA: List[str] = [
@@ -88,11 +75,11 @@ RETRIEVAL_CRITERIA: List[str] = [
 ]
 
 RETRIEVAL_PAIRWISE_MATRIX: List[List[float]] = [
-    [1.0,   1.0,   2.0, 3.0, 3.0],  # formation_match
-    [1.0,   1.0,   2.0, 3.0, 3.0],  # depth_proximity
-    [0.5,   0.5,   1.0, 2.0, 2.0],  # event_type_match
-    [1/3.0, 1/3.0, 0.5, 1.0, 1.0],  # bm25
-    [1/3.0, 1/3.0, 0.5, 1.0, 1.0],  # vector
+    [1.0, 1.0, 0.5, 0.5, 1/4.0],  # formation_match
+    [1.0, 1.0, 0.5, 0.5, 1/4.0],  # depth_proximity
+    [2.0, 2.0, 1.0, 1.0, 1/3.0],  # event_type_match
+    [2.0, 2.0, 1.0, 1.0, 1/3.0],  # bm25
+    [4.0, 4.0, 3.0, 3.0, 1.0],    # vector
 ]
 
 # Compute at module load time
