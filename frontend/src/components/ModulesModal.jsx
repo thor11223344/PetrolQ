@@ -39,16 +39,23 @@ export default function ModulesModal({
   // Helper to launch any module in a new browser tab in fullscreen mode
   const launchModuleInNewTab = (moduleId, fallbackFn) => {
     const url = `${window.location.origin}${window.location.pathname}?module=${moduleId}&well=${encodeURIComponent(activeWellId || 'OIL-BAGHJAN-1')}&fullscreen=true`;
+    let openedInNewTab = false;
     try {
       const newTab = window.open(url, '_blank');
-      if (!newTab || newTab.closed || typeof newTab.closed === 'undefined') {
+      if (newTab && !newTab.closed && typeof newTab.closed !== 'undefined') {
+        openedInNewTab = true;
+      } else {
         if (fallbackFn) fallbackFn();
       }
     } catch (err) {
       console.warn('window.open failed, falling back to local open:', err);
       if (fallbackFn) fallbackFn();
     }
-    onClose();
+    // If opening in new tab failed and fell back to local modal, close Modules overview.
+    // Otherwise, keep Modules overview open in parent tab so closing the new tab returns to Modules!
+    if (!openedInNewTab) {
+      onClose();
+    }
   };
 
   // Close on Escape key

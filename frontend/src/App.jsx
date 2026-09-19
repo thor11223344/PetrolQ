@@ -206,7 +206,34 @@ function App() {
     else if (m === 'backtest') document.title = `Causal Hazard Backtest (${w}) | PetrolQ`;
     else if (m === 'contribute' || m === 'lesson') document.title = `Contribute Field Lesson (${w}) | PetrolQ`;
   }, [selectedWell]);
-  const [isModulesTabOpen, setIsModulesTabOpen] = useState(false);
+
+  const [isModulesTabOpen, setIsModulesTabOpen] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const p = new URLSearchParams(window.location.search);
+    return p.get('tab') === 'modules' || p.get('modules') === 'true';
+  });
+
+  // When a module modal closes in a standalone tab, return to Modules overview
+  const handleCloseModule = useCallback((moduleCloseSetter) => {
+    moduleCloseSetter(false);
+    if (typeof window !== 'undefined' && window.location.search.includes('module=')) {
+      try {
+        window.close();
+      } catch (e) {
+        // ignore
+      }
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('module');
+        url.searchParams.delete('fullscreen');
+        url.searchParams.set('tab', 'modules');
+        window.history.replaceState({}, '', url.toString());
+      } catch (e) {
+        // ignore
+      }
+      setIsModulesTabOpen(true);
+    }
+  }, []);
   const [isTransparencyOpen, setIsTransparencyOpen] = useState(false);
   const [is3DViewerOpen, setIs3DViewerOpen] = useState(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
@@ -3020,7 +3047,7 @@ function App() {
       {/* Ahead-of-the-Bit Hazard Radar Modal */}
       <LookAheadRadar 
           isOpen={isRadarOpen}
-          onClose={() => setIsRadarOpen(false)}
+          onClose={() => handleCloseModule(setIsRadarOpen)}
           activeWellId={selectedWell}
           currentDepth={telemetryData ? telemetryData.depth_tvd : undefined}
           isFullScreen={typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('module') === 'radar' || new URLSearchParams(window.location.search).get('fullscreen') === 'true')}
@@ -3029,7 +3056,7 @@ function App() {
       {/* Safe Operating Mud Weight Window (PPFG) Modal */}
       <PPFGWindowModal 
           isOpen={isPPFGOpen}
-          onClose={() => setIsPPFGOpen(false)}
+          onClose={() => handleCloseModule(setIsPPFGOpen)}
           activeWellId={selectedWell}
           isFullScreen={typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('module') === 'ppfg' || new URLSearchParams(window.location.search).get('fullscreen') === 'true')}
       />
@@ -3037,13 +3064,13 @@ function App() {
       {/* 1-Click Pre-Spud Offset Hazard Dossier Modal */}
       <PreSpudDossierModal 
           isOpen={isDossierOpen}
-          onClose={() => setIsDossierOpen(false)}
+          onClose={() => handleCloseModule(setIsDossierOpen)}
           activeWellId={selectedWell}
           isFullScreen={typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('module') === 'dossier' || new URLSearchParams(window.location.search).get('fullscreen') === 'true')}
       />
       <BacktestResultsModal 
           isOpen={isBacktestOpen}
-          onClose={() => setIsBacktestOpen(false)}
+          onClose={() => handleCloseModule(setIsBacktestOpen)}
           isFullScreen={typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('module') === 'backtest' || new URLSearchParams(window.location.search).get('fullscreen') === 'true')}
       />
 
@@ -3132,7 +3159,7 @@ function App() {
       {/* Institutional Memory Contribution Modal (Two-Way Feedback) */}
       <ContributeLessonModal 
           isOpen={isContributeOpen}
-          onClose={() => setIsContributeOpen(false)}
+          onClose={() => handleCloseModule(setIsContributeOpen)}
           activeWellId={selectedWell}
           onLessonContributed={handleLessonContributed}
           isFullScreen={typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('module') === 'contribute' || new URLSearchParams(window.location.search).get('module') === 'lesson' || new URLSearchParams(window.location.search).get('fullscreen') === 'true')}
@@ -3156,7 +3183,7 @@ function App() {
       {/* Cross-Well Correlation Panel */}
       <CorrelationPanel 
           isOpen={isCorrelationOpen}
-          onClose={() => setIsCorrelationOpen(false)}
+          onClose={() => handleCloseModule(setIsCorrelationOpen)}
           activeWell={selectedWell}
           offsetWell={getDefaultOffsetWell(selectedWell)}
           isFullScreen={typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('module') === 'correlation' || new URLSearchParams(window.location.search).get('fullscreen') === 'true')}
