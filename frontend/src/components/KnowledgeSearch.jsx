@@ -227,6 +227,9 @@ const KnowledgeSearch = ({ isOpen, onClose, suggestedQuery = '', activeWellId = 
                                                 • {result.depth_tvd}m TVD
                                             </span>
                                             <SourceTag source={result.data_source} compact={false} />
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-950/80 border border-blue-500/40 text-blue-400 uppercase shrink-0">
+                                                DD Report
+                                            </span>
                                         </div>
                                         <h3 className="text-sm font-semibold text-slate-200">{result.event_type}</h3>
                                     </div>
