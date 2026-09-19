@@ -20,3 +20,11 @@ fresh_venv/
 temp_uploads/
 demo_project/
 demo_projects/
+
+# Internal documentation & video scripts
+technologies.md
+video.md
+vidoe.md
+solution.md
+explain.md
+architecture.md
