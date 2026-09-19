@@ -983,6 +983,11 @@ def search_events(
         )
         final_score = hybrid_calc["hybrid_score"]
 
+        # Boost score massively for newly extracted events so they always surface
+        data_source_val = getattr(event, "data_source", "") or ""
+        if data_source_val == "dd_report":
+            final_score += 10.0
+
         # 4. Deterministic Guardrails validation
         det_truth = {
             "confidence": "high",

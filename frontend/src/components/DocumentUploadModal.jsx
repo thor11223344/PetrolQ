@@ -264,6 +264,10 @@ const DocumentUploadModal = ({
                                             <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
                                                 File: {uploadResult.filename}
                                             </span>
+                                            
+                                            <span className="px-2.5 py-0.5 rounded bg-blue-950 border border-blue-800 text-blue-400 text-[11px] font-bold uppercase">
+                                                DD Report
+                                            </span>
 
                                             {isOfflineEngine && (
                                                 <span className="flex items-center space-x-1 text-[10px] bg-cyan-950 text-cyan-400 border border-cyan-700/50 px-2 py-0.5 rounded font-mono font-bold">
