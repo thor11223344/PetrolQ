@@ -14,42 +14,67 @@ from models import SyntheticEvent
 
 client = TestClient(app)
 
-def test_live_ingestion_to_lookahead_radar():
+def test_live_ingestion_multi_hazard_lookahead():
     """
-    Simulates ingesting a PDF event (TENGAKHAT-1 at 2245m) and verifies 
-    that the Look-Ahead Radar surfaces it for a nearby active well.
+    Simulates ingesting a multi-hazard document (mud loss, gas kick, stuck pipe at different depths)
+    and verifies that the Look-Ahead Radar correctly surfaces each distinct hazard as it enters the window.
     """
-    # 1. Mock the DB session to return our new event
     mock_db = MagicMock()
     
-    new_event = SyntheticEvent(
-        well_id="OIL-TENGAKHAT-1",
-        depth_start_tvd=2245.0,
-        depth_end_tvd=2245.0,
+    # 1. Simulate extraction of 3 distinct events from a single multi-hazard report
+    event1 = SyntheticEvent(
+        well_id="OIL-MULTI-HAZARD-1",
+        depth_start_tvd=1800.0,
+        depth_end_tvd=1800.0,
         formation="Tipam",
-        event_type="Differential Sticking",
+        event_type="Severe Mud Loss",
         severity="HIGH",
-        root_cause="High overbalance in depleted permeable Tipam sand",
-        mitigation_applied="Pumped nut-plug pill and reduced mud weight",
-        npt_hours=24.5,
+        root_cause="Highly permeable depleted zone",
+        mitigation_applied="Pumped LCM pill",
+        npt_hours=12.0,
         embedding=[0.0] * 384
     )
     
-    # Configure mock to return our event when querying SyntheticEvent
+    event2 = SyntheticEvent(
+        well_id="OIL-MULTI-HAZARD-1",
+        depth_start_tvd=2100.0,
+        depth_end_tvd=2100.0,
+        formation="Barail",
+        event_type="Gas Kick",
+        severity="CRITICAL",
+        root_cause="Unexpected overpressure sand",
+        mitigation_applied="Shut-in and circulated kill weight mud",
+        npt_hours=36.0,
+        embedding=[0.0] * 384
+    )
+    
+    event3 = SyntheticEvent(
+        well_id="OIL-MULTI-HAZARD-1",
+        depth_start_tvd=2245.0,
+        depth_end_tvd=2245.0,
+        formation="Barail",
+        event_type="Differential Sticking",
+        severity="HIGH",
+        root_cause="High overbalance across permeable zone",
+        mitigation_applied="Worked pipe and spotted freeing pill",
+        npt_hours=24.0,
+        embedding=[0.0] * 384
+    )
+    
+    # Configure mock to return our multi-event list
     mock_query = MagicMock()
     mock_db.query.return_value = mock_query
     mock_query.filter.return_value = mock_query
-    mock_query.all.return_value = [new_event]
+    mock_query.all.return_value = [event1, event2, event3]
     
     app.dependency_overrides[get_db] = lambda: mock_db
 
-    
-    # 2. Call the Look-Ahead Radar API as a different nearby well
-    # Current depth is 2200, lookahead is 500 (so 2200 to 2700). 2245m is within range.
+    # 2. Query Look-Ahead Radar such that all 3 events fall into the window
+    # e.g. currently at 1750m, window is 500m (covers 1750m - 2250m)
     response = client.get(
         "/api/wells/OIL-BAGHJAN-1/lookahead",
         params={
-            "current_depth": 2200.0,
+            "current_depth": 1750.0,
             "window_meters": 500.0
         }
     )
@@ -57,16 +82,18 @@ def test_live_ingestion_to_lookahead_radar():
     assert response.status_code == 200
     data = response.json()
     
-    # 3. Assert the Lookahead returns the new event
     offset_events = data.get("events", [])
     
-    # Check if any returned event corresponds to the ingested one
-    found_event = None
-    for ev in offset_events:
-        if ev["well_id"] == "OIL-TENGAKHAT-1" and ev["event_type"] == "Differential Sticking":
-            found_event = ev
-            break
-            
-    assert found_event is not None, "Newly ingested TENGAKHAT-1 event was not found in Look-Ahead Radar!"
-    assert found_event["depth_tvd"] == 2245.0
-    assert found_event["severity"] == "HIGH"
+    # 3. Assert all 3 distinct hazards are correctly returned
+    extracted_types = [ev["event_type"] for ev in offset_events if ev["well_id"] == "OIL-MULTI-HAZARD-1"]
+    
+    assert "Severe Mud Loss" in extracted_types
+    assert "Gas Kick" in extracted_types
+    assert "Differential Sticking" in extracted_types
+    assert len(extracted_types) == 3
+    
+    # Print out the events to confirm for the user
+    import json
+    print("\n\n=== MULTI-HAZARD LOOK-AHEAD RESPONSE ===")
+    print(json.dumps(offset_events, indent=2))
+    print("========================================\n")
