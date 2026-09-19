@@ -380,13 +380,23 @@ export default function WellMap({
         }
     }, [selectedRegion, activeWellId]);
 
+    const lastCenteredWellIdRef = useRef(null);
+
     // 3. Center automatically on active well whenever activeWellId changes OR when wells load
     useEffect(() => {
-        if (!activeWellId || wells.length === 0) return;
+        if (!activeWellId) {
+            lastCenteredWellIdRef.current = null;
+            return;
+        }
+        if (wells.length === 0) return;
+        
+        if (lastCenteredWellIdRef.current === activeWellId) return;
+
         const active = wells.find(w => w.well_id === activeWellId);
         if (active && active.surface_location) {
             setPopupWell(active);
             centerOnWell(active, 11);
+            lastCenteredWellIdRef.current = activeWellId;
         }
     }, [activeWellId, wells, centerOnWell]);
 
@@ -658,46 +668,52 @@ export default function WellMap({
                             </div>
                             
                             {/* Detailed Attributes */}
-                            <div className="space-y-1.5 text-[11px]">
-                                <div className="flex justify-between items-baseline">
-                                    <span className="text-slate-400">Provenance:</span> 
-                                    <span className="text-cyan-200 font-medium text-right truncate max-w-[180px]" title={popupWell.source || popupWell.data_source}>
-                                        {(popupWell.source || popupWell.data_source || 'OIL Deep Exploration Asset').replace(/_/g, ' ')}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between items-baseline">
-                                    <span className="text-slate-400">Target Formation:</span> 
-                                    <span className="text-amber-300 font-medium text-right truncate max-w-[170px]" title={popupWell.target_formation || 'Barail Sandstone'}>
-                                        {popupWell.target_formation || 'Barail Sandstone'}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between items-baseline">
-                                    <span className="text-slate-400">Stratigraphy:</span> 
-                                    <span className="text-slate-200 font-medium">
-                                        {popupWell.formation_count !== undefined ? popupWell.formation_count : 5} mapped tops
-                                    </span>
-                                </div>
-                                <div className="flex justify-between items-baseline">
-                                    <span className="text-slate-400">Total Depth:</span> 
-                                    <span className="text-slate-100 font-semibold">
-                                        {popupWell.total_depth_m ? `${Math.round(popupWell.total_depth_m)} m` : popupWell.total_depth_tvd ? `${Math.round(popupWell.total_depth_tvd)} m` : '3520 m'} TVD
-                                    </span>
-                                </div>
-                                {popupWell.primary_hazard && (
-                                    <div className="pt-1 pb-0.5 border-t border-slate-800/80">
-                                        <span className="text-slate-400 block text-[10px] mb-0.5">Primary Hazard:</span> 
-                                        <span className="text-rose-400 font-semibold text-[10.5px] leading-tight block bg-rose-950/40 border border-rose-900/50 rounded px-1.5 py-1">
-                                            {popupWell.primary_hazard}
+                            <details className="text-[11px] group">
+                                <summary className="cursor-pointer text-slate-300 font-medium flex items-center justify-between hover:text-white transition-colors outline-none py-0.5 select-none list-none [&::-webkit-details-marker]:hidden">
+                                    <span>Well Details & Provenance</span>
+                                    <span className="text-slate-500 transition-transform group-open:rotate-180 text-[10px] ml-2">▼</span>
+                                </summary>
+                                <div className="space-y-1.5 mt-2 pt-2 border-t border-slate-800/80">
+                                    <div className="flex justify-between items-baseline">
+                                        <span className="text-slate-400">Provenance:</span> 
+                                        <span className="text-cyan-200 font-medium text-right truncate max-w-[180px]" title={popupWell.source || popupWell.data_source}>
+                                            {(popupWell.source || popupWell.data_source || 'OIL Deep Exploration Asset').replace(/_/g, ' ')}
                                         </span>
                                     </div>
-                                )}
-                                <div className="pt-1 border-t border-slate-800/80">
-                                    <span className="text-slate-400 block text-[10px]">BHA Assembly:</span>
-                                    <span className="text-slate-300 text-[10px] leading-tight block mt-0.5 break-words">
-                                        {popupWell.bha_type || 'Steerable Motor BHA (1.5° PDM + MWD)'}
-                                    </span>
+                                    <div className="flex justify-between items-baseline">
+                                        <span className="text-slate-400">Target Formation:</span> 
+                                        <span className="text-amber-300 font-medium text-right truncate max-w-[170px]" title={popupWell.target_formation || 'Barail Sandstone'}>
+                                            {popupWell.target_formation || 'Barail Sandstone'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-baseline">
+                                        <span className="text-slate-400">Stratigraphy:</span> 
+                                        <span className="text-slate-200 font-medium">
+                                            {popupWell.formation_count !== undefined ? popupWell.formation_count : 5} mapped tops
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-baseline">
+                                        <span className="text-slate-400">Total Depth:</span> 
+                                        <span className="text-slate-100 font-semibold">
+                                            {popupWell.total_depth_m ? `${Math.round(popupWell.total_depth_m)} m` : popupWell.total_depth_tvd ? `${Math.round(popupWell.total_depth_tvd)} m` : '3520 m'} TVD
+                                        </span>
+                                    </div>
+                                    {popupWell.primary_hazard && (
+                                        <div className="pt-1 pb-0.5 border-t border-slate-800/80">
+                                            <span className="text-slate-400 block text-[10px] mb-0.5">Primary Hazard:</span> 
+                                            <span className="text-rose-400 font-semibold text-[10.5px] leading-tight block bg-rose-950/40 border border-rose-900/50 rounded px-1.5 py-1">
+                                                {popupWell.primary_hazard}
+                                            </span>
+                                        </div>
+                                    )}
+                                    <div className="pt-1 border-t border-slate-800/80">
+                                        <span className="text-slate-400 block text-[10px]">BHA Assembly:</span>
+                                        <span className="text-slate-300 text-[10px] leading-tight block mt-0.5 break-words">
+                                            {popupWell.bha_type || 'Steerable Motor BHA (1.5° PDM + MWD)'}
+                                        </span>
+                                    </div>
                                 </div>
-                            </div>
+                            </details>
                         </div>
                     </Popup>
                 )}

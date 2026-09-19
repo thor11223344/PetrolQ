@@ -21,11 +21,30 @@ def ingest_report(pdf_path: str, well_id: str, db_session: Session):
     parser = DrillingReportParser()
     raw_text, ocr_triggered = parser.extract_text_and_tables(pdf_path)
     
-    if not raw_text:
-        logger.error(f"Failed to extract any text from {pdf_path}. Exiting ingestion.")
+    if not raw_text or len(raw_text.strip()) < 50:
+        logger.error(f"Insufficient text from {pdf_path}. Exiting extraction and storing raw fallback.")
+        
+        # Store raw text fallback for keyword search
+        fallback_text = raw_text.strip() if raw_text else "No text extracted."
+        db_event = SyntheticEvent(
+            well_id=well_id,
+            depth_start_tvd=0,
+            depth_end_tvd=0, 
+            formation="Unknown",
+            event_type="raw_text",
+            severity="LOW",
+            root_cause=fallback_text,
+            mitigation_applied="None",
+            npt_hours=0.0,
+            embedding=get_embedding(fallback_text[:1000]),
+            data_source="dd_report"
+        )
+        db_session.add(db_event)
+        db_session.commit()
+        
         return {
             "status": "error",
-            "message": "No readable text could be extracted from PDF",
+            "message": "extraction failed: no readable text",
             "ocr_triggered": ocr_triggered,
             "extracted_count": 0,
             "events": []
@@ -99,6 +118,10 @@ def ingest_report(pdf_path: str, well_id: str, db_session: Session):
             root_cause=event.root_cause,
             mitigation_applied=mitigation_final,
             npt_hours=event.npt_hours,
+            casing_type=event.casing_type,
+            casing_size=event.casing_size,
+            cement_slurry=event.cement_slurry,
+            toc_depth=event.toc_depth,
             embedding=embedding,
             data_source=provenance_tag
         )

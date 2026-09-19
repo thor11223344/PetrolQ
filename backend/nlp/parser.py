@@ -48,33 +48,29 @@ class DrillingReportParser:
                     page = doc[page_num]
                     text = page.get_text("text")
                     
-                    # Correction #6: If extracted text is under ~50 chars, rasterize page and run OCR fallback
+                    # Anti-Fabrication: If extracted text is under ~50 chars, rasterize page and run OCR fallback
                     if len(text.strip()) < 50:
                         try:
-                            import pytesseract
-                            import shutil
-                            if not shutil.which("tesseract"):
-                                if os.path.exists(r"C:\Program Files\Tesseract-OCR\tesseract.exe"):
-                                    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+                            import easyocr
+                            import numpy as np
                             from PIL import Image
                             import io
+                            
+                            if not hasattr(self, "ocr_reader"):
+                                self.ocr_reader = easyocr.Reader(['en'], gpu=False)
+                                
                             pix = page.get_pixmap(dpi=150)
-                            img = Image.open(io.BytesIO(pix.tobytes("png")))
-                            ocr_result = pytesseract.image_to_string(img)
+                            img = Image.open(io.BytesIO(pix.tobytes("png"))).convert("RGB")
+                            img_np = np.array(img)
+                            
+                            ocr_results = self.ocr_reader.readtext(img_np, detail=0)
+                            ocr_result = "\n".join(ocr_results)
+                            
                             if ocr_result and len(ocr_result.strip()) > 10:
                                 text = f"[OCR Fallback Active - Scanned Page]:\n{ocr_result.strip()}"
                                 ocr_triggered = True
                         except Exception as ocr_err:
-                            logger.info(f"Pytesseract fallback attempt: {ocr_err}")
-                            # Secondary fallback: PyMuPDF OCR textpage
-                            try:
-                                tp = page.get_textpage_ocr()
-                                ocr_result = page.get_text("text", textpage=tp)
-                                if ocr_result and len(ocr_result.strip()) > 10:
-                                    text = f"[PyMuPDF OCR Fallback]:\n{ocr_result.strip()}"
-                                    ocr_triggered = True
-                            except Exception:
-                                pass
+                            logger.info(f"EasyOCR fallback attempt failed: {ocr_err}")
                     
                     if text.strip():
                         extracted_content.append(f"--- Page {page_num + 1} Text ---\n{text.strip()}")

@@ -1952,7 +1952,7 @@ function App() {
           </div>
 
           {/* In-App Telemetry Feed Controller (Desktop Tactical Cyber-Console) */}
-          <div className="absolute bottom-6 left-4 z-20 glass-panel border border-slate-700/80 p-3.5 rounded-2xl shadow-2xl hidden lg:flex flex-wrap items-center gap-3.5">
+          <div className="absolute bottom-6 left-4 z-20 glass-panel border border-slate-700/80 p-3.5 rounded-2xl shadow-2xl hidden lg:flex flex-wrap items-center gap-3.5 max-w-[calc(100%-5rem)]">
             <div className="flex items-center space-x-2 border-r border-slate-800 pr-3.5">
               <button
                 onClick={() => handleSimControl(simStatus.is_running ? 'pause' : 'play')}

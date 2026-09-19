@@ -80,6 +80,13 @@ class SyntheticEvent(Base):
     root_cause = Column(String)
     mitigation_applied = Column(String)
     npt_hours = Column(Float)
+    
+    # Casing and Cementing operations
+    casing_type = Column(String, nullable=True)
+    casing_size = Column(String, nullable=True)
+    cement_slurry = Column(String, nullable=True)
+    toc_depth = Column(Float, nullable=True)
+    
     data_source = Column(String, default='synthetic')
     
     # Fallback to standard Postgres Array since pgvector compilation failed

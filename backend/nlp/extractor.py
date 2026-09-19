@@ -37,7 +37,26 @@ class DrillingIncidentSchema(BaseModel):
         description="Non-productive time in hours, default 0.0", 
         default=0.0
     )
-
+    source_text_snippet: str = Field(
+        description="EXACT quotation from the source text that proves this event occurred. MUST be a direct verbatim substring from the document. Do not paraphrase.",
+        default=""
+    )
+    casing_type: Optional[str] = Field(
+        description="Type of casing string if applicable (e.g. Conductor, Surface, Intermediate, Production Liner)", 
+        default=None
+    )
+    casing_size: Optional[str] = Field(
+        description="Size, weight, or grade of casing if mentioned", 
+        default=None
+    )
+    cement_slurry: Optional[str] = Field(
+        description="Cement slurry type or density if mentioned", 
+        default=None
+    )
+    toc_depth: Optional[float] = Field(
+        description="Top of cement (TOC) depth in meters if mentioned", 
+        default=None
+    )
 class IncidentExtractionResult(BaseModel):
     """
     Wrapper schema because LLMs need a top-level object to return lists accurately 
@@ -81,8 +100,9 @@ def extract_incidents_from_text(text: str) -> List[DrillingIncidentSchema]:
         
         system_prompt = (
             "You are an expert Senior Drilling Engineer reviewing historical Daily Drilling Reports and Well Completion Reports. "
-            "Extract all downhole incidents, hazard events, kicks, stuck pipe situations, NPT entries, AND important casing and cementing operations. "
-            "If no drilling incident, hazard, or casing/cementing operation occurred in the text, return an empty list. Maintain domain precision."
+            "Extract all downhole incidents, hazard events, kicks, stuck pipe situations, NPT entries, AND casing and cementing operations. "
+            "CRITICAL: For every event you extract, you MUST provide the exact verbatim substring from the document in 'source_text_snippet'. "
+            "Do not invent or paraphrase the snippet. If no event occurred in the text, return an empty list. Maintain domain precision."
         )
         
         prompt = ChatPromptTemplate.from_messages([
@@ -92,13 +112,26 @@ def extract_incidents_from_text(text: str) -> List[DrillingIncidentSchema]:
         
         chain = prompt | structured_llm
         raw_result = chain.invoke({"text": text})
+        
+        extracted = []
         if isinstance(raw_result, IncidentExtractionResult):
-            return raw_result.incidents
+            extracted = raw_result.incidents
         elif isinstance(raw_result, dict):
-            return IncidentExtractionResult.model_validate(raw_result).incidents
+            extracted = IncidentExtractionResult.model_validate(raw_result).incidents
         elif hasattr(raw_result, "incidents"):
-            return getattr(raw_result, "incidents", [])
-        return []
+            extracted = getattr(raw_result, "incidents", [])
+            
+        # Anti-Fabrication validation: Verify the snippet actually exists in the text
+        valid_incidents = []
+        for inc in extracted:
+            snippet = inc.source_text_snippet.strip()
+            # We allow a small amount of leeway for whitespace mismatches but it must be in the text
+            if snippet and snippet.lower() in text.lower().replace('\n', ' '):
+                valid_incidents.append(inc)
+            else:
+                logger.warning(f"Discarding fabricated event. Snippet not found in source text: {snippet}")
+                
+        return valid_incidents
         
     except Exception as e:
         logger.warning(f"LLM extraction unavailable ({e}). Engaging deterministic domain NLP fallback...")
@@ -119,7 +152,7 @@ def _rule_based_fallback_extraction(text: str) -> List[DrillingIncidentSchema]:
         ("Differential Sticking", r"(differential\s+sticking|stuck\s+pipe|pipe\s+stuck)"),
         ("Mechanical Packoff", r"(packoff|pack-off|tight\s+hole|bridging|drag)"),
         ("Equipment Failure", r"(twist-off|mwd\s+failure|bha\s+washout|bit\s+failure)"),
-        ("Casing/Cementing", r"(casing|cementing|run\s+casing|cement\s+job|liner\s+hanger)")
+        ("casing_cementing_issue", r"(casing|cementing|run\s+casing|cement\s+job|liner\s+hanger)")
     ]
 
     # Formations

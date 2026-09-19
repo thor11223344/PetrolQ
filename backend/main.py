@@ -950,17 +950,39 @@ def search_events(
         if exclude_synthetic:
             db_query = db_query.filter(SyntheticEvent.data_source.notin_(["synthetic", "synthetic_calibrated"]))
 
+        # STAGE 2: Deterministic Filters
+        if formation:
+            db_query = db_query.filter(SyntheticEvent.formation.ilike(f"%{formation}%"))
+            
+        if event_type:
+            db_query = db_query.filter(SyntheticEvent.event_type.ilike(f"%{event_type}%"))
+            
+        if target_depth is not None:
+            # Filter within +/- 500m window
+            db_query = db_query.filter(SyntheticEvent.depth_start_tvd.between(target_depth - 500, target_depth + 500))
+
         events = db_query.all()
     except Exception as e:
         print(f"Warning: Database query failed in search_events ({e}), using offline fallback events.")
         return get_offline_fallback_events(query, target_depth, limit)
     
     results = []
+    seen = set()
     for event in events:
         embedding_val = getattr(event, "embedding", None)
         if embedding_val is None or len(embedding_val) == 0:
             continue
             
+        depth_val = getattr(event, "depth_start_tvd", None)
+        ev_type = getattr(event, "event_type", "") or ""
+        root_cause = getattr(event, "root_cause", "") or ""
+        
+        # Deduplicate identical events (e.g., from multiple PDF uploads)
+        dedup_key = (str(event.well_id), ev_type, depth_val, root_cause)
+        if dedup_key in seen:
+            continue
+        seen.add(dedup_key)
+        
         # 1. Vector semantic cosine similarity
         sim = compute_cosine_similarity(query_embedding, embedding_val)
         
@@ -971,27 +993,27 @@ def search_events(
         mitigation = getattr(event, "mitigation_applied", "") or ""
 
         # 2. Multi-signal component calculations
-        f_score = compute_formation_match_score(formation, ev_formation, query)
-        d_score = compute_depth_proximity_score(target_depth, depth_val)
-        e_score = compute_event_type_match_score(query, ev_type, event_type)
         doc_text = f"{ev_type} {ev_formation} {root_cause} {mitigation}"
         bm25_score = compute_bm25_score(query, doc_text)
         vec_score = float(sim)
 
-        # 3. Hybrid weighted combination (AHP-derived weights)
-        hybrid_calc = compute_hybrid_relevance_score(
-            formation_match=f_score,
-            depth_proximity=d_score,
-            event_type_match=e_score,
-            bm25=bm25_score,
-            vector=vec_score
-        )
-        final_score = hybrid_calc["hybrid_score"]
+        # 3. Simple additive score (Semantic + BM25 boost)
+        final_score = vec_score + (0.1 * bm25_score)
+        
+        # Keyword search fallback for raw text
+        if ev_type == "raw_text":
+            if any(q.lower() in root_cause.lower() for q in query.split() if len(q) > 3):
+                final_score += 0.3
+            else:
+                final_score -= 0.5 # Penalize if keywords not found in raw text
 
         # Boost score massively for newly extracted events so they always surface
+        sort_score = final_score
         data_source_val = getattr(event, "data_source", "") or ""
         if data_source_val == "dd_report":
-            final_score += 10.0
+            sort_score += 10.0
+            
+        display_score = min(final_score, 0.99)
 
         # 4. Deterministic Guardrails validation
         det_truth = {
@@ -1018,11 +1040,18 @@ def search_events(
         )
 
         results.append((
+            sort_score,
             getattr(event, 'id', 0) if isinstance(getattr(event, 'id', 0), int) else 0,
             RAGSearchResponse(
-                similarity_score=round(final_score, 4),
-                hybrid_score=round(final_score, 4),
-                score_breakdown=ScoreBreakdown(**{k: round(v, 4) for k, v in hybrid_calc["score_breakdown"].items()}),
+                similarity_score=round(display_score, 4),
+                hybrid_score=round(display_score, 4),
+                score_breakdown=ScoreBreakdown(
+                    formation_match=1.0 if formation else 0.0,
+                    depth_proximity=1.0 if target_depth else 0.0,
+                    event_type_match=1.0 if event_type else 0.0,
+                    bm25=round(bm25_score, 4),
+                    vector=round(vec_score, 4)
+                ),
                 well_id=str(event.well_id),
                 depth_tvd=float(depth_val) if depth_val is not None else 0.0,
                 formation=ev_formation,
@@ -1035,8 +1064,8 @@ def search_events(
         ))
         
     # Sort descending by hybrid multi-signal relevance score, breaking ties with newer IDs
-    results.sort(key=lambda x: (x[1].similarity_score, x[0]), reverse=True)
-    results = [x[1] for x in results]
+    results.sort(key=lambda x: (x[0], x[1]), reverse=True)
+    results = [x[2] for x in results]
     
     if not results:
         return get_offline_fallback_events(query, target_depth, limit)
