@@ -2,7 +2,7 @@ import argparse
 import logging
 from sqlalchemy.orm import Session
 from database import SessionLocal
-from models import SyntheticEvent
+from models import SyntheticEvent, WellMaster
 from nlp.parser import DrillingReportParser
 from nlp.extractor import extract_incidents_from_chunks
 from nlp.config import get_embedding

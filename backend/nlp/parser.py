@@ -52,6 +52,10 @@ class DrillingReportParser:
                     if len(text.strip()) < 50:
                         try:
                             import pytesseract
+                            import shutil
+                            if not shutil.which("tesseract"):
+                                if os.path.exists(r"C:\Program Files\Tesseract-OCR\tesseract.exe"):
+                                    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
                             from PIL import Image
                             import io
                             pix = page.get_pixmap(dpi=150)
