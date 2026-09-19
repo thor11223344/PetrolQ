@@ -3055,7 +3055,14 @@ function App() {
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
-              <h4 className="text-sm font-bold text-white truncate">{uploadToast.title}</h4>
+              <div className="flex items-center space-x-2 min-w-0">
+                <h4 className="text-sm font-bold text-white truncate">{uploadToast.title}</h4>
+                {!uploadToast.isLas && (
+                  <span className="px-2 py-0.5 rounded bg-blue-950 border border-blue-800 text-blue-400 text-[10px] font-bold uppercase shrink-0">
+                    DD Report
+                  </span>
+                )}
+              </div>
               <button 
                 onClick={() => setUploadToast(null)} 
                 className="text-slate-400 hover:text-white transition ml-2"
