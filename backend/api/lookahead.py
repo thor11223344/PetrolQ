@@ -359,8 +359,13 @@ def get_lookahead_advisory(
             
         dist_km = offset_distances.get(str(ev.well_id), 999.0)
         is_self = (str(ev.well_id) == well_id)
+        
+        # EXCLUDE self well (Target well) from lookahead radar (User Request)
+        if is_self:
+            continue
+            
         # Prioritize same basin (distance < 350km)
-        if dist_km < 350.0 or is_self:
+        if dist_km < 350.0:
             scored_events.append({
                 "event": ev,
                 "distance_km": dist_km,
@@ -371,14 +376,17 @@ def get_lookahead_advisory(
     if not scored_events:
         for ev in candidate_events:
             ev_region = get_well_region_tag(str(ev.well_id))
-            if ev_region != active_region:
+            is_self = (str(ev.well_id) == well_id)
+            
+            # EXCLUDE self well (Target well) from lookahead radar
+            if ev_region != active_region or is_self:
                 continue
                 
             dist_km = offset_distances.get(str(ev.well_id), 999.0)
             scored_events.append({
                 "event": ev,
                 "distance_km": dist_km,
-                "is_self": (str(ev.well_id) == well_id)
+                "is_self": is_self
             })
 
     # Sort candidates: non-self first, proximity, severity
