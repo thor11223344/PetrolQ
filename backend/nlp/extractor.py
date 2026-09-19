@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class DrillingIncidentSchema(BaseModel):
     event_type: str = Field(
-        description="E.g., 'Stuck Pipe (Mechanical)', 'Stuck Pipe (Differential)', 'Severe Mud Loss', 'Gas Kick', 'Tight Hole', 'Equipment Failure'"
+        description="E.g., 'Stuck Pipe (Mechanical)', 'Stuck Pipe (Differential)', 'Severe Mud Loss', 'Gas Kick', 'Tight Hole', 'Equipment Failure', 'Casing/Cementing Operation'"
     )
     depth_tvd: Optional[float] = Field(
         description="Estimated or exact True Vertical Depth in meters", 
@@ -81,8 +81,8 @@ def extract_incidents_from_text(text: str) -> List[DrillingIncidentSchema]:
         
         system_prompt = (
             "You are an expert Senior Drilling Engineer reviewing historical Daily Drilling Reports and Well Completion Reports. "
-            "Extract all downhole incidents, hazard events, kicks, stuck pipe situations, and NPT entries. "
-            "If no drilling incident or operational hazard occurred in the text, return an empty list. Maintain domain precision."
+            "Extract all downhole incidents, hazard events, kicks, stuck pipe situations, NPT entries, AND important casing and cementing operations. "
+            "If no drilling incident, hazard, or casing/cementing operation occurred in the text, return an empty list. Maintain domain precision."
         )
         
         prompt = ChatPromptTemplate.from_messages([
@@ -118,7 +118,8 @@ def _rule_based_fallback_extraction(text: str) -> List[DrillingIncidentSchema]:
         ("Gas Kick", r"(gas\s+kick|well\s+kick|influx|gas\s+spike|pit\s+gain|sidpp)"),
         ("Differential Sticking", r"(differential\s+sticking|stuck\s+pipe|pipe\s+stuck)"),
         ("Mechanical Packoff", r"(packoff|pack-off|tight\s+hole|bridging|drag)"),
-        ("Equipment Failure", r"(twist-off|mwd\s+failure|bha\s+washout|bit\s+failure)")
+        ("Equipment Failure", r"(twist-off|mwd\s+failure|bha\s+washout|bit\s+failure)"),
+        ("Casing/Cementing", r"(casing|cementing|run\s+casing|cement\s+job|liner\s+hanger)")
     ]
 
     # Formations
