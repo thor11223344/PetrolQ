@@ -233,40 +233,6 @@ All geomechanical models and predictive indicators in PetrolQ are directly groun
 
 ---
 
-## 7. Screenshots
-
-<!-- Replace these placeholder image paths with your actual application screenshots -->
-
-### Mission Control Dashboard & Geospatial Radius Map
-![Mission Control Dashboard & Geospatial Map](docs/screenshots/dashboard_map_view.png)
-*Interactive 2D geospatial map displaying nearby offset wells within user-selected radius, wellhead details card, and stratigraphic formation tops.*
-
-### Tactical Telemetry Matrix & Playback Controls
-![Tactical Telemetry Matrix](docs/screenshots/telemetry_console.png)
-*Live 1 Hz sensor matrix tracking WOB, RPM, Standpipe Pressure, Flow Out %, Pit Volume Delta, and Dynamic ECD alongside scenario injection controls.*
-
-### Look-Ahead Hazard Radar & Stratigraphic Projection
-![Look-Ahead Hazard Radar](docs/screenshots/lookahead_radar.png)
-*Ahead-of-the-bit projection tracking upcoming formation boundaries, historical casing shoe depths, and offset-well NPT incidents.*
-
-### 3D Wellbore Trajectory & Anti-Collision Monitoring
-![3D Trajectory Viewer](docs/screenshots/trajectory_3d_viewer.png)
-*Plotly WebGL 3D directional wellbore viewer calculating minimum curvature trajectories and multi-well clearance separation vectors.*
-
-### Eaton PPFG Safe Mud Weight Window
-![Eaton PPFG Mud Weight Window](docs/screenshots/ppfg_window_modal.png)
-*Depth-indexed pore pressure, equivalent circulating density, and fracture gradient curves with dynamic kick tolerance visualization.*
-
-### FastDTW Offset Well Log Correlation Panel
-![FastDTW Log Correlation](docs/screenshots/log_correlation_panel.png)
-*Side-by-side Gamma Ray and Resistivity well log correlation utilizing Dynamic Time Warping to map stratigraphic depth shifts.*
-
-### Time-Travel Backtest Replay & Validation Benchmark
-![Time-Travel Backtest Replay](docs/screenshots/backtest_replay_benchmark.png)
-*Causal row-by-row telemetry replay benchmark evaluating advance warning lead distance before documented historical stuck pipe and kick events.*
-
----
-
-## 8. License
+## 7. License
 
 This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for complete terms and copyright notices.
