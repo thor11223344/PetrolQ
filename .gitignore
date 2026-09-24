@@ -1,30 +1,59 @@
+# Dependencies
 node_modules/
-dataset/
-demo_data/
-data/raw/
-__pycache__/
-*.pyc
-.pytest_cache/
 frontend/dist/
+dist/
+build/
+
+# Python & environments
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+coverage/
+htmlcov/
+venv/
+.venv/
+env/
+fresh_venv/
+
+# Environment and secrets
 .env
-*.pdf
-!sample_reports/*.pdf
-other_proj/
+.env.local
+.env.*.local
+
+# Databases & local logs
+*.db
+*.sqlite
+*.sqlite3
 delete_database/
 logs/
 *.log
-*.db
-venv/
-fresh_venv/
-.vscode/
+
+# Raw datasets & temporary uploads
+dataset/
+demo_data/
+data/raw/
 temp_uploads/
 demo_project/
 demo_projects/
+other_proj/
 
-# Internal documentation & video scripts
-technologies.md
-video.md
-vidoe.md
-solution.md
-explain.md
-architecture.md
+# Documents & PDFs (allow committed sample reports)
+*.pdf
+!sample_reports/*.pdf
+
+# IDE and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Root internal documentation & scripts (anchored to repository root)
+/technologies.md
+/video.md
+/vidoe.md
+/solution.md
+/explain.md
+/architecture.md
+!docs/ARCHITECTURE.md
